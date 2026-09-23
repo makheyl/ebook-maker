@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createBlankBook, makePng, stageElements } from './helpers';
 
-async function assetCount(page: import('@playwright/test').Page) {
+async function assetCount(page: Page) {
   return page.evaluate(
     () =>
       new Promise<number>((resolve, reject) => {
