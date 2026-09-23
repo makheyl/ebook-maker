@@ -3,7 +3,8 @@ import { LoadErrorScreen } from './LoadErrorScreen';
 import { useDocStore } from './store/doc-store';
 import { useProjectLoader } from './useProjectLoader';
 
-export function EditorRoute({ id }: { id: string }) {
+/** `/p/:id` edits a book; `/p/:id/preview` opens the reader over the same live document. */
+export function EditorRoute({ id, mode }: { id: string; mode?: string }) {
   const state = useProjectLoader(id);
   const project = useDocStore((s) => s.project);
 
@@ -15,5 +16,5 @@ export function EditorRoute({ id }: { id: string }) {
     );
   }
   if (state.status !== 'ready' || !project) return <LoadErrorScreen projectId={id} state={state} />;
-  return <Editor />;
+  return <Editor mode={mode === 'preview' ? 'preview' : 'edit'} />;
 }

@@ -34,6 +34,7 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
       const ui = useUiStore.getState();
+      if (ui.playerOpen) return;
 
       // Undo/redo work everywhere except inside text inputs (which have their own undo).
       if (mod && key === 'z' && !isTypingTarget(e.target)) {
@@ -139,7 +140,7 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
       if (!isTypingTarget(e.target) && !hasTextSelection()) cutSelection(e);
     };
     const onPaste = (e: ClipboardEvent) => {
-      if (!isTypingTarget(e.target)) pasteFromEvent(e);
+      if (!isTypingTarget(e.target) && !useUiStore.getState().playerOpen) pasteFromEvent(e);
     };
 
     window.addEventListener('keydown', onKeyDown);

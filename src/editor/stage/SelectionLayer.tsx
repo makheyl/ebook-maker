@@ -51,6 +51,7 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
   const selectedIds = useUiStore((s) => s.selectedIds);
   const editingTextId = useUiStore((s) => s.editingTextId);
   const previewing = useUiStore((s) => s.previewing);
+  const playerOpen = useUiStore((s) => s.playerOpen);
   const moveableRef = useRef<Moveable>(null);
   const live = useRef(new Map<string, LivePatch>());
   const start = useRef(new Map<string, PageElement>());
@@ -59,7 +60,7 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     () => page.elements.filter((e) => selectedIds.includes(e.id) && !e.hidden),
     [page, selectedIds],
   );
-  const active = editingTextId || previewing ? [] : selected;
+  const active = editingTextId || previewing || playerOpen ? [] : selected;
   const locked = active.some((e) => e.locked);
   const targets = active.map((e) => frameSelector(e.id));
   const guidelineEls = useMemo(

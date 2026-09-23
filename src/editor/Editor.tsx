@@ -1,10 +1,12 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { insertImages } from './actions';
 import { assetUrls } from './assets/asset-urls';
 import { useAutosave } from './autosave';
 import './editor.css';
+import { stopPreview } from './animation/preview';
 import { AnimationPane } from './panels/AnimationPane';
+import { PreviewOverlay } from './preview/PreviewOverlay';
 import { RightPanel } from './panels/RightPanel';
 import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
@@ -17,14 +19,20 @@ import { useProject } from './store/selectors';
 import { useUiStore } from './store/ui-store';
 import { TopBar } from './topbar/TopBar';
 
-export function Editor() {
+export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
   const project = useProject();
   const [, navigate] = useLocation();
   useAutosave();
   const shortcutOpts = useMemo(
-    () => ({ onPreview: () => navigate(`/p/${project.id}/preview`) }),
+    () => ({
+      onPreview: () => {
+        stopPreview();
+        navigate(`/p/${project.id}/preview`);
+      },
+    }),
     [navigate, project.id],
   );
+  const closePreview = useCallback(() => navigate(`/p/${project.id}`), [navigate, project.id]);
   useEditorShortcuts(shortcutOpts);
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
@@ -37,7 +45,7 @@ export function Editor() {
       <TopBar onPreview={shortcutOpts.onPreview} onExport={() => undefined} />
       <div className="flex min-h-0 flex-1">
         <PageList />
-        <main className="relative flex min-w-0 flex-1" aria-label="Page editor">
+        <main className="relative isolate flex min-w-0 flex-1" aria-label="Page editor">
           <Stage
             onDropFiles={(files, at) => void insertImages(files, at)}
             onEditText={(id, point) => {
@@ -55,6 +63,7 @@ export function Editor() {
         </main>
         <RightPanel animate={<AnimationPane />} />
       </div>
+      {mode === 'preview' && <PreviewOverlay onClose={closePreview} />}
     </div>
   );
 }

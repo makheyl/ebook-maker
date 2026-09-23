@@ -15,8 +15,10 @@ type UiState = {
   rightTab: RightTab;
   saveStatus: SaveStatus;
   saveError: string | null;
-  /** Element currently being previewed by the Animation Pane (disables editing overlays). */
+  /** An Animation Pane preview is playing on the stage (disables editing overlays). */
   previewing: boolean;
+  /** The full-screen reader preview is open (editor shortcuts are suspended). */
+  playerOpen: boolean;
 };
 
 type UiActions = {
@@ -31,6 +33,7 @@ type UiActions = {
   setRightTab: (tab: RightTab) => void;
   setSaveStatus: (status: SaveStatus, error?: string | null) => void;
   setPreviewing: (previewing: boolean) => void;
+  setPlayerOpen: (open: boolean) => void;
 };
 
 export const useUiStore = create<UiState & UiActions>()((set) => ({
@@ -43,7 +46,9 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   saveStatus: 'saved',
   saveError: null,
   previewing: false,
+  playerOpen: false,
 
+  setPlayerOpen: (playerOpen) => set({ playerOpen }),
   reset: (activePageId) =>
     set({
       activePageId,

@@ -22,8 +22,8 @@ export function App() {
         <Router hook={useHashLocation}>
           <Switch>
             <Route path="/" component={Dashboard} />
-            <Route path="/p/:id">
-              {(params) => <EditorRoute key={params.id} id={params.id} />}
+            <Route path="/p/:id/:mode?">
+              {(params) => <EditorRoute key={params.id} id={params.id} mode={params.mode} />}
             </Route>
             <Route component={NotFound} />
           </Switch>
