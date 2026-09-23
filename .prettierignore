@@ -1,0 +1,7 @@
+dist
+dist-player
+coverage
+test-results
+playwright-report
+pnpm-lock.yaml
+ebook-builder-claude-code-prompt.md
