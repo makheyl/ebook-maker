@@ -1,7 +1,9 @@
 import { newId } from '../ids';
 import {
+  DEFAULT_BUTTON_STYLE,
   DEFAULT_EXPORT_SETTINGS,
   DEFAULT_FILTERS,
+  DEFAULT_READER,
   DEFAULT_TEXT_STYLE,
   DEFAULT_THEME,
   DEFAULT_TRANSITION,
@@ -12,6 +14,9 @@ import { SCHEMA_VERSION } from './project';
 import { paragraphsFromPlainText } from './text';
 import type {
   AssetRef,
+  ButtonElement,
+  ButtonStyle,
+  HotspotElement,
   ImageElement,
   Page,
   PageSize,
@@ -51,6 +56,8 @@ export function createProject(
     theme,
     pages: opts.pages?.length ? opts.pages : [createPage(theme)],
     assets: {},
+    characters: {},
+    reader: { ...DEFAULT_READER },
     exportSettings: { ...DEFAULT_EXPORT_SETTINGS },
     createdAt: now,
     updatedAt: now,
@@ -136,6 +143,46 @@ export function createShapeElement(
     stroke: shape === 'line' ? '#1f1d2b' : undefined,
     strokeWidth: shape === 'line' ? 6 : 0,
     cornerRadius: 0,
+    ...box,
+    ...overrides,
+  };
+}
+
+export function createButtonElement(
+  label: string,
+  box: Box,
+  overrides: Partial<Omit<ButtonElement, 'type' | 'style'>> & { style?: Partial<ButtonStyle> } = {},
+): ButtonElement {
+  return {
+    id: newId('el'),
+    type: 'button',
+    name: label.trim().slice(0, 32) || 'Button',
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    hidden: false,
+    label,
+    iconPosition: 'end',
+    interactions: [],
+    ...box,
+    ...overrides,
+    style: { ...DEFAULT_BUTTON_STYLE, ...overrides.style },
+  };
+}
+
+export function createHotspotElement(
+  box: Box,
+  overrides: Partial<Omit<HotspotElement, 'type'>> = {},
+): HotspotElement {
+  return {
+    id: newId('el'),
+    type: 'hotspot',
+    name: 'Tap area',
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    hidden: false,
+    interactions: [],
     ...box,
     ...overrides,
   };

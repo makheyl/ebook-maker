@@ -22,12 +22,14 @@ import {
 } from '@/core/ops';
 import {
   assetRefSchema,
+  characterSchema,
   createImageElement,
   createShapeElement,
   createTextElement,
   pageElementSchema,
   plainText,
   type AssetRef,
+  type Character,
   type PageElement,
   type Project,
   type ShapeElement,
@@ -298,6 +300,7 @@ const clipboardPayload = z.object({
   pageId: z.string(),
   elements: z.array(pageElementSchema),
   assets: z.record(z.string(), assetRefSchema),
+  characters: z.record(z.string(), characterSchema).optional(),
 });
 type ClipboardPayload = z.infer<typeof clipboardPayload>;
 
@@ -311,10 +314,21 @@ function currentPayload(): ClipboardPayload | null {
   const elements = getSelectedElements();
   if (!p || !page || !elements.length) return null;
   const assets: Record<string, AssetRef> = {};
+  const characters: Record<string, Character> = {};
+  const addAsset = (id: string) => {
+    if (p.assets[id]) assets[id] = p.assets[id]!;
+  };
   for (const el of elements) {
-    if (el.type === 'image' && p.assets[el.assetId]) assets[el.assetId] = p.assets[el.assetId]!;
+    if (el.type !== 'image') continue;
+    addAsset(el.assetId);
+    const character = el.characterId ? p.characters[el.characterId] : undefined;
+    if (character) {
+      characters[character.id] = character;
+      addAsset(character.assetId);
+      character.poses.forEach((pose) => addAsset(pose.assetId));
+    }
   }
-  return { kind: 'folio-elements', pageId: page.id, elements, assets };
+  return { kind: 'folio-elements', pageId: page.id, elements, assets, characters };
 }
 
 export function copySelection(e: ClipboardEvent): boolean {
@@ -366,7 +380,7 @@ function pastePayload(payload: ClipboardPayload) {
   pasteCount++;
   const offset = payload.pageId === page.id ? 24 * pasteCount : 0;
   const ids = docStore.change(
-    (d) => pasteElements(d, page.id, payload.elements, payload.assets, offset),
+    (d) => pasteElements(d, page.id, payload.elements, payload.assets, offset, payload.characters),
     {
       label: 'Paste',
     },

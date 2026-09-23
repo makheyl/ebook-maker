@@ -1,6 +1,8 @@
 import { DEFAULT_FONT_ID } from '../fonts/catalog';
 import type {
+  ButtonStyle,
   ExportSettings,
+  ReaderSettings,
   ImageFilters,
   NormalizedRect,
   PageTransition,
@@ -43,3 +45,22 @@ export const FULL_CROP: NormalizedRect = { x: 0, y: 0, width: 1, height: 1 };
 export const DEFAULT_TRANSITION: PageTransition = { preset: 'fade', duration: 500 };
 
 export const DEFAULT_EXPORT_SETTINGS: ExportSettings = { format: 'html', showBadge: true };
+
+export const DEFAULT_READER: ReaderSettings = {
+  tapToAdvance: true,
+  showNavButtons: true,
+  showPageMenu: true,
+  rememberPosition: true,
+  hints: true,
+};
+
+export const DEFAULT_BUTTON_STYLE: ButtonStyle = {
+  fontFamily: DEFAULT_FONT_ID,
+  fontSize: 44,
+  fontWeight: 700,
+  textColor: '#ffffff',
+  fill: DEFAULT_THEME.accent,
+  borderWidth: 0,
+  radius: 999,
+  shadow: true,
+};

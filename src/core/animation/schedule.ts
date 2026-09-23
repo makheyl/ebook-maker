@@ -18,11 +18,17 @@ export type StepGroup = {
 
 export type Schedule = { groups: StepGroup[] };
 
-/** Total time of one step including repeats. */
+/** Total time of one step including repeats (a looping step counts one cycle). */
 export function stepSpan(step: AnimationStep): number {
+  if (step.loop) return step.duration;
   const iterations =
     typeof step.params?.iterations === 'number' ? Math.max(1, step.params.iterations) : 1;
   return step.duration * iterations;
+}
+
+/** Steps that only play when an interaction triggers them (not part of the click sequence). */
+export function isInteractionStep(step: AnimationStep): boolean {
+  return step.trigger === 'onInteraction';
 }
 
 /**
@@ -31,6 +37,7 @@ export function stepSpan(step: AnimationStep): number {
  * - `withPrevious`  starts together with the previous step
  * - `afterPrevious` starts when the previous step ends
  * - `onClick`       waits for the reader to click / press next, and starts a new group
+ * - `onInteraction` is left out entirely (it plays when a tap action triggers it)
  * Each step's delay is added to its computed start.
  */
 export function scheduleSteps(steps: readonly AnimationStep[]): Schedule {
@@ -38,6 +45,7 @@ export function scheduleSteps(steps: readonly AnimationStep[]): Schedule {
   let prev: ScheduledStep | null = null;
 
   steps.forEach((step, index) => {
+    if (isInteractionStep(step)) return;
     let group = groups[groups.length - 1]!;
     let anchor = 0;
     switch (step.trigger) {
@@ -70,4 +78,9 @@ export function scheduleSteps(steps: readonly AnimationStep[]): Schedule {
 /** Number of reader clicks the page's animations need. */
 export function clickCount(steps: readonly AnimationStep[]): number {
   return steps.filter((s) => s.trigger === 'onClick').length;
+}
+
+/** Number of click groups (group 0 plus one per click) — pure, for the reader runtime. */
+export function groupCount(steps: readonly AnimationStep[]): number {
+  return 1 + clickCount(steps);
 }

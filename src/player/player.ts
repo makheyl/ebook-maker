@@ -177,6 +177,7 @@ export class Player {
       pageSize: this.opts.project.pageSize,
       reducedMotion: this.reducedMotion,
     });
+    incoming.timeline.startIdle();
     // Going back shows the page as it ends; going forward plays it.
     if (direction === -1) {
       incoming.timeline.finishAll();
@@ -248,7 +249,7 @@ export class Player {
       resolveAsset: this.opts.resolveAsset,
       splitTextFor: elementsNeedingCharSplit,
     });
-    view.update(page, this.opts.project.assets);
+    view.update(page, this.opts.project.assets, this.opts.project.characters);
     const layer = el('div', 'fp-page');
     layer.setAttribute('role', 'group');
     layer.setAttribute('aria-roledescription', 'page');

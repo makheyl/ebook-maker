@@ -29,6 +29,7 @@ export async function previewAnimations(
   });
   const token = { timeline, cancelled: false };
   active = token;
+  timeline.startIdle();
   // Let the "before" states paint (elements hidden) so entrances are visible.
   await wait(onlyStepIds ? 150 : 350);
   for (let group = 0; group < timeline.groupCount; group++) {

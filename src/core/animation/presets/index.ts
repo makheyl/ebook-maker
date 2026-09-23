@@ -3,6 +3,7 @@ import type { AnimationPreset } from '../types';
 import { fadeIn } from './fade-in';
 import { fadeOut } from './fade-out';
 import { kenBurns } from './ken-burns';
+import { keyframesPreset } from './keyframes';
 import { popIn } from './pop-in';
 import { pulse } from './pulse';
 import { slideLeft } from './slide-left';
@@ -23,6 +24,7 @@ export const ANIMATION_PRESETS: readonly AnimationPreset[] = [
   pulse,
   fadeOut,
   slideOutDown,
+  keyframesPreset,
 ];
 
 const byId = new Map(ANIMATION_PRESETS.map((p) => [p.id, p]));
@@ -31,8 +33,17 @@ export function getPreset(id: string): AnimationPreset | undefined {
   return byId.get(id);
 }
 
-export function presetsFor(kind: AnimationKind, type: ElementType): AnimationPreset[] {
+/** Presets offered for an element in the Animation Pane (custom moves are made on the timeline). */
+export function presetsFor(
+  kind: AnimationKind,
+  type: ElementType,
+  isCharacter = false,
+): AnimationPreset[] {
   return ANIMATION_PRESETS.filter(
-    (p) => p.kind === kind && (!p.appliesTo || p.appliesTo.includes(type)),
+    (p) =>
+      p.kind === kind &&
+      p.id !== 'keyframes' &&
+      (!p.appliesTo || p.appliesTo.includes(type)) &&
+      (!p.requiresCharacter || isCharacter),
   );
 }

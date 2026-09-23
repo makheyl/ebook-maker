@@ -1,4 +1,11 @@
-import type { AnimationKind, ElementType, PageElement, PageSize } from '../schema/types';
+import type {
+  AnimationKind,
+  AnimationStep,
+  Character,
+  ElementType,
+  PageElement,
+  PageSize,
+} from '../schema/types';
 
 export type ParamValue = number | string | boolean;
 export type Params = Record<string, ParamValue>;
@@ -21,10 +28,20 @@ export type ParamDef =
  * - 'element' → the element's animation layer (.fl-anim)
  * - 'chars'   → each character span of a split text element, staggered across the duration
  * - 'media'   → the <img> inside an image element (e.g. Ken Burns, clipped by the frame)
+ * - 'idle'    → a character's idle layer (.fl-idle)
+ * - 'face'    → a character's flip layer (turning around)
+ * - 'shadow'  → a character's ground shadow
+ * - 'strips'  → each strip of a warped character (keyframes come from `perTarget`)
+ * - 'poses'   → each pose image of a character (keyframes come from `perTarget`)
  */
+export type KeyframeTarget =
+  'element' | 'chars' | 'media' | 'idle' | 'face' | 'shadow' | 'strips' | 'poses';
+
 export type KeyframeSpec = {
-  target: 'element' | 'chars' | 'media';
+  target: KeyframeTarget;
   keyframes: Keyframe[];
+  /** Keyframes for the i-th of n targets (strips, poses); overrides `keyframes`. */
+  perTarget?: (index: number, count: number) => Keyframe[];
   /** Per-target duration as a fraction of the step duration (chars); default 1. */
   durationFraction?: number;
   iterations?: number;
@@ -36,6 +53,10 @@ export type BuildContext = {
   element: PageElement;
   params: Params;
   pageSize: PageSize;
+  /** Set when the element is a character instance. */
+  character?: Character;
+  /** The step being built (custom keyframe tracks live on it). */
+  step?: AnimationStep;
 };
 
 /**
@@ -56,6 +77,12 @@ export type AnimationPreset = {
    * return to normal unless `holdEnd` is set.
    */
   holdEnd?: boolean;
+  /** Overrides the fill mode derived from `kind`/`holdEnd`. */
+  fill?: FillMode;
+  /** Only for character instances (listed under "Character" in the Animation Pane). */
+  requiresCharacter?: boolean;
+  /** Needs the character rendered as strips (bending motions). */
+  warp?: boolean;
   defaults: { duration: number; delay: number; easing: string; params?: Params };
   params?: readonly ParamDef[];
   build(ctx: BuildContext): KeyframeSpec[];

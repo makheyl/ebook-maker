@@ -1,5 +1,13 @@
 import { clampWeight, fontStack } from '../fonts/catalog';
-import type { AssetRef, ImageElement, ShapeElement, TextElement } from '../schema/types';
+import type {
+  AssetRef,
+  ButtonElement,
+  HotspotElement,
+  ImageElement,
+  ShapeElement,
+  TextElement,
+} from '../schema/types';
+import { buildIcon } from './icons';
 import { imageLayout } from './image-geometry';
 import { filterCss, textShadowCss } from './styles';
 
@@ -170,4 +178,50 @@ export function buildShape(element: ShapeElement): SVGSVGElement {
   }
   svg.appendChild(shape);
   return svg;
+}
+
+// ─── Button ────────────────────────────────────────────────────────────────────
+
+/**
+ * A story button. In the reader it is a real <button> (focusable, keyboard operable); in the
+ * editor and thumbnails an identical-looking <div>, so clicks there only select it.
+ */
+export function buildButton(element: ButtonElement, interactive: boolean): HTMLElement {
+  const s = element.style;
+  const box = interactive ? document.createElement('button') : document.createElement('div');
+  box.className = 'fl-button';
+  if (box instanceof HTMLButtonElement) box.type = 'button';
+  box.style.fontFamily = fontStack(s.fontFamily);
+  box.style.fontSize = `${s.fontSize}px`;
+  box.style.fontWeight = String(clampWeight(s.fontFamily, s.fontWeight));
+  box.style.color = s.textColor;
+  box.style.background = s.fill;
+  box.style.borderRadius = `${s.radius}px`;
+  box.style.borderWidth = `${s.borderWidth}px`;
+  box.style.borderColor = s.borderColor ?? 'transparent';
+  if (s.shadow)
+    box.style.boxShadow = '0 6px 0 rgba(0, 0, 0, 0.18), 0 10px 24px rgba(0, 0, 0, 0.18)';
+
+  const label = element.label.trim();
+  const iconOnly = element.iconPosition === 'only' && element.icon;
+  const name = element.a11yLabel?.trim() || label || element.name;
+  if (iconOnly || !label) box.setAttribute('aria-label', name);
+  if (element.icon && element.iconPosition !== 'end')
+    box.appendChild(buildIcon(element.icon, 'fl-button-icon'));
+  if (!iconOnly && label) {
+    const span = el('span', 'fl-button-label');
+    span.textContent = label;
+    box.appendChild(span);
+  }
+  if (element.icon && element.iconPosition === 'end')
+    box.appendChild(buildIcon(element.icon, 'fl-button-icon'));
+  return box;
+}
+
+// ─── Hotspot ───────────────────────────────────────────────────────────────────
+
+export function buildHotspot(element: HotspotElement, showOutline: boolean): HTMLElement {
+  const box = el('div', 'fl-hotspot');
+  if (showOutline) box.textContent = element.a11yLabel?.trim() || element.name;
+  return box;
 }

@@ -6,9 +6,12 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const id = z.string().min(1).max(64);
+const unit = z.number().min(0).max(1);
+/** Registry ids (animation presets, idle motions): alphanumeric, never free text. */
+export const presetIdSchema = z.string().regex(/^[a-zA-Z0-9]{1,40}$/);
 
 /**
  * Any CSS value we write into a style must be inert: no url()/image-set()/var() (which could
@@ -41,6 +44,33 @@ export const assetRefSchema = z.object({
   height: z.number().int().positive(),
   bytes: z.number().int().nonnegative(),
   name: z.string().max(200).optional(),
+  /** Filled in at upload: whether any pixel is transparent, and the box of visible pixels. */
+  hasAlpha: z.boolean().optional(),
+  opaqueBounds: z.object({ x: unit, y: unit, width: unit, height: unit }).optional(),
+});
+
+// ─── Interactions ──────────────────────────────────────────────────────────────
+
+export const BURST_EFFECTS = ['confetti', 'sparkles', 'hearts'] as const;
+
+/** What a tap can do. A closed set: no URLs, no scripts, only ids that are validated. */
+export const storyActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('next') }),
+  z.object({ type: z.literal('prev') }),
+  z.object({ type: z.literal('firstPage') }),
+  z.object({ type: z.literal('goToPage'), pageId: id }),
+  z.object({ type: z.literal('playStep'), stepId: id }),
+  z.object({ type: z.literal('unlockNext') }),
+  z.object({ type: z.literal('burst'), effect: z.enum(BURST_EFFECTS) }),
+  z.object({ type: z.literal('collect') }),
+]);
+
+export const interactionSchema = z.object({
+  id,
+  trigger: z.literal('tap'),
+  actions: z.array(storyActionSchema).min(1).max(8),
+  /** Only the first tap counts. */
+  once: z.boolean(),
 });
 
 // ─── Elements ──────────────────────────────────────────────────────────────────
@@ -56,6 +86,10 @@ const baseElementShape = {
   opacity: z.number().min(0).max(1),
   locked: z.boolean(),
   hidden: z.boolean(),
+  /** Tap behaviour in the reader. */
+  interactions: z.array(interactionSchema).max(4).optional(),
+  /** Accessible name when the element is interactive. */
+  a11yLabel: z.string().max(120).optional(),
 };
 
 export const textRunSchema = z.object({
@@ -126,6 +160,10 @@ export const imageElementSchema = z.object({
   borderRadius: z.number().min(0),
   /** Description for screen readers in the exported book; empty = decorative. */
   alt: z.string().max(500).optional(),
+  /** Makes this image an instance of a book-level character (pivot, shadow, idle motion). */
+  characterId: id.optional(),
+  /** Per-instance idle motion ('none' turns it off); defaults to the character's idle. */
+  idleOverride: presetIdSchema.optional(),
 });
 
 export const shapeElementSchema = z.object({
@@ -138,10 +176,54 @@ export const shapeElementSchema = z.object({
   cornerRadius: z.number().min(0),
 });
 
+export const BUTTON_ICONS = [
+  'arrowRight',
+  'arrowLeft',
+  'home',
+  'restart',
+  'star',
+  'heart',
+  'question',
+  'check',
+  'play',
+  'soundOn',
+  'soundOff',
+  'paw',
+] as const;
+
+export const buttonStyleSchema = z.object({
+  fontFamily: fontId,
+  fontSize: z.number().min(4).max(400),
+  fontWeight: z.number().int().min(100).max(900),
+  textColor: cssColor,
+  fill: cssColor,
+  borderColor: cssColor.optional(),
+  borderWidth: z.number().min(0).max(40),
+  radius: z.number().min(0).max(1000),
+  shadow: z.boolean(),
+});
+
+export const buttonElementSchema = z.object({
+  ...baseElementShape,
+  type: z.literal('button'),
+  label: z.string().max(60),
+  icon: z.enum(BUTTON_ICONS).optional(),
+  iconPosition: z.enum(['start', 'end', 'only']),
+  style: buttonStyleSchema,
+});
+
+/** An invisible tap area (outlined in the editor, invisible but focusable in the reader). */
+export const hotspotElementSchema = z.object({
+  ...baseElementShape,
+  type: z.literal('hotspot'),
+});
+
 export const pageElementSchema = z.discriminatedUnion('type', [
   textElementSchema,
   imageElementSchema,
   shapeElementSchema,
+  buttonElementSchema,
+  hotspotElementSchema,
 ]);
 
 // ─── Animation ─────────────────────────────────────────────────────────────────
@@ -151,19 +233,39 @@ export const ANIMATION_TRIGGERS = [
   'withPrevious',
   'afterPrevious',
   'onClick',
+  /** Not part of the click sequence: only plays when an interaction's playStep action runs. */
+  'onInteraction',
 ] as const;
 export const ANIMATION_KINDS = ['entrance', 'emphasis', 'exit'] as const;
+
+export const TRACK_PROPERTIES = ['x', 'y', 'rotate', 'scaleX', 'scaleY', 'opacity'] as const;
+
+/** One keyframe of a custom track. `t` is 0–1 of the step duration; `easing` leads to the next. */
+export const trackKeyframeSchema = z.object({
+  t: unit,
+  v: z.number().min(-10000).max(10000),
+  easing: z.string().max(40).optional(),
+});
+
+export const keyframeTrackSchema = z.object({
+  property: z.enum(TRACK_PROPERTIES),
+  keyframes: z.array(trackKeyframeSchema).min(1).max(64),
+});
 
 export const animationStepSchema = z.object({
   id,
   elementId: id,
   kind: z.enum(ANIMATION_KINDS),
-  preset: z.string().regex(/^[a-zA-Z0-9]{1,40}$/),
+  preset: presetIdSchema,
   trigger: z.enum(ANIMATION_TRIGGERS),
   duration: z.number().min(0).max(60000), // ms
   delay: z.number().min(0).max(60000), // ms
   easing: z.string().max(40),
   params: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
+  /** Repeat until the reader leaves the page. */
+  loop: z.boolean().optional(),
+  /** Custom property tracks (only for the `keyframes` preset). */
+  tracks: z.array(keyframeTrackSchema).max(8).optional(),
 });
 
 export const PAGE_TRANSITIONS = ['none', 'fade', 'slide', 'flip', 'zoom'] as const;
@@ -198,6 +300,15 @@ export const pageSchema = z.object({
   animations: z.array(animationStepSchema), // ordered, like the PowerPoint Animation Pane
   transition: pageTransitionSchema,
   notes: z.string().max(20000).optional(),
+  /** Where "next" goes, and whether it is locked until an unlock action runs. */
+  flow: z
+    .object({
+      next: z.union([id, z.literal('end')]).optional(),
+      lockNext: z.boolean(),
+    })
+    .optional(),
+  /** "Find 3 stars": collect actions count toward it; reaching it unlocks next. */
+  goal: z.object({ count: z.number().int().min(1).max(20), label: z.string().max(60) }).optional(),
 });
 
 // ─── Project ───────────────────────────────────────────────────────────────────
@@ -205,6 +316,34 @@ export const pageSchema = z.object({
 export const exportSettingsSchema = z.object({
   format: z.enum(['html', 'zip']),
   showBadge: z.boolean(),
+});
+
+// ─── Characters ────────────────────────────────────────────────────────────────
+
+export const characterPoseSchema = z.object({ id, name: z.string().max(40), assetId: id });
+
+/** A book-level character: one image, shared settings, reused on any number of pages. */
+export const characterSchema = z.object({
+  id,
+  name: z.string().max(60),
+  assetId: id,
+  /** Where it stands (its feet), in 0–1 coordinates of the image. */
+  pivot: z.object({ x: unit, y: unit }),
+  /** Which way the artwork faces. */
+  facing: z.enum(['left', 'right']),
+  shadow: z.object({ enabled: z.boolean(), opacity: unit, size: z.number().min(0.2).max(2) }),
+  idle: z.object({ preset: presetIdSchema, intensity: z.number().min(0).max(2) }).nullable(),
+  /** Render as strips so bending motions (sway, jelly, lean) can deform it. */
+  warp: z.boolean(),
+  poses: z.array(characterPoseSchema).max(8),
+});
+
+export const readerSettingsSchema = z.object({
+  tapToAdvance: z.boolean(),
+  showNavButtons: z.boolean(),
+  showPageMenu: z.boolean(),
+  rememberPosition: z.boolean(),
+  hints: z.boolean(),
 });
 
 export const projectSchema = z.object({
@@ -217,6 +356,8 @@ export const projectSchema = z.object({
   theme: themeSchema,
   pages: z.array(pageSchema).min(1),
   assets: z.record(z.string(), assetRefSchema),
+  characters: z.record(z.string(), characterSchema),
+  reader: readerSettingsSchema,
   exportSettings: exportSettingsSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -1,6 +1,7 @@
 import type { Draft } from 'immer';
 import type { AnimationStep, Project } from '../schema/types';
 import { getPage } from './pages';
+import { cleanReferences } from './references';
 import { arrayMove } from './util';
 
 type DraftStep = Draft<Project>['pages'][number]['animations'][number];
@@ -33,6 +34,7 @@ export function removeAnimations(
   const doomed = new Set(ids);
   const page = getPage(draft, pageId);
   page.animations = page.animations.filter((a) => !doomed.has(a.id));
+  cleanReferences(draft);
 }
 
 export function moveAnimation(

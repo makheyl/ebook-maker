@@ -1,5 +1,5 @@
 import type { LoadResult } from '@/core/migrations';
-import type { AssetRef, Page, PageSize, Project } from '@/core/schema';
+import type { AssetRef, Character, Page, PageSize, Project } from '@/core/schema';
 
 /**
  * Persistence boundary. The editor only talks to these interfaces, so the local IndexedDB
@@ -16,6 +16,8 @@ export type ProjectSummary = {
   /** First page, rendered live as the dashboard thumbnail. */
   cover: Page | null;
   coverAssets: Record<string, AssetRef>;
+  /** Characters on the cover page (absent in summaries saved before v2). */
+  coverCharacters?: Record<string, Character>;
   /** Every asset the project references (used for asset garbage collection). */
   assetIds: string[];
 };

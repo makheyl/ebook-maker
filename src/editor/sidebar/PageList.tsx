@@ -87,6 +87,7 @@ function PageItem({
           page={page}
           pageSize={project.pageSize}
           assets={project.assets}
+          characters={project.characters}
           width={THUMB_WIDTH}
         />
       </button>

@@ -6,7 +6,13 @@ export function usedAssetIds(project: Project): string[] {
   const ids = new Set<string>();
   for (const page of project.pages) {
     if (page.background.type === 'image') ids.add(page.background.assetId);
-    for (const el of page.elements) if (el.type === 'image' && !el.hidden) ids.add(el.assetId);
+    for (const el of page.elements) {
+      if (el.type !== 'image' || el.hidden) continue;
+      ids.add(el.assetId);
+      // A character's other poses can be shown by its animations.
+      const character = el.characterId ? project.characters[el.characterId] : undefined;
+      character?.poses.forEach((p) => ids.add(p.assetId));
+    }
   }
   return [...ids].filter((id) => project.assets[id]);
 }
@@ -43,6 +49,11 @@ export function usedFontFaces(project: Project): FontUsage[] {
   };
   for (const page of project.pages) {
     for (const el of page.elements) {
+      if (el.type === 'button' && !el.hidden && el.iconPosition !== 'only') {
+        add(el.style.fontFamily, 'normal', 'latin');
+        if (needsLatinExt(el.label)) add(el.style.fontFamily, 'normal', 'latin-ext');
+        continue;
+      }
       if (el.type !== 'text' || el.hidden) continue;
       const text = el.content.map((p) => p.runs.map((r) => r.text).join('')).join('\n');
       const ext = needsLatinExt(text);

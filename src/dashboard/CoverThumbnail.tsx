@@ -26,6 +26,7 @@ export function CoverThumbnail({ summary }: { summary: ProjectSummary }) {
           page={summary.cover}
           pageSize={summary.pageSize}
           assets={summary.coverAssets}
+          characters={summary.coverCharacters}
           width={width}
         />
       )}

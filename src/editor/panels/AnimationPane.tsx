@@ -84,6 +84,7 @@ const TRIGGER_LABELS: Record<AnimationTrigger, string> = {
   withPrevious: 'With previous',
   afterPrevious: 'After previous',
   onClick: 'On click',
+  onInteraction: 'When tapped (interaction)',
 };
 
 function play(page: Page, stepIds?: string[]) {

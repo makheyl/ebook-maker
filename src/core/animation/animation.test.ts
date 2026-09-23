@@ -8,6 +8,7 @@ import {
   createTextElement,
   type AnimationStep,
   type AnimationTrigger,
+  type Character,
   type Page,
 } from '../schema';
 import { EASINGS, resolveEasing } from './easing';
@@ -18,6 +19,18 @@ import { createPageTimeline, elementsNeedingCharSplit, type AnimateFn } from './
 import { TRANSITIONS } from './transitions';
 
 const PAGE_SIZE = { width: 1000, height: 800 };
+
+const TEST_CHARACTER: Character = {
+  id: 'ch1',
+  name: 'Pip',
+  assetId: 'a',
+  pivot: { x: 0.5, y: 1 },
+  facing: 'right',
+  shadow: { enabled: true, opacity: 0.5, size: 1 },
+  idle: { preset: 'breathe', intensity: 1 },
+  warp: false,
+  poses: [],
+};
 
 function step(
   trigger: AnimationTrigger,
@@ -60,14 +73,36 @@ describe('preset registry', () => {
                 { x: 0, y: 0, width: 10, height: 10 },
               )
             : createShapeElement('rect', { x: 0, y: 0, width: 10, height: 10 });
+      const created = createAnimationStep(element.id, preset.id);
+      // Custom moves build from their tracks; character motions need a character.
+      const step =
+        preset.id === 'keyframes'
+          ? {
+              ...created,
+              tracks: [
+                {
+                  property: 'x' as const,
+                  keyframes: [
+                    { t: 0, v: 0 },
+                    { t: 1, v: 50 },
+                  ],
+                },
+              ],
+            }
+          : created;
       const specs = preset.build({
         element,
         params: { ...preset.defaults.params },
         pageSize: PAGE_SIZE,
+        step,
+        character: preset.requiresCharacter ? TEST_CHARACTER : undefined,
       });
       expect(specs.length, preset.id).toBeGreaterThan(0);
-      for (const spec of specs) expect(spec.keyframes.length, preset.id).toBeGreaterThanOrEqual(2);
-      const created = createAnimationStep(element.id, preset.id);
+      for (const spec of specs) {
+        if (spec.perTarget)
+          expect(spec.perTarget(0, 4).length, preset.id).toBeGreaterThanOrEqual(2);
+        else expect(spec.keyframes.length, preset.id).toBeGreaterThanOrEqual(2);
+      }
       expect(animationStepSchema.safeParse(created).success, preset.id).toBe(true);
       expect(created.kind).toBe(preset.kind);
     }

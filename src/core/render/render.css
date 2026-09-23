@@ -106,3 +106,82 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* ─── Characters ─── */
+.fl-idle {
+  position: absolute;
+  inset: 0;
+}
+.fl-shadow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+/* ─── Buttons & tap areas ─── */
+.fl-button {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0 0.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  border-style: solid;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: default;
+}
+.fl-button-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+}
+.fl-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-hotspot {
+  position: absolute;
+  inset: 0;
+}
+.fl-mode-editor .fl-hotspot {
+  display: grid;
+  place-items: center;
+  background: rgba(109, 74, 255, 0.08);
+  outline: 3px dashed rgba(109, 74, 255, 0.7);
+  outline-offset: -3px;
+  color: rgba(109, 74, 255, 0.95);
+  font:
+    600 28px system-ui,
+    sans-serif;
+}
+.fl-mode-thumbnail .fl-hotspot {
+  display: none;
+}
+.fl-mode-player [data-interactive],
+.fl-mode-player .fl-button {
+  cursor: pointer;
+}
+.fl-mode-player .fl-button {
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease;
+}
+.fl-mode-player .fl-button:hover {
+  filter: brightness(1.07);
+}
+.fl-mode-player .fl-button:active {
+  transform: scale(0.95);
+}
+.fl-mode-player [data-interactive]:focus-visible,
+.fl-mode-player .fl-button:focus-visible {
+  outline: 5px solid #8b73ff;
+  outline-offset: 4px;
+}

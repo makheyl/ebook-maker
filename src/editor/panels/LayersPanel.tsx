@@ -23,6 +23,9 @@ import {
   Image,
   Lock,
   Minus,
+  Pointer,
+  RectangleHorizontal,
+  Smile,
   Square,
   Type,
   Unlock,
@@ -39,7 +42,10 @@ import { useUiStore } from '../store/ui-store';
 function TypeIcon({ el }: { el: PageElement }) {
   const cls = 'size-3.5 shrink-0 text-muted-foreground';
   if (el.type === 'text') return <Type className={cls} />;
-  if (el.type === 'image') return <Image className={cls} />;
+  if (el.type === 'image')
+    return el.characterId ? <Smile className={cls} /> : <Image className={cls} />;
+  if (el.type === 'button') return <RectangleHorizontal className={cls} />;
+  if (el.type === 'hotspot') return <Pointer className={cls} />;
   if (el.shape === 'ellipse') return <Circle className={cls} />;
   if (el.shape === 'line') return <Minus className={cls} />;
   return <Square className={cls} />;

@@ -1,5 +1,13 @@
-import type { AssetRef, Page, PageElement, PageSize } from '../schema/types';
-import { buildImage, buildShape, buildText, type AssetResolver } from './nodes';
+import { pivotToLocal, visibleWidthLocal } from '../character/pivot';
+import type { AssetRef, Character, Page, PageElement, PageSize } from '../schema/types';
+import {
+  buildButton,
+  buildHotspot,
+  buildImage,
+  buildShape,
+  buildText,
+  type AssetResolver,
+} from './nodes';
 import { backgroundCss, filterCss } from './styles';
 
 /**
@@ -9,8 +17,12 @@ import { backgroundCss, filterCss } from './styles';
  * Each element is three nested layers:
  *   .fl-el    (frame)   – position, size, rotation, opacity. The editor's transform handles target this.
  *   .fl-anim  (anim)    – the only layer the animation runtime touches (transform/opacity/clip).
- *   content             – text, image or shape.
+ *   content             – text, image, shape, button or hotspot.
  * Keeping layout and animation transforms on separate layers means they never fight.
+ *
+ * Character images get two extra layers: a ground shadow beside .fl-anim, and .fl-idle inside
+ * it for the idle loop, so story motions and the idle loop combine instead of overriding each
+ * other. Both animation layers pivot on the character's feet.
  */
 
 export type RenderMode = 'editor' | 'player' | 'thumbnail';
@@ -23,21 +35,57 @@ export type PageViewOptions = {
   splitTextFor?: (page: Page) => ReadonlySet<string>;
 };
 
-export type ElementNodes = { frame: HTMLElement; anim: HTMLElement; element: PageElement };
+export type ElementNodes = {
+  frame: HTMLElement;
+  anim: HTMLElement;
+  /** Idle-loop layer (character images only). */
+  idle?: HTMLElement;
+  /** Ground shadow (character images with a shadow only). */
+  shadow?: HTMLElement;
+  element: PageElement;
+  character?: Character;
+};
 
 export type PageView = {
   readonly root: HTMLElement;
-  update(page: Page, assets: Readonly<Record<string, AssetRef>>): void;
+  update(
+    page: Page,
+    assets: Readonly<Record<string, AssetRef>>,
+    characters?: Readonly<Record<string, Character>>,
+  ): void;
   /** Forces image nodes to re-resolve their URLs (e.g. after assets finished loading). */
   refreshAssets(): void;
   /** Rebuilds one element's content from data (e.g. to discard DOM edits after inline editing). */
   rerender(elementId: string): void;
   getNodes(elementId: string): ElementNodes | undefined;
   readonly page: Page | null;
+  readonly characters: Readonly<Record<string, Character>>;
   destroy(): void;
 };
 
 type Entry = ElementNodes & { assetRef: AssetRef | undefined; split: boolean };
+
+const NO_CHARACTERS: Readonly<Record<string, Character>> = {};
+
+/** Buttons and elements with tap interactions are interactive in the reader. */
+export function isInteractive(el: PageElement): boolean {
+  return el.type === 'button' || el.type === 'hotspot' || !!el.interactions?.length;
+}
+
+function applyInteractivity(frame: HTMLElement, el: PageElement, mode: RenderMode) {
+  const interactive = mode === 'player' && isInteractive(el) && !el.hidden;
+  frame.toggleAttribute('data-interactive', interactive);
+  // Buttons carry their own focusable <button>; anything else becomes a button itself.
+  if (interactive && el.type !== 'button') {
+    frame.setAttribute('role', 'button');
+    frame.tabIndex = 0;
+    frame.setAttribute('aria-label', el.a11yLabel?.trim() || el.name);
+  } else {
+    frame.removeAttribute('role');
+    frame.removeAttribute('tabindex');
+    frame.removeAttribute('aria-label');
+  }
+}
 
 function applyFrame(frame: HTMLElement, el: PageElement, mode: RenderMode) {
   const s = frame.style;
@@ -52,6 +100,28 @@ function applyFrame(frame: HTMLElement, el: PageElement, mode: RenderMode) {
   if (mode === 'editor') {
     frame.dataset.name = el.name;
     frame.toggleAttribute('data-locked', el.locked);
+  }
+  applyInteractivity(frame, el, mode);
+}
+
+/** Positions the pivot and ground shadow of a character instance. */
+function applyCharacter(entry: Entry, asset: AssetRef | undefined) {
+  const { element: el, character } = entry;
+  if (!character || el.type !== 'image' || !asset) return;
+  const pivot = pivotToLocal(asset, el, character.pivot);
+  const origin = `${pivot.x * 100}% ${pivot.y * 100}%`;
+  entry.anim.style.transformOrigin = origin;
+  if (entry.idle) entry.idle.style.transformOrigin = origin;
+  entry.frame.dataset.characterId = character.id;
+  if (entry.shadow) {
+    const width = visibleWidthLocal(asset, el) * el.width * 0.8 * character.shadow.size;
+    const height = Math.max(4, width * 0.16);
+    const s = entry.shadow.style;
+    s.width = `${width}px`;
+    s.height = `${height}px`;
+    s.left = `${pivot.x * el.width - width / 2}px`;
+    s.top = `${pivot.y * el.height - height / 2}px`;
+    s.opacity = String(character.shadow.opacity);
   }
 }
 
@@ -69,6 +139,7 @@ export function createPageView(options: PageViewOptions): PageView {
   const entries = new Map<string, Entry>();
   let current: Page | null = null;
   let currentAssets: Readonly<Record<string, AssetRef>> = {};
+  let currentCharacters: Readonly<Record<string, Character>> = NO_CHARACTERS;
 
   function renderBackground(page: Page) {
     const bg = page.background;
@@ -97,22 +168,62 @@ export function createPageView(options: PageViewOptions): PageView {
         return buildImage(el, asset, resolveAsset);
       case 'shape':
         return buildShape(el);
+      case 'button':
+        return buildButton(el, mode === 'player');
+      case 'hotspot':
+        return buildHotspot(el, mode === 'editor');
     }
   }
 
-  function createEntry(el: PageElement, split: boolean, asset: AssetRef | undefined): Entry {
+  /** Where an element's content lives (inside the idle layer for characters). */
+  const contentHost = (entry: Entry) => entry.idle ?? entry.anim;
+
+  function createEntry(
+    el: PageElement,
+    split: boolean,
+    asset: AssetRef | undefined,
+    character: Character | undefined,
+  ): Entry {
     const frame = document.createElement('div');
     frame.className = 'fl-el';
     frame.dataset.elementId = el.id;
     const anim = document.createElement('div');
     anim.className = 'fl-anim';
-    anim.appendChild(buildContent(el, split, asset));
+    let idle: HTMLElement | undefined;
+    let shadow: HTMLElement | undefined;
+    if (character) {
+      if (character.shadow.enabled) {
+        shadow = document.createElement('div');
+        shadow.className = 'fl-shadow';
+        shadow.setAttribute('aria-hidden', 'true');
+        frame.appendChild(shadow);
+      }
+      idle = document.createElement('div');
+      idle.className = 'fl-idle';
+      anim.appendChild(idle);
+    }
+    (idle ?? anim).appendChild(buildContent(el, split, asset));
     frame.appendChild(anim);
     applyFrame(frame, el, mode);
-    return { frame, anim, element: el, assetRef: asset, split };
+    const entry: Entry = {
+      frame,
+      anim,
+      idle,
+      shadow,
+      element: el,
+      character,
+      assetRef: asset,
+      split,
+    };
+    applyCharacter(entry, asset);
+    return entry;
   }
 
-  function update(page: Page, assets: Readonly<Record<string, AssetRef>>) {
+  function update(
+    page: Page,
+    assets: Readonly<Record<string, AssetRef>>,
+    characters: Readonly<Record<string, Character>> = NO_CHARACTERS,
+  ) {
     const pageChanged = current?.id !== page.id;
     if (pageChanged || current?.background !== page.background) renderBackground(page);
     root.dataset.pageId = page.id;
@@ -124,22 +235,26 @@ export function createPageView(options: PageViewOptions): PageView {
     for (const el of page.elements) {
       seen.add(el.id);
       const asset = el.type === 'image' ? assets[el.assetId] : undefined;
+      const character =
+        el.type === 'image' && el.characterId ? characters[el.characterId] : undefined;
       const wantSplit = el.type === 'text' && split.has(el.id);
       let entry = entries.get(el.id);
-      if (!entry || entry.element.type !== el.type) {
+      if (!entry || entry.element.type !== el.type || entry.character !== character) {
+        // A character change alters the layer structure, so the element is rebuilt.
         entry?.frame.remove();
-        entry = createEntry(el, wantSplit, asset);
+        entry = createEntry(el, wantSplit, asset, character);
         entries.set(el.id, entry);
       } else if (entry.element !== el || entry.assetRef !== asset || entry.split !== wantSplit) {
         const contentChanged =
           !sameContent(entry.element, el) || entry.assetRef !== asset || entry.split !== wantSplit;
         applyFrame(entry.frame, el, mode);
         if (contentChanged && !patchImageInPlace(entry, el, asset)) {
-          entry.anim.replaceChildren(buildContent(el, wantSplit, asset));
+          contentHost(entry).replaceChildren(buildContent(el, wantSplit, asset));
         }
         entry.element = el;
         entry.assetRef = asset;
         entry.split = wantSplit;
+        applyCharacter(entry, asset);
       }
       // Keep DOM order == array order (z-order) with minimal moves.
       if (prevNode.nextSibling !== entry.frame)
@@ -155,6 +270,7 @@ export function createPageView(options: PageViewOptions): PageView {
     }
     current = page;
     currentAssets = assets;
+    currentCharacters = characters;
   }
 
   return {
@@ -165,9 +281,9 @@ export function createPageView(options: PageViewOptions): PageView {
       renderBackground(current);
       for (const entry of entries.values()) {
         if (entry.element.type === 'image') {
-          entry.anim.replaceChildren(
-            buildContent(entry.element, false, currentAssets[entry.element.assetId]),
-          );
+          const asset = currentAssets[entry.element.assetId];
+          contentHost(entry).replaceChildren(buildContent(entry.element, false, asset));
+          applyCharacter(entry, asset);
         }
       }
     },
@@ -175,11 +291,14 @@ export function createPageView(options: PageViewOptions): PageView {
       const entry = entries.get(elementId);
       if (!entry) return;
       applyFrame(entry.frame, entry.element, mode);
-      entry.anim.replaceChildren(buildContent(entry.element, entry.split, entry.assetRef));
+      contentHost(entry).replaceChildren(buildContent(entry.element, entry.split, entry.assetRef));
     },
     getNodes: (id) => entries.get(id),
     get page() {
       return current;
+    },
+    get characters() {
+      return currentCharacters;
     },
     destroy() {
       entries.clear();
@@ -235,6 +354,19 @@ function sameContent(a: PageElement, b: PageElement): boolean {
       a.borderRadius === b.borderRadius &&
       a.alt === b.alt
     );
+  }
+  if (a.type === 'button' && b.type === 'button') {
+    return (
+      a.label === b.label &&
+      a.icon === b.icon &&
+      a.iconPosition === b.iconPosition &&
+      a.style === b.style &&
+      a.a11yLabel === b.a11yLabel &&
+      a.name === b.name
+    );
+  }
+  if (a.type === 'hotspot' && b.type === 'hotspot') {
+    return a.name === b.name && a.a11yLabel === b.a11yLabel;
   }
   if (a.type === 'shape' && b.type === 'shape') {
     return (

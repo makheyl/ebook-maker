@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "id": "bk_v1fixture01",
+  "title": "A v1 book",
+  "pageSize": { "width": 1600, "height": 1200 },
+  "theme": {
+    "fontFamily": "lora",
+    "background": "#ffffff",
+    "textColor": "#1f1d2b",
+    "accent": "#6d4aff"
+  },
+  "pages": [
+    {
+      "id": "pg_one",
+      "background": { "type": "color", "color": "#f7f1e3" },
+      "elements": [
+        {
+          "id": "el_text",
+          "type": "text",
+          "name": "Once upon a time",
+          "x": 200,
+          "y": 900,
+          "width": 1200,
+          "height": 120,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "hidden": false,
+          "content": [{ "runs": [{ "text": "Once upon a time" }] }],
+          "style": {
+            "fontFamily": "lora",
+            "fontSize": 64,
+            "fontWeight": 400,
+            "italic": false,
+            "color": "#1f1d2b",
+            "align": "center",
+            "verticalAlign": "middle",
+            "lineHeight": 1.3,
+            "letterSpacing": 0,
+            "padding": 0
+          }
+        },
+        {
+          "id": "el_img",
+          "type": "image",
+          "name": "fox",
+          "x": 500,
+          "y": 100,
+          "width": 600,
+          "height": 600,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "hidden": false,
+          "assetId": "img_abc",
+          "crop": { "x": 0, "y": 0, "width": 1, "height": 1 },
+          "filters": {
+            "brightness": 1,
+            "contrast": 1,
+            "saturate": 1,
+            "blur": 0,
+            "grayscale": 0,
+            "sepia": 0,
+            "hueRotate": 0
+          },
+          "flipX": false,
+          "flipY": false,
+          "borderRadius": 0
+        },
+        {
+          "id": "el_shape",
+          "type": "shape",
+          "shape": "ellipse",
+          "name": "Ellipse",
+          "x": 100,
+          "y": 100,
+          "width": 200,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "hidden": false,
+          "fill": "#6d4aff",
+          "strokeWidth": 0,
+          "cornerRadius": 0
+        }
+      ],
+      "animations": [
+        {
+          "id": "an_1",
+          "elementId": "el_text",
+          "kind": "entrance",
+          "preset": "fadeIn",
+          "trigger": "onPageEnter",
+          "duration": 700,
+          "delay": 0,
+          "easing": "easeOut"
+        },
+        {
+          "id": "an_2",
+          "elementId": "el_img",
+          "kind": "emphasis",
+          "preset": "kenBurns",
+          "trigger": "onClick",
+          "duration": 7000,
+          "delay": 0,
+          "easing": "easeInOut",
+          "params": { "zoom": 1.2, "direction": "in-left" }
+        }
+      ],
+      "transition": { "preset": "fade", "duration": 500 }
+    }
+  ],
+  "assets": {
+    "img_abc": {
+      "id": "img_abc",
+      "kind": "image",
+      "mime": "image/webp",
+      "width": 800,
+      "height": 800,
+      "bytes": 12345,
+      "name": "fox.png"
+    }
+  },
+  "exportSettings": { "format": "html", "showBadge": true },
+  "createdAt": "2026-09-20T10:00:00.000Z",
+  "updatedAt": "2026-09-20T10:00:00.000Z"
+}

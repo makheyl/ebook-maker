@@ -1,7 +1,8 @@
 import type { Draft } from 'immer';
 import { newId } from '../ids';
-import type { AssetRef, PageElement, Project } from '../schema/types';
+import type { AssetRef, Character, PageElement, Project } from '../schema/types';
 import { getPage } from './pages';
+import { cleanReferences } from './references';
 import { plain } from './util';
 
 type DraftPage = Draft<Project>['pages'][number];
@@ -65,6 +66,7 @@ export function deleteElements(
   const page = getPage(draft, pageId);
   page.elements = page.elements.filter((e) => !doomed.has(e.id));
   page.animations = page.animations.filter((a) => !doomed.has(a.elementId));
+  cleanReferences(draft);
 }
 
 export function cloneElement<T extends PageElement>(el: T, offset = 0): T {
@@ -72,6 +74,9 @@ export function cloneElement<T extends PageElement>(el: T, offset = 0): T {
   copy.id = newId('el');
   copy.x += offset;
   copy.y += offset;
+  if (copy.interactions) {
+    copy.interactions = copy.interactions.map((i) => ({ ...i, id: newId('ia') }));
+  }
   return copy;
 }
 
@@ -96,19 +101,35 @@ export function duplicateElements(
   });
   page.elements.push(...(copies as DraftElement[]));
   const steps = page.animations.filter((a) => idMap.has(a.elementId)).map((a) => plain(a));
+  const stepMap = new Map<string, string>();
   for (const step of steps) {
+    const stepId = newId('an');
+    stepMap.set(step.id, stepId);
     page.animations.push({
       ...structuredClone(step),
-      id: newId('an'),
+      id: stepId,
       elementId: idMap.get(step.elementId)!,
     });
+  }
+  // A copied "tap → play my reaction" should play the copy's reaction, not the original's.
+  for (const copy of copies) {
+    const target = page.elements.find((e) => e.id === copy.id);
+    if (!target?.interactions) continue;
+    for (const interaction of target.interactions) {
+      for (const action of interaction.actions) {
+        if (action.type === 'playStep' && stepMap.has(action.stepId)) {
+          action.stepId = stepMap.get(action.stepId)!;
+        }
+      }
+    }
   }
   return ids.map((id) => idMap.get(id)).filter((id): id is string => !!id);
 }
 
 /**
- * Pastes elements (copied from any page or book) with fresh ids.
- * Asset refs travel with them so images still resolve in another book.
+ * Pastes elements (copied from any page or book) with fresh ids. Asset refs and character
+ * definitions travel with them so images and characters still resolve in another book.
+ * Interactions that pointed at things on the source page are dropped by cleanReferences.
  */
 export function pasteElements(
   draft: Draft<Project>,
@@ -116,14 +137,24 @@ export function pasteElements(
   elements: readonly PageElement[],
   assets: Readonly<Record<string, AssetRef>>,
   offset = 24,
+  characters: Readonly<Record<string, Character>> = {},
 ): string[] {
+  const copyAsset = (id: string) => {
+    if (assets[id] && !draft.assets[id]) draft.assets[id] = { ...assets[id]! };
+  };
   for (const el of elements) {
-    if (el.type === 'image' && assets[el.assetId] && !draft.assets[el.assetId]) {
-      draft.assets[el.assetId] = { ...assets[el.assetId]! };
+    if (el.type !== 'image') continue;
+    copyAsset(el.assetId);
+    const character = el.characterId ? characters[el.characterId] : undefined;
+    if (character && !draft.characters[character.id]) {
+      draft.characters[character.id] = structuredClone(character);
+      copyAsset(character.assetId);
+      character.poses.forEach((p) => copyAsset(p.assetId));
     }
   }
   const copies = elements.map((el) => cloneElement(el, offset));
   getPage(draft, pageId).elements.push(...(copies as DraftElement[]));
+  cleanReferences(draft);
   return copies.map((c) => c.id);
 }
 

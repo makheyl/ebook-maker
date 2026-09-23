@@ -2,6 +2,7 @@ import type { Draft } from 'immer';
 import { newId } from '../ids';
 import { createPage } from '../schema/factories';
 import type { Page, Project } from '../schema/types';
+import { cleanReferences } from './references';
 import { arrayMove, plain } from './util';
 
 /**
@@ -26,7 +27,10 @@ export function addPage(draft: Draft<Project>, page: Page, index = draft.pages.l
   draft.pages.splice(Math.max(0, Math.min(index, draft.pages.length)), 0, page);
 }
 
-/** Deep-copies a page with fresh page, element and animation ids. */
+/**
+ * Deep-copies a page with fresh page, element, animation and interaction ids. Actions that
+ * play a step on the page are re-pointed at the copied steps.
+ */
 export function clonePage(page: Page): Page {
   const copy = structuredClone(page) as Page;
   const idMap = new Map<string, string>();
@@ -36,9 +40,26 @@ export function clonePage(page: Page): Page {
     idMap.set(el.id, nextId);
     el.id = nextId;
   }
+  const stepMap = new Map<string, string>();
   copy.animations = copy.animations
     .filter((a) => idMap.has(a.elementId))
-    .map((a) => ({ ...a, id: newId('an'), elementId: idMap.get(a.elementId)! }));
+    .map((a) => {
+      const nextId = newId('an');
+      stepMap.set(a.id, nextId);
+      return { ...a, id: nextId, elementId: idMap.get(a.elementId)! };
+    });
+  for (const el of copy.elements) {
+    if (!el.interactions) continue;
+    el.interactions = el.interactions.map((i) => ({
+      ...i,
+      id: newId('ia'),
+      actions: i.actions.map((a) =>
+        a.type === 'playStep' && stepMap.has(a.stepId)
+          ? { ...a, stepId: stepMap.get(a.stepId)! }
+          : a,
+      ),
+    }));
+  }
   return copy;
 }
 
@@ -55,6 +76,7 @@ export function deletePages(draft: Draft<Project>, pageIds: readonly string[]): 
   const doomed = new Set(pageIds);
   const remaining = draft.pages.filter((p) => !doomed.has(p.id));
   draft.pages = remaining.length ? remaining : [createPage(draft.theme)];
+  cleanReferences(draft);
 }
 
 export function movePage(draft: Draft<Project>, from: number, to: number): void {
@@ -64,7 +86,7 @@ export function movePage(draft: Draft<Project>, from: number, to: number): void 
 export function updatePage(
   draft: Draft<Project>,
   pageId: string,
-  patch: Partial<Pick<Page, 'background' | 'transition' | 'notes'>>,
+  patch: Partial<Pick<Page, 'background' | 'transition' | 'notes' | 'flow' | 'goal'>>,
 ): void {
   Object.assign(getPage(draft, pageId), patch);
 }

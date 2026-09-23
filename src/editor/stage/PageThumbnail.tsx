@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { AssetRef, Page, PageSize } from '@/core/schema';
+import type { AssetRef, Character, Page, PageSize } from '@/core/schema';
 import { cn } from '@/ui/utils';
 import { PageCanvas } from './PageCanvas';
 
@@ -11,12 +11,14 @@ export const PageThumbnail = memo(function PageThumbnail({
   page,
   pageSize,
   assets,
+  characters,
   width,
   className,
 }: {
   page: Page;
   pageSize: PageSize;
   assets: Readonly<Record<string, AssetRef>>;
+  characters?: Readonly<Record<string, Character>>;
   width: number;
   className?: string;
 }) {
@@ -32,6 +34,7 @@ export const PageThumbnail = memo(function PageThumbnail({
           page={page}
           pageSize={pageSize}
           assets={assets}
+          characters={characters}
           mode="thumbnail"
           variant="thumb"
         />

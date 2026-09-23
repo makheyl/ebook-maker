@@ -93,7 +93,7 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
         return p ? applyLive(el, p) : el;
       }),
     };
-    view.update(patched, project.assets);
+    view.update(patched, project.assets, project.characters);
   };
 
   const beginGesture = () => {

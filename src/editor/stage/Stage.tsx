@@ -205,6 +205,7 @@ export function Stage({
                 page={page}
                 pageSize={project.pageSize}
                 assets={project.assets}
+                characters={project.characters}
                 mode="editor"
                 splitTextFor={elementsNeedingCharSplit}
                 onView={onView}

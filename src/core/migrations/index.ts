@@ -1,4 +1,7 @@
+import { produce } from 'immer';
 import type { z } from 'zod';
+import { cleanReferences } from '../ops/references';
+import { DEFAULT_READER } from '../schema/defaults';
 import { projectSchema, SCHEMA_VERSION } from '../schema/project';
 import type { Project } from '../schema/types';
 
@@ -15,7 +18,20 @@ import type { Project } from '../schema/types';
 export type JsonObject = Record<string, unknown>;
 export type Migration = { from: number; to: number; migrate: (doc: JsonObject) => JsonObject };
 
-export const MIGRATIONS: readonly Migration[] = [];
+export const MIGRATIONS: readonly Migration[] = [
+  {
+    // v2 adds characters, interactivity and reader settings. Everything new is optional or
+    // defaulted, so existing books only gain the two new top-level fields.
+    from: 1,
+    to: 2,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 2,
+      characters: isObject(doc.characters) ? doc.characters : {},
+      reader: isObject(doc.reader) ? doc.reader : { ...DEFAULT_READER },
+    }),
+  },
+];
 
 export class ProjectLoadError extends Error {
   constructor(
@@ -59,19 +75,11 @@ export function migrate(
 }
 
 /**
- * Fixes recoverable inconsistencies instead of rejecting the whole book:
- * animation steps that point at deleted elements are dropped.
+ * Fixes recoverable inconsistencies instead of rejecting the whole book: animation steps that
+ * point at deleted elements, actions that point at deleted pages or steps, and so on.
  */
 export function repairProject(project: Project): Project {
-  let changed = false;
-  const pages = project.pages.map((page) => {
-    const ids = new Set(page.elements.map((e) => e.id));
-    const animations = page.animations.filter((a) => ids.has(a.elementId));
-    if (animations.length === page.animations.length) return page;
-    changed = true;
-    return { ...page, animations };
-  });
-  return changed ? { ...project, pages } : project;
+  return produce(project, (draft) => cleanReferences(draft));
 }
 
 function formatIssues(error: z.ZodError): string[] {

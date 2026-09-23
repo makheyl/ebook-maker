@@ -1,12 +1,13 @@
 import { useLayoutEffect, useRef } from 'react';
 import { createPageView, type PageView, type RenderMode } from '@/core/render';
-import type { AssetRef, Page, PageSize } from '@/core/schema';
+import type { AssetRef, Character, Page, PageSize } from '@/core/schema';
 import { assetUrls, useAssetUrlsVersion, type AssetVariant } from '../assets/asset-urls';
 
 type Props = {
   page: Page;
   pageSize: PageSize;
   assets: Readonly<Record<string, AssetRef>>;
+  characters?: Readonly<Record<string, Character>>;
   mode: RenderMode;
   variant?: AssetVariant;
   splitTextFor?: (page: Page) => ReadonlySet<string>;
@@ -23,6 +24,7 @@ export function PageCanvas({
   page,
   pageSize,
   assets,
+  characters,
   mode,
   variant = 'full',
   splitTextFor,
@@ -55,8 +57,8 @@ export function PageCanvas({
   }, [pageSize, mode, variant, splitTextFor]);
 
   useLayoutEffect(() => {
-    viewRef.current?.update(page, assets);
-  }, [page, assets, pageSize, mode, variant, splitTextFor]);
+    viewRef.current?.update(page, assets, characters);
+  }, [page, assets, characters, pageSize, mode, variant, splitTextFor]);
 
   useLayoutEffect(() => {
     if (assetsVersion) viewRef.current?.refreshAssets();
