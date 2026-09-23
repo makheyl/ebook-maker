@@ -1,17 +1,22 @@
-import { Footprints, Hand, Smile, Unlink } from 'lucide-react';
-import { useId } from 'react';
+import { Footprints, Hand, ImagePlus, Smile, Trash2, Unlink } from 'lucide-react';
+import { useId, useRef } from 'react';
 import { IDLE_MOTIONS } from '@/core/animation';
-import type { ImageElement } from '@/core/schema';
+import type { Character, ImageElement } from '@/core/schema';
 import { Button } from '@/ui/button';
 import { Input } from '@/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { Switch } from '@/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group';
+import { assetUrls } from '../assets/asset-urls';
 import {
+  addPoses,
   addTapReaction,
   editCharacter,
   makeCharacter,
+  MAX_POSES,
   OPAQUE_WARNING,
+  removePose,
+  renamePose,
   setCharacterIdle,
   setInstanceIdle,
   unlinkCharacter,
@@ -224,6 +229,81 @@ export function CharacterPanel({ element }: { element: ImageElement }) {
           <Unlink /> Stop being a character
         </Button>
       </div>
+      <PosesField character={character} />
     </Section>
+  );
+}
+
+/** Extra pictures of the character used by Talk, Blink and Show pose. */
+function PosesField({ character }: { character: Character }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="grid gap-2 border-t pt-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium">Poses</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          disabled={character.poses.length >= MAX_POSES}
+          onClick={() => fileRef.current?.click()}
+        >
+          <ImagePlus /> Add pose
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/webp,image/*"
+          multiple
+          hidden
+          data-testid="pose-input"
+          onChange={(e) => {
+            const files = [...(e.target.files ?? [])];
+            e.target.value = '';
+            void addPoses(character.id, files);
+          }}
+        />
+      </div>
+      {!character.poses.length ? (
+        <p className="text-[11px] text-muted-foreground">
+          Extra pictures drawn the same size — e.g. mouth open or eyes closed. Name them “talk” and
+          “blink” and those moves use them.
+        </p>
+      ) : (
+        <ul className="grid gap-1.5" aria-label="Poses">
+          {character.poses.map((pose) => {
+            const thumb = assetUrls.resolve(pose.assetId, 'thumb');
+            return (
+              <li key={pose.id} className="flex items-center gap-2">
+                <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded border bg-[repeating-conic-gradient(#0000000d_0_25%,transparent_0_50%)] bg-[length:8px_8px]">
+                  {thumb && <img src={thumb} alt="" className="max-h-full max-w-full" />}
+                </span>
+                <Input
+                  key={pose.id + pose.name}
+                  defaultValue={pose.name}
+                  maxLength={40}
+                  aria-label="Pose name"
+                  className="h-7 text-xs"
+                  onBlur={(e) =>
+                    e.target.value.trim() !== pose.name &&
+                    renamePose(character.id, pose.id, e.target.value)
+                  }
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 shrink-0"
+                  aria-label={`Remove pose ${pose.name}`}
+                  onClick={() => removePose(character.id, pose.id)}
+                >
+                  <Trash2 />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }

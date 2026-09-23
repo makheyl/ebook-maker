@@ -1,20 +1,25 @@
 import { current, isDraft } from 'immer';
 import { createAnimationStep } from '@/core/animation';
 import { newId } from '@/core/ids';
-import { addAnimation, addElements, getPage, updateElement } from '@/core/ops';
+import { addAnimation, addAsset, addElements, getPage, updateElement } from '@/core/ops';
 import {
   createButtonElement,
   createHotspotElement,
+  createImageElement,
   type AnimationStep,
+  type AssetRef,
   type ButtonElement,
+  type ImageElement,
   type Interaction,
   type Page,
   type Project,
   type ReaderSettings,
   type StoryAction,
 } from '@/core/schema';
+import { toast } from 'sonner';
+import { imageFilesFrom, importImageFiles } from '../assets/upload';
 import { docStore } from '../store/doc-store';
-import { getActivePage } from '../store/selectors';
+import { getActivePage, getSelectedElements } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
 
 /**
@@ -356,4 +361,95 @@ export function updateFlow(
 
 export function updateReader(patch: Partial<ReaderSettings>): void {
   docStore.change((d) => void Object.assign(d.reader, patch), { label: 'Reader settings' });
+}
+
+/**
+ * Lift-the-flap: a "Lift me!" flap covers a picture. Tapping the flap lifts it (once) and the
+ * picture underneath pops in. Covers the selected image, or uploads a new one.
+ */
+export async function insertFlap(files?: readonly File[]): Promise<void> {
+  let picture: ImageElement | undefined;
+  let newAsset: AssetRef | undefined;
+  const selected = getSelectedElements();
+  if (!files && selected.length === 1 && selected[0]!.type === 'image') {
+    picture = selected[0] as ImageElement;
+  } else {
+    const [file] = imageFilesFrom(files ?? []);
+    if (!file) return;
+    const { assets, errors } = await importImageFiles([file]);
+    errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
+    newAsset = assets[0];
+    if (!newAsset) return;
+  }
+  const project = docStore.project();
+  const page = getActivePage();
+  if (!project || !page) return;
+  const { width: W, height: H } = project.pageSize;
+  if (!picture && newAsset) {
+    const size = Math.round(Math.min(W, H) * 0.4);
+    picture = createImageElement(
+      newAsset,
+      { x: (W - size) / 2, y: (H - size) / 2, width: size, height: size },
+      { name: 'Hidden picture' },
+    );
+  }
+  if (!picture) return;
+  const box = { x: picture.x, y: picture.y, width: picture.width, height: picture.height };
+  const fontSize = Math.round(Math.max(20, Math.min(box.width, box.height) * 0.14));
+  const flap = createButtonElement('Lift me!', box, {
+    name: 'Flap',
+    icon: 'question',
+    iconPosition: 'start',
+    rotation: picture.rotation,
+    style: {
+      fontFamily: project.theme.fontFamily,
+      fontSize,
+      fill: project.theme.accent,
+      textColor: '#ffffff',
+      radius: Math.round(Math.min(box.width, box.height) * 0.08),
+      shadow: true,
+    },
+  });
+  const lift = createAnimationStep(flap.id, 'liftUp', 'onInteraction');
+  const reveal = { ...createAnimationStep(picture.id, 'popIn', 'onInteraction'), delay: 250 };
+  flap.interactions = [
+    newInteraction(
+      [
+        { type: 'playStep', stepId: lift.id },
+        { type: 'playStep', stepId: reveal.id },
+      ],
+      true,
+    ),
+  ];
+  const existing = !newAsset;
+  const pictureEl = picture;
+  docStore.change(
+    (d) => {
+      if (newAsset) addAsset(d, newAsset);
+      if (!existing) addElements(d, page.id, [pictureEl]);
+      addElements(d, page.id, [flap]);
+      addAnimation(d, page.id, reveal);
+      addAnimation(d, page.id, lift);
+    },
+    { label: 'Add lift-the-flap' },
+  );
+  useUiStore.getState().select([flap.id]);
+}
+
+/** Sets (or clears, with count 0) the page's "collect N items" goal. */
+export function updateGoal(pageId: string, patch: { count?: number; label?: string }): void {
+  docStore.change(
+    (d) => {
+      const page = getPage(d, pageId);
+      const goal = { count: 0, label: '', ...page.goal, ...patch };
+      goal.count = Math.max(0, Math.min(20, Math.round(goal.count)));
+      goal.label = goal.label.slice(0, 60);
+      if (goal.count > 0) {
+        // A new goal locks the page: finding the items is what unlocks it.
+        if (!page.goal) page.flow = { ...page.flow, lockNext: true };
+        page.goal = goal;
+      } else delete page.goal;
+    },
+    { label: 'Page goal' },
+  );
 }

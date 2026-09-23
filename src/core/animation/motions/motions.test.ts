@@ -4,6 +4,7 @@ import { getIdleMotion, IDLE_MOTIONS } from '../idle';
 import type { MotionFrame } from '../motion';
 import { stripKeyframes } from '../warp';
 import { CHARACTER_MOTIONS } from './index';
+import { findPose, poseSwap } from './poses';
 
 const character: Character = {
   id: 'pip',
@@ -45,10 +46,10 @@ function checkOffsets(frames: readonly { offset: number }[], id: string) {
 }
 
 describe('character motions', () => {
-  it('has 24 step motions with unique ids, all character-only', () => {
+  it('has 26 step motions with unique ids, all character-only', () => {
     const ids = CHARACTER_MOTIONS.map((m) => m.id);
-    expect(ids).toHaveLength(24);
-    expect(new Set(ids).size).toBe(24);
+    expect(ids).toHaveLength(26);
+    expect(new Set(ids).size).toBe(26);
     expect(
       CHARACTER_MOTIONS.every((m) => m.requiresCharacter && m.appliesTo?.[0] === 'image'),
     ).toBe(true);
@@ -162,5 +163,70 @@ describe('strip warp', () => {
     expect(Math.abs(edges[n - 1]!.bottom)).toBeLessThan(0.01); // feet don't move
     for (let i = 1; i < n; i++) expect(edges[i]!.top).toBeCloseTo(edges[i - 1]!.bottom, 1);
     expect(String(kf(3, n)[0]!.transform)).toBe('translateX(0px) skewX(0deg)');
+  });
+});
+
+describe('poses', () => {
+  const posed: Character = {
+    ...character,
+    poses: [
+      { id: 'po1', name: 'happy', assetId: 'a1' },
+      { id: 'po2', name: 'pip-talk', assetId: 'a2' },
+      { id: 'po3', name: 'Eyes closed', assetId: 'a3' },
+    ],
+  };
+  const withPoses = (params = {}) => ({ ...ctx(params), character: posed });
+  const byId = (id: string) => CHARACTER_MOTIONS.find((m) => m.id === id)!;
+  const opacityAt = (frames: Keyframe[], t: number) => {
+    // Last keyframe at or before t (hard cuts use repeated offsets).
+    let v = frames[0]!.opacity;
+    for (const f of frames) if ((f.offset as number) <= t) v = f.opacity;
+    return v;
+  };
+
+  it('finds poses by id or by name', () => {
+    expect(findPose(posed, 'po3')).toBe(2);
+    expect(findPose(posed, /talk/i)).toBe(1);
+    expect(findPose(posed, /blink|closed/i)).toBe(2);
+    expect(findPose(character, /talk/i)).toBe(-1);
+  });
+
+  it('swaps a pose in and the artwork out, with hard cuts', () => {
+    const [poses, base] = poseSwap(1, [[0.25, 0.5]]);
+    const shown = poses!.perTarget!(1, 3);
+    const other = poses!.perTarget!(0, 3);
+    expect(opacityAt(shown, 0.1)).toBe(0);
+    expect(opacityAt(shown, 0.3)).toBe(1);
+    expect(opacityAt(shown, 0.6)).toBe(0);
+    expect(other.every((f) => f.opacity === 0)).toBe(true);
+    expect(opacityAt(base!.keyframes, 0.3)).toBe(0);
+    expect(opacityAt(base!.keyframes, 0.6)).toBe(1);
+    // Offsets never decrease (WAAPI requirement).
+    for (const frames of [shown, base!.keyframes]) {
+      const offsets = frames.map((f) => f.offset as number);
+      expect([...offsets].sort((a, b) => a - b)).toEqual(offsets);
+    }
+  });
+
+  it('Talk flaps the talk pose, Blink uses the closed-eyes pose, both only when present', () => {
+    const talk = byId('talk');
+    expect(talk.tracks(withPoses(talk.defaults.params)).extra?.map((s) => s.target)).toEqual([
+      'poses',
+      'base',
+    ]);
+    expect(talk.tracks(ctx(talk.defaults.params)).extra).toBeUndefined();
+    const blink = byId('blink').tracks(withPoses({ times: 2 }));
+    const eyes = blink.extra![0]!.perTarget!(2, 3);
+    expect(eyes.filter((f) => f.opacity === 1).length).toBe(4); // two windows, two edges each
+  });
+
+  it('Show pose holds the chosen pose; an unknown pose shows the artwork', () => {
+    const show = byId('showPose');
+    expect(show.holdEnd).toBe(true);
+    const [poses, base] = show.tracks(withPoses({ pose: 'po1' })).extra!;
+    expect(opacityAt(poses!.perTarget!(0, 3), 1)).toBe(1);
+    expect(opacityAt(base!.keyframes, 1)).toBe(0);
+    const [, back] = show.tracks(withPoses({ pose: 'gone' })).extra!;
+    expect(back!.keyframes.every((f) => f.opacity === 1)).toBe(true);
   });
 });

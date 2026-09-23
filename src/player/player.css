@@ -176,8 +176,196 @@
 .fp-btn.fp-locked {
   color: #ffd84d;
 }
-.fp-minimal .fp-btn:not(:last-child) {
+.fp-minimal .fp-prev,
+.fp-minimal .fp-next {
   display: none;
+}
+
+/* Bursts: particles fly over the book (not clipped by the page) and are removed after. */
+.fp-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.fp-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.fp-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 2px;
+  will-change: transform, opacity;
+}
+.fp-sparkles {
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+.fp-hearts svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Collectibles */
+.fp-page [data-collected] > .fl-anim {
+  /* filter's opacity() leaves the opacity property free for animations */
+  filter: grayscale(0.7) opacity(0.55);
+}
+.fp-goal {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
+  background: #fffdf7;
+  color: #1d1b26;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.fp-goal[hidden] {
+  display: none;
+}
+.fp-goal .fp-icon {
+  fill: #ffc233;
+  stroke: #e0a100;
+  stroke-width: 1.5;
+}
+.fp-goal-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.fp-goal-done {
+  background: #4cc38a;
+  color: #fff;
+}
+.fp-goal-done .fp-icon {
+  fill: #fff;
+  stroke: #fff;
+}
+.fp-goal-done .fp-goal-count {
+  opacity: 1;
+}
+
+/* Page menu */
+.fp-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: rgba(14, 14, 18, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fp-fade 0.25s ease both;
+}
+.fp-menu[hidden] {
+  display: none;
+}
+.fp-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+.fp-menu-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.fp-menu .fp-end-btn {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--fp-fg);
+}
+.fp-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  gap: 18px;
+  padding: 4px 18px 24px;
+  overflow-y: auto;
+}
+.fp-thumb {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.fp-thumb-page {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s ease;
+}
+.fp-thumb .fp-scaler {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.fp-thumb:hover .fp-thumb-page,
+.fp-thumb:focus-visible .fp-thumb-page {
+  outline-color: rgba(255, 255, 255, 0.6);
+}
+.fp-thumb:focus-visible {
+  outline: none;
+}
+.fp-thumb[aria-current='page'] .fp-thumb-page {
+  outline-color: var(--fp-accent);
+}
+.fp-thumb-n {
+  font-size: 13px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Welcome back" after resuming */
+.fp-toast {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  background: rgba(30, 30, 36, 0.92);
+  font-size: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: fp-fade 0.3s ease both;
+  white-space: nowrap;
+}
+.fp-toast-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fp-toast-btn:focus-visible {
+  outline: 2px solid var(--fp-accent);
+  outline-offset: 2px;
 }
 
 /* The End */
@@ -263,7 +451,9 @@
     transition: none;
   }
   .fp-end,
-  .fp-end-card {
+  .fp-end-card,
+  .fp-menu,
+  .fp-toast {
     animation: none;
   }
   /* A steady glow instead of a pulse. */

@@ -175,7 +175,10 @@ export function createPageView(options: PageViewOptions): PageView {
       case 'text':
         return buildText(el, split);
       case 'image':
-        return buildImage(el, asset, resolveAsset, { strips: character?.warp ? STRIP_COUNT : 0 });
+        return buildImage(el, asset, resolveAsset, {
+          strips: character?.warp ? STRIP_COUNT : 0,
+          poses: character?.poses.map((p) => ({ id: p.id, src: resolveAsset(p.assetId) })),
+        });
       case 'shape':
         return buildShape(el);
       case 'button':
@@ -341,7 +344,7 @@ function patchImageInPlace(entry: Entry, next: PageElement, asset: AssetRef | un
     return false;
   }
   const box = entry.anim.querySelector<HTMLElement>('.fl-image');
-  const imgs = box?.querySelectorAll<HTMLImageElement>('.fl-img');
+  const imgs = box?.querySelectorAll<HTMLImageElement>('.fl-img, .fl-pose');
   const flip = box?.querySelector<HTMLElement>('.fl-image-flip');
   if (!box || !imgs?.length || !flip) return false;
   box.style.borderRadius = `${next.borderRadius}px`;

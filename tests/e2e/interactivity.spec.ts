@@ -129,7 +129,8 @@ test('tapping the mascot plays its reaction without turning the page', async ({ 
   await page
     .getByTestId('insert-character-input')
     .setInputFiles({ name: 'pip.png', mimeType: 'image/png', buffer: png });
-  await page.getByRole('button', { name: 'Wiggle when tapped' }).click();
+  // New characters wiggle when tapped out of the box.
+  await expect(page.getByRole('button', { name: 'Wiggle when tapped' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Add page', exact: true }).first().click();
   await pageThumb(page, 1).click();
 

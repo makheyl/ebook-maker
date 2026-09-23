@@ -70,7 +70,8 @@
   position: absolute;
   inset: 0;
 }
-.fl-img {
+.fl-img,
+.fl-pose {
   position: absolute;
   max-width: none;
   max-height: none;
@@ -194,4 +195,9 @@
   left: 0;
   width: 100%;
   overflow: hidden;
+}
+
+/* Character poses: stacked over the artwork, shown only by pose motions. */
+.fl-pose {
+  opacity: 0;
 }

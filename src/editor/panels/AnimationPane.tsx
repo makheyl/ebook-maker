@@ -224,6 +224,7 @@ function ParamField({ def, step, page }: { def: ParamDef; step: AnimationStep; p
       />
     );
   }
+  if (def.type === 'pose') return <PoseParamField def={def} value={value} step={step} set={set} />;
   return (
     <Field label={def.label}>
       <Select value={String(value ?? '')} onValueChange={set}>
@@ -238,6 +239,53 @@ function ParamField({ def, step, page }: { def: ParamDef; step: AnimationStep; p
           ))}
         </SelectContent>
       </Select>
+    </Field>
+  );
+}
+
+/** Select items can't have an empty value; this stands for "the character's own artwork". */
+const OWN_ARTWORK = '__artwork';
+
+function PoseParamField({
+  def,
+  value,
+  step,
+  set,
+}: {
+  def: ParamDef;
+  value: unknown;
+  step: AnimationStep;
+  set: (v: string) => void;
+}) {
+  const project = useProject();
+  const page = useActivePage();
+  const element = page.elements.find((e) => e.id === step.elementId);
+  const character =
+    element?.type === 'image' && element.characterId
+      ? project.characters[element.characterId]
+      : undefined;
+  const poses = character?.poses ?? [];
+  const current = typeof value === 'string' && poses.some((p) => p.id === value) ? value : '';
+  return (
+    <Field label={def.label}>
+      <Select value={current || OWN_ARTWORK} onValueChange={(v) => set(v === OWN_ARTWORK ? '' : v)}>
+        <SelectTrigger className="h-8 w-full" aria-label={def.label}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={OWN_ARTWORK}>Own artwork (back to normal)</SelectItem>
+          {poses.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {!poses.length && (
+        <p className="text-[11px] text-muted-foreground">
+          Add poses (extra pictures) in the Design tab → Character.
+        </p>
+      )}
     </Field>
   );
 }

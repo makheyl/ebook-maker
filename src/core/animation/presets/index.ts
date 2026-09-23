@@ -4,6 +4,7 @@ import type { AnimationPreset } from '../types';
 import { fadeIn } from './fade-in';
 import { fadeOut } from './fade-out';
 import { kenBurns } from './ken-burns';
+import { liftUp } from './lift-up';
 import { keyframesPreset } from './keyframes';
 import { popIn } from './pop-in';
 import { pulse } from './pulse';
@@ -25,6 +26,7 @@ export const ANIMATION_PRESETS: readonly AnimationPreset[] = [
   pulse,
   fadeOut,
   slideOutDown,
+  liftUp,
   keyframesPreset,
   ...CHARACTER_MOTIONS,
 ];

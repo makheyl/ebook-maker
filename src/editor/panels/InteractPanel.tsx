@@ -35,13 +35,14 @@ import {
   setA11yLabel,
   setActionType,
   updateFlow,
+  updateGoal,
   updateInteraction,
   updateReader,
   type ActionType,
 } from '../interaction/actions';
 import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
-import { Field, Section } from './controls';
+import { Field, NumberField, Section } from './controls';
 
 const ACTION_ORDER: ActionType[] = [
   'next',
@@ -77,6 +78,7 @@ export function InteractPanel() {
       ) : (
         <>
           <PageFlowSection page={page} />
+          <GoalSection page={page} />
           <ReaderSection />
         </>
       )}
@@ -387,22 +389,27 @@ function PageFlowSection({ page }: { page: Page }) {
   );
 }
 
+type ReaderToggle =
+  'tapToAdvance' | 'showNavButtons' | 'hints' | 'showPageMenu' | 'rememberPosition';
+
+const READER_ROWS: { key: ReaderToggle; label: string; hint: string }[] = [
+  { key: 'tapToAdvance', label: 'Tap the page to turn', hint: 'Anywhere that isn’t a button' },
+  { key: 'showNavButtons', label: 'Show arrow buttons', hint: 'Keyboard and swipes always work' },
+  { key: 'hints', label: 'Hints on locked pages', hint: 'Tappable things glow' },
+  { key: 'showPageMenu', label: 'Page menu', hint: 'Readers can jump to any page' },
+  {
+    key: 'rememberPosition',
+    label: 'Remember where readers stopped',
+    hint: 'Exported books continue on the same page',
+  },
+];
+
 function ReaderSection() {
   const project = useProject();
   const r = project.reader;
-  const rows: { key: 'tapToAdvance' | 'showNavButtons' | 'hints'; label: string; hint: string }[] =
-    [
-      { key: 'tapToAdvance', label: 'Tap the page to turn', hint: 'Anywhere that isn’t a button' },
-      {
-        key: 'showNavButtons',
-        label: 'Show arrow buttons',
-        hint: 'Keyboard and swipes always work',
-      },
-      { key: 'hints', label: 'Hints on locked pages', hint: 'Tappable things glow' },
-    ];
   return (
     <Section title="Reading (whole book)">
-      {rows.map((row) => (
+      {READER_ROWS.map((row) => (
         <label key={row.key} className="flex items-start justify-between gap-3 text-sm">
           <span>
             {row.label}
@@ -415,6 +422,47 @@ function ReaderSection() {
           />
         </label>
       ))}
+    </Section>
+  );
+}
+
+function GoalSection({ page }: { page: Page }) {
+  const labelId = useId();
+  const collectibles = page.elements.filter((e) =>
+    e.interactions?.some((i) => i.actions.some((a) => a.type === 'collect')),
+  ).length;
+  return (
+    <Section title="Collect goal">
+      <p className="text-xs text-muted-foreground">
+        “Find 3 stars”: give items the <em>Collect it</em> tap action ({collectibles} on this page).
+        Reaching the goal unlocks the page with confetti.
+      </p>
+      <div className="grid grid-cols-[80px_1fr] items-end gap-2">
+        <NumberField
+          label="Items"
+          value={page.goal?.count ?? 0}
+          min={0}
+          max={20}
+          onCommit={(count) => updateGoal(page.id, { count })}
+        />
+        <Field label="Shown to readers" htmlFor={labelId}>
+          <Input
+            id={labelId}
+            key={`${page.id}:${page.goal ? 'on' : 'off'}`}
+            defaultValue={page.goal?.label ?? ''}
+            placeholder="Find the stars"
+            maxLength={60}
+            disabled={!page.goal}
+            className="h-8"
+            onBlur={(e) => {
+              if (page.goal && e.target.value !== page.goal.label) {
+                updateGoal(page.id, { label: e.target.value });
+              }
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </Field>
+      </div>
     </Section>
   );
 }

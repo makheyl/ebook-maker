@@ -30,8 +30,9 @@ test('a transparent PNG becomes a character standing on its feet, and Walk in pl
   await page.getByRole('tab', { name: 'Animate' }).click();
   await page.getByRole('button', { name: /Add animation/ }).click();
   await page.getByRole('menuitem', { name: /Walk in/ }).click();
-  await expect(page.getByTestId('animation-step')).toHaveCount(1);
-  await expect(page.getByTestId('animation-step')).toContainText('Walk in');
+  // New characters come with a wiggle tap reaction; Walk in is the one story step.
+  await expect(page.getByTestId('animation-step')).toHaveCount(2);
+  await expect(page.getByTestId('animation-step').filter({ hasText: 'Walk in' })).toHaveCount(1);
 
   // Reader preview: the character starts off the page and walks in; the idle loop runs.
   await page.getByRole('banner').getByRole('button', { name: 'Preview' }).click();

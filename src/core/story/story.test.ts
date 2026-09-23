@@ -114,10 +114,19 @@ describe('applying a story plan', () => {
       true,
     );
     expect(new Set(instances.map((i) => `${i.x},${i.y}`)).size).toBe(1);
-    expect(after.pages[0]!.animations.map((a) => a.preset)).toEqual(['walkIn']);
-    expect(after.pages[1]!.animations.map((a) => a.preset)).toEqual(['hop']);
-    expect(after.pages[2]!.animations.map((a) => a.preset)).toEqual(['walkOut']);
-    expect(after.pages[3]!.animations.map((a) => [a.preset, a.trigger])).toEqual([
+    const story = (i: number) =>
+      after.pages[i]!.animations.filter((a) => a.trigger !== 'onInteraction');
+    expect(story(0).map((a) => a.preset)).toEqual(['walkIn']);
+    expect(story(1).map((a) => a.preset)).toEqual(['hop']);
+    expect(story(2).map((a) => a.preset)).toEqual(['walkOut']);
+    // Every placed instance also wiggles when tapped.
+    for (const p of after.pages.slice(1)) {
+      const reaction = p.animations.find((a) => a.trigger === 'onInteraction');
+      expect(reaction?.preset).toBe('wiggle');
+      const inst = p.elements.find((e) => e.type === 'image')!;
+      expect(inst.interactions?.[0]?.actions).toEqual([{ type: 'playStep', stepId: reaction!.id }]);
+    }
+    expect(story(3).map((a) => [a.preset, a.trigger])).toEqual([
       ['walkIn', 'onPageEnter'],
       ['wave', 'afterPrevious'],
     ]);

@@ -1,3 +1,4 @@
+import { blink } from './blink';
 import { bow } from './bow';
 import { dance } from './dance';
 import { dropIn } from './drop-in';
@@ -14,6 +15,7 @@ import { peekIn } from './peek-in';
 import { popUp } from './pop-up';
 import { shakeNo } from './shake-no';
 import { shiver } from './shiver';
+import { showPose } from './show-pose';
 import { sinkDown } from './sink-down';
 import { spin } from './spin';
 import { talk } from './talk';
@@ -43,6 +45,8 @@ export const CHARACTER_MOTIONS = [
   grow,
   dance,
   talk,
+  blink,
+  showPose,
   jelly,
   lean,
   walkOut,

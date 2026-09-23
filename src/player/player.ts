@@ -15,7 +15,12 @@ import {
   type ReaderState,
 } from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
-import type { Page, Project } from '../core/schema';
+import type { BurstEffect, Page, Project } from '../core/schema';
+import { burst } from './burst';
+import { el, icon, type IconName } from './dom';
+import { buildEnd } from './end';
+import { PageMenu } from './menu';
+import { loadPosition, savePosition } from './resume';
 
 /**
  * The reader runtime. Framework-free so the exported book stays tiny; it only uses the same
@@ -31,39 +36,14 @@ export type PlayerOptions = {
   /** In-app preview only: shows a close button and handles Escape. */
   onExit?: () => void;
   reducedMotion?: boolean;
+  /** Exported books: continue where the reader left off (if the book allows it). */
+  resume?: boolean;
 };
+
+/** How long a locked page waits for the reader before hinting what to tap. */
+const IDLE_HINT_MS = 4000;
 
 type Mounted = { page: Page; view: PageView; layer: HTMLElement; timeline: PageTimeline | null };
-
-const ICON_PATHS = {
-  prev: 'M15 18l-6-6 6-6',
-  next: 'M9 18l6-6-6-6',
-  fullscreen:
-    'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
-  exitFullscreen:
-    'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
-  close: 'M18 6 6 18M6 6l12 12',
-  restart: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
-  lock: 'M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z',
-};
-
-function icon(name: keyof typeof ICON_PATHS): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'fp-icon');
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', ICON_PATHS[name]);
-  svg.appendChild(path);
-  return svg;
-}
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string) {
-  const node = document.createElement(tag);
-  node.className = cls;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 export class Player {
   private readonly root: HTMLElement;
@@ -76,6 +56,11 @@ export class Player {
   private readonly fsBtn: HTMLButtonElement;
   private readonly pages: Page[];
   private readonly endEl: HTMLElement;
+  private readonly fxLayer: HTMLElement;
+  private readonly goalEl: HTMLElement;
+  private readonly menu: PageMenu | null;
+  private readonly menuBtn: HTMLButtonElement | null;
+  private readonly resumeEnabled: boolean;
   private state: ReaderState;
   /** Index of the page on screen (can lag `state.page` only inside `showPage`). */
   private index = -1;
@@ -85,6 +70,8 @@ export class Player {
   private scale = 1;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private hintTimer: ReturnType<typeof setTimeout> | undefined;
+  private idleHintTimer: ReturnType<typeof setTimeout> | undefined;
+  private toastTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly cleanups: (() => void)[] = [];
   private readonly reducedMotion: boolean;
   private destroyed = false;
@@ -104,17 +91,43 @@ export class Player {
 
     const stage = el('div', 'fp-stage');
     this.bookEl = el('div', 'fp-book');
+    this.fxLayer = el('div', 'fp-fx');
+    this.fxLayer.setAttribute('aria-hidden', 'true');
+    this.bookEl.appendChild(this.fxLayer);
     stage.appendChild(this.bookEl);
+    this.goalEl = el('div', 'fp-goal');
+    this.goalEl.hidden = true;
+    this.goalEl.setAttribute('role', 'status');
 
     const controls = el('div', 'fp-controls');
     controls.setAttribute('role', 'toolbar');
     controls.setAttribute('aria-label', 'Book navigation');
     this.prevBtn = this.button('Previous page', 'prev', () => this.prev());
+    this.prevBtn.classList.add('fp-prev');
     if (!project.reader.showNavButtons) controls.classList.add('fp-minimal');
     this.nextBtn = this.button('Next', 'next', () => this.next());
+    this.nextBtn.classList.add('fp-next');
     this.indicator = el('span', 'fp-indicator');
     this.fsBtn = this.button('Enter full screen', 'fullscreen', () => this.toggleFullscreen());
-    controls.append(this.prevBtn, this.indicator, this.nextBtn, this.fsBtn);
+    controls.append(this.prevBtn, this.indicator, this.nextBtn);
+    if (project.reader.showPageMenu && project.pages.length > 1) {
+      this.menu = new PageMenu({
+        project,
+        resolveAsset: opts.resolveAsset,
+        onPick: (i) => {
+          this.closeMenu(false);
+          this.goTo(i);
+        },
+        onClose: () => this.closeMenu(),
+      });
+      this.menuBtn = this.button('All pages', 'grid', () => this.openMenu());
+      this.menuBtn.setAttribute('aria-haspopup', 'dialog');
+      controls.append(this.menuBtn);
+    } else {
+      this.menu = null;
+      this.menuBtn = null;
+    }
+    controls.append(this.fsBtn);
     if (opts.onExit) {
       const close = this.button('Close preview', 'close', () => opts.onExit?.());
       close.classList.add('fp-close');
@@ -129,8 +142,13 @@ export class Player {
     this.live = el('div', 'fl-sr-only');
     this.live.setAttribute('aria-live', 'polite');
 
-    this.endEl = this.buildEnd();
-    this.root.append(stage, controls, bar, this.endEl, this.live);
+    this.endEl = buildEnd({
+      onRestart: () => this.restart(),
+      onBack: () => this.prev(),
+      onPages: this.menu ? () => this.openMenu() : undefined,
+    });
+    this.root.append(stage, this.goalEl, controls, bar, this.endEl, this.live);
+    if (this.menu) this.root.appendChild(this.menu.el);
     if (opts.showBadge) {
       const badge = el('div', 'fp-badge', MADE_WITH_LABEL);
       this.root.appendChild(badge);
@@ -139,10 +157,16 @@ export class Player {
 
     this.bindEvents(stage);
     this.layout();
-    const start = Math.max(0, Math.min(opts.startPage ?? 0, this.pages.length - 1));
-    this.state = initialReaderState(start);
+    this.resumeEnabled = !!opts.resume && project.reader.rememberPosition;
+    const saved =
+      this.resumeEnabled && opts.startPage === undefined
+        ? loadPosition(project.id, this.pages.length)
+        : null;
+    const start = Math.max(0, Math.min(saved?.page ?? opts.startPage ?? 0, this.pages.length - 1));
+    this.state = { ...initialReaderState(start), history: saved?.history ?? [] };
     this.showPage(start, 0);
     this.root.focus({ preventScroll: true });
+    if (saved) this.welcomeBack(start);
   }
 
   // ─── Public API ──────────────────────────────────────────────────────────────
@@ -202,6 +226,13 @@ export class Player {
     this.state = state;
     for (const effect of effects) this.apply(effect);
     this.updateChrome();
+    this.armIdleHint();
+    if (this.resumeEnabled) {
+      savePosition(
+        this.opts.project.id,
+        state.ended ? null : { page: state.page, history: state.history },
+      );
+    }
   }
 
   private apply(effect: ReaderEffect): void {
@@ -224,6 +255,7 @@ export class Player {
         break;
       case 'unlocked':
         this.say('The next page is unlocked.');
+        this.updateGoal();
         break;
       case 'showEnd':
         this.showEnd(true);
@@ -232,7 +264,14 @@ export class Player {
         this.showEnd(false);
         break;
       case 'burst':
+        this.burstAt(effect.elementId, effect.effect);
+        break;
       case 'collect':
+        this.markCollected(effect.elementId, true);
+        this.updateGoal();
+        this.say(
+          effect.goal ? `Found ${effect.count} of ${effect.goal}.` : `Collected ${effect.count}.`,
+        );
         break;
     }
   }
@@ -257,33 +296,100 @@ export class Player {
     this.live.textContent = text;
   }
 
-  private buildEnd(): HTMLElement {
-    const end = el('div', 'fp-end');
-    end.hidden = true;
-    end.setAttribute('role', 'dialog');
-    end.setAttribute('aria-modal', 'false');
-    end.setAttribute('aria-labelledby', 'fp-end-title');
-    const card = el('div', 'fp-end-card');
-    const title = el('h2', 'fp-end-title', 'The End');
-    title.id = 'fp-end-title';
-    const actions = el('div', 'fp-end-actions');
-    const again = el('button', 'fp-end-btn fp-end-primary');
+  /** On a locked page, hint after the reader has been idle for a while. */
+  private armIdleHint(): void {
+    clearTimeout(this.idleHintTimer);
+    if (!this.opts.project.reader.hints || this.state.ended || this.menu?.isOpen) return;
+    if (!isNextLocked(this.opts.project, this.state)) return;
+    this.idleHintTimer = setTimeout(() => this.hint(), IDLE_HINT_MS);
+  }
+
+  private burstAt(elementId: string, effect: BurstEffect): void {
+    if (this.reducedMotion || !this.current) return;
+    const nodes = this.current.view.getNodes(elementId);
+    const book = this.bookEl.getBoundingClientRect();
+    const r = (nodes?.anim ?? nodes?.frame)?.getBoundingClientRect();
+    const x = r ? r.left + r.width / 2 - book.left : book.width / 2;
+    const y = r ? r.top + r.height / 2 - book.top : book.height / 2;
+    const spread = Math.max(80, Math.min(book.width, book.height) * 0.28);
+    void burst(this.fxLayer, x, y, effect, spread);
+  }
+
+  /** Dims a collected item and gives it a check mark (it stays tappable but counts once). */
+  private markCollected(elementId: string, animate: boolean): void {
+    const nodes = this.current?.view.getNodes(elementId);
+    if (!nodes) return;
+    nodes.frame.setAttribute('data-collected', '');
+    if (animate && !this.reducedMotion) {
+      nodes.anim.animate(
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
+        { duration: 420, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)', composite: 'add' },
+      );
+      this.burstAt(elementId, 'sparkles');
+    }
+  }
+
+  /** The "Find 3 stars · 1/3" badge for pages with a goal. */
+  private updateGoal(): void {
+    const page = this.pages[this.index];
+    const goal = page?.goal;
+    if (!page || !goal || goal.count <= 0) {
+      this.goalEl.hidden = true;
+      return;
+    }
+    const count = this.state.collected[page.id]?.length ?? 0;
+    const done = count >= goal.count;
+    this.goalEl.hidden = false;
+    this.goalEl.classList.toggle('fp-goal-done', done);
+    this.goalEl.replaceChildren(
+      icon('star'),
+      el('span', 'fp-goal-label', goal.label || 'Find them all'),
+      el('span', 'fp-goal-count', `${Math.min(count, goal.count)} / ${goal.count}`),
+    );
+    this.goalEl.setAttribute(
+      'aria-label',
+      `${goal.label || 'Find them all'}: ${Math.min(count, goal.count)} of ${goal.count}${done ? ', done' : ''}`,
+    );
+  }
+
+  private openMenu(): void {
+    if (!this.menu) return;
+    this.finishTransition();
+    clearTimeout(this.idleHintTimer);
+    this.root.classList.add('fp-menu-open');
+    const back = this.state.ended
+      ? this.endEl.querySelector<HTMLElement>('.fp-end-primary')
+      : this.menuBtn;
+    this.menu.open(this.index, back);
+  }
+
+  private closeMenu(restoreFocus = true): void {
+    if (!this.menu?.isOpen) return;
+    this.root.classList.remove('fp-menu-open');
+    this.menu.close();
+    if (!restoreFocus) this.root.focus({ preventScroll: true });
+    this.armIdleHint();
+  }
+
+  /** A small note after resuming, with a way to start from the beginning instead. */
+  private welcomeBack(page: number): void {
+    const toast = el('div', 'fp-toast');
+    toast.setAttribute('role', 'status');
+    const text = el('span', '', `Welcome back! Continuing on page ${page + 1}.`);
+    const again = el('button', 'fp-toast-btn', 'Start over');
     again.type = 'button';
-    again.append(icon('restart'), document.createTextNode('Read again'));
+    const dismiss = () => {
+      clearTimeout(this.toastTimer);
+      toast.remove();
+    };
     again.addEventListener('click', (e) => {
       e.stopPropagation();
+      dismiss();
       this.restart();
     });
-    const back = el('button', 'fp-end-btn', 'Back');
-    back.type = 'button';
-    back.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.prev();
-    });
-    actions.append(back, again);
-    card.append(title, actions);
-    end.appendChild(card);
-    return end;
+    toast.append(text, again);
+    this.root.appendChild(toast);
+    this.toastTimer = setTimeout(dismiss, 7000);
   }
 
   private showEnd(show: boolean): void {
@@ -376,8 +482,11 @@ export class Player {
       afterTransition();
     }
 
+    for (const id of this.state.collected[page.id] ?? []) this.markCollected(id, false);
     this.preloadAround(i);
     this.updateChrome();
+    this.updateGoal();
+    this.armIdleHint();
     this.say(`Page ${i + 1} of ${this.pages.length}`);
   }
 
@@ -386,6 +495,9 @@ export class Player {
     this.cleanups.forEach((fn) => fn());
     clearTimeout(this.idleTimer);
     clearTimeout(this.hintTimer);
+    clearTimeout(this.idleHintTimer);
+    clearTimeout(this.toastTimer);
+    this.menu?.close();
     for (const a of this.transitionAnims) a.cancel();
     if (this.outgoing) this.unmountPage(this.outgoing);
     if (this.current) this.unmountPage(this.current);
@@ -489,11 +601,7 @@ export class Player {
     this.nextBtn.title = label;
   }
 
-  private button(
-    label: string,
-    name: keyof typeof ICON_PATHS,
-    onClick: () => void,
-  ): HTMLButtonElement {
+  private button(label: string, name: IconName, onClick: () => void): HTMLButtonElement {
     const b = el('button', 'fp-btn');
     b.type = 'button';
     b.setAttribute('aria-label', label);
@@ -527,7 +635,7 @@ export class Player {
     const elementIdOf = (node: HTMLElement) => node.dataset.elementId;
 
     on(this.root, 'keydown', (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || this.menu?.isOpen) return;
       const key = e.key;
       const target = e.target as HTMLElement;
       if (key === ' ' || key === 'Enter') {
@@ -628,5 +736,10 @@ export class Player {
     on(this.root, 'keydown', wake);
     on(this.root, 'focusin', wake);
     wake();
+
+    // Any reader activity postpones the idle hint on locked pages.
+    const active = () => this.armIdleHint();
+    on(this.root, 'pointerdown', active);
+    on(this.root, 'keydown', active);
   }
 }

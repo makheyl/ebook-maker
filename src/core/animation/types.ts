@@ -21,7 +21,9 @@ export type ParamDef =
       step: number;
       unit?: string;
     }
-  | { key: string; label: string; type: 'select'; options: { value: string; label: string }[] };
+  | { key: string; label: string; type: 'select'; options: { value: string; label: string }[] }
+  /** One of the character's poses (the Animation Pane lists them by name). */
+  | { key: string; label: string; type: 'pose' };
 
 /**
  * What to animate and how. `target`:
@@ -33,9 +35,10 @@ export type ParamDef =
  * - 'shadow'  → a character's ground shadow
  * - 'strips'  → each strip of a warped character (keyframes come from `perTarget`)
  * - 'poses'   → each pose image of a character (keyframes come from `perTarget`)
+ * - 'base'    → a character's own artwork (hidden while a pose shows)
  */
 export type KeyframeTarget =
-  'element' | 'chars' | 'media' | 'idle' | 'face' | 'shadow' | 'strips' | 'poses';
+  'element' | 'chars' | 'media' | 'idle' | 'face' | 'shadow' | 'strips' | 'poses' | 'base';
 
 export type KeyframeSpec = {
   target: KeyframeTarget;

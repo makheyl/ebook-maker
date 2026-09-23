@@ -1,8 +1,9 @@
 import { toast } from 'sonner';
-import { createAnimationStep, getIdleMotion } from '@/core/animation';
-import { createCharacter } from '@/core/character';
+import { getIdleMotion } from '@/core/animation';
+import { addTapReactionTo, createCharacter } from '@/core/character';
+import { newId } from '@/core/ids';
 import {
-  addAnimation,
+  addAsset,
   addCharacter,
   linkCharacter,
   setAssetAlpha,
@@ -11,6 +12,7 @@ import {
 } from '@/core/ops';
 import type { Character, ImageElement } from '@/core/schema';
 import { insertImages } from '../actions';
+import { imageFilesFrom, importImageFiles } from '../assets/upload';
 import { docStore } from '../store/doc-store';
 import { getActivePage } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
@@ -20,8 +22,8 @@ export const OPAQUE_WARNING =
   'This image has a solid background — characters look best as PNGs with a transparent background.';
 
 /**
- * Turns an image into a character: pivot at its feet, soft shadow, gentle breathing idle.
- * Images uploaded before transparency was recorded are analysed first.
+ * Turns an image into a character: pivot at its feet, soft shadow, gentle breathing idle and
+ * a wiggle when tapped. Images uploaded before transparency was recorded are analysed first.
  */
 export async function makeCharacter(elementId: string): Promise<string | undefined> {
   const project = docStore.project();
@@ -44,6 +46,8 @@ export async function makeCharacter(elementId: string): Promise<string | undefin
       if (asset.hasAlpha === undefined) setAssetAlpha(d, asset.id, info);
       if (!existing) addCharacter(d, character);
       linkCharacter(d, page.id, el.id, character.id);
+      const target = d.pages.find((p) => p.id === page.id);
+      if (target && !el.interactions?.length) addTapReactionTo(target, el.id);
     },
     { label: 'Make character' },
   );
@@ -112,22 +116,63 @@ export function setInstanceIdle(elementId: string, preset: string | undefined): 
 export function addTapReaction(elementId: string, presetId = 'wiggle'): void {
   const page = getActivePage();
   if (!page) return;
-  const step = { ...createAnimationStep(elementId, presetId, 'onInteraction') };
   docStore.change(
     (d) => {
-      addAnimation(d, page.id, step);
-      updateElement(d, page.id, elementId, (el) => {
-        el.interactions = [
-          ...(el.interactions ?? []),
-          {
-            id: `ia_${step.id}`,
-            trigger: 'tap',
-            once: false,
-            actions: [{ type: 'playStep', stepId: step.id }],
-          },
-        ];
-      });
+      const target = d.pages.find((p) => p.id === page.id);
+      if (target) addTapReactionTo(target, elementId, presetId);
     },
     { label: 'Add tap reaction' },
   );
+}
+
+export const MAX_POSES = 8;
+
+/**
+ * Adds extra pictures of a character (mouth open, eyes closed, happy…). Name a pose "talk" or
+ * "blink" and the Talk and Blink moves use it automatically.
+ */
+export async function addPoses(characterId: string, files: readonly File[]): Promise<void> {
+  const character = docStore.project()?.characters[characterId];
+  if (!character) return;
+  const images = imageFilesFrom(files).slice(0, MAX_POSES - character.poses.length);
+  if (!images.length) {
+    if (files.length) toast.error(`A character can have up to ${MAX_POSES} poses.`);
+    return;
+  }
+  const { assets, errors } = await importImageFiles(images);
+  errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
+  if (!assets.length) return;
+  docStore.change(
+    (d) => {
+      assets.forEach((a) => addAsset(d, a));
+      updateCharacter(d, characterId, (c) => {
+        for (const a of assets) {
+          if (c.poses.length >= MAX_POSES) break;
+          const name =
+            a.name?.replace(/\.[a-z0-9]+$/i, '').slice(0, 40) || `Pose ${c.poses.length + 1}`;
+          c.poses.push({ id: newId('po'), name, assetId: a.id });
+        }
+      });
+    },
+    { label: assets.length > 1 ? 'Add poses' : 'Add pose' },
+  );
+}
+
+export function renamePose(characterId: string, poseId: string, name: string): void {
+  const clean = name.trim().slice(0, 40);
+  if (!clean) return;
+  editCharacter(
+    characterId,
+    (c) => {
+      const pose = c.poses.find((p) => p.id === poseId);
+      if (pose) pose.name = clean;
+    },
+    { label: 'Rename pose' },
+  );
+}
+
+export function removePose(characterId: string, poseId: string): void {
+  editCharacter(characterId, (c) => void (c.poses = c.poses.filter((p) => p.id !== poseId)), {
+    label: 'Remove pose',
+  });
 }

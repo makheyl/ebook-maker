@@ -1,6 +1,7 @@
 import type { Draft } from 'immer';
 import { createAnimationStep } from '../animation/factory';
 import { placeCharacter } from '../character/placement';
+import { addTapReactionTo } from '../character/reaction';
 import type { Rect } from '../geometry';
 import { createImageElement } from '../schema/factories';
 import type { AnimationStep, ImageElement, Project } from '../schema/types';
@@ -20,8 +21,8 @@ function step(
 
 /**
  * Applies a reviewed story plan (an Immer recipe → one undo step): places the character on
- * pages that don't have it (same spot as the previous page), replaces its story animations
- * with the planned entrance / action / exit, and sets per-page idles.
+ * pages that don't have it (same spot as the previous page, with a tap reaction), replaces its
+ * story animations with the planned entrance / action / exit, and sets per-page idles.
  */
 export function applyStoryPlan(
   draft: Draft<Project>,
@@ -54,6 +55,8 @@ export function applyStoryPlan(
       );
       page.elements.push(created);
       instance = page.elements[page.elements.length - 1] as Draft<ImageElement>;
+      // The character reacts to taps on every page it appears on.
+      addTapReactionTo(page, instance.id);
     }
     slot = { x: instance.x, y: instance.y, width: instance.width, height: instance.height };
 

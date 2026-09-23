@@ -126,6 +126,8 @@ function buildImg(
 export type ImageBuildOptions = {
   /** Render as this many horizontal strips (bending characters); 0 = one image. */
   strips?: number;
+  /** A character's extra artwork, stacked over it and hidden until a motion shows one. */
+  poses?: readonly { id: string; src: string | undefined }[];
 };
 
 export function buildImage(
@@ -171,6 +173,15 @@ export function buildImage(
   } else {
     const img = buildImg(element, src, layout);
     img.alt = element.alt ?? '';
+    flip.appendChild(img);
+  }
+  // Every pose gets a node (even without a URL) so pose indexes match the character's list.
+  for (const pose of options.poses ?? []) {
+    const img = buildImg(element, pose.src ?? '', layout);
+    img.className = 'fl-pose';
+    img.dataset.poseId = pose.id;
+    img.setAttribute('aria-hidden', 'true');
+    if (!pose.src) img.removeAttribute('src');
     flip.appendChild(img);
   }
   box.appendChild(flip);

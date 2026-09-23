@@ -72,54 +72,54 @@ export function ButtonPanel({ elements }: { elements: ButtonElement[] }) {
           />
         </Field>
       )}
-      <div className="grid grid-cols-[1fr_auto] items-end gap-2">
-        <Field label="Icon">
-          <Select
-            value={el.icon ?? NO_ICON}
-            onValueChange={(v) =>
-              set((b) => {
-                if (v === NO_ICON) {
-                  delete b.icon;
-                  if (b.iconPosition === 'only') b.iconPosition = 'end';
-                } else b.icon = v as ButtonIcon;
-              })
-            }
-          >
-            <SelectTrigger className="h-8 w-full" aria-label="Icon">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_ICON}>No icon</SelectItem>
-              {BUTTON_ICONS.map((icon) => (
-                <SelectItem key={icon} value={icon}>
-                  <IconGlyph icon={icon} /> {ICON_LABELS[icon]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <ToggleGroup
-          type="single"
-          size="sm"
-          variant="outline"
-          disabled={!el.icon}
-          value={el.iconPosition}
+      <Field label="Icon">
+        <Select
+          value={el.icon ?? NO_ICON}
           onValueChange={(v) =>
-            v && set((b) => void (b.iconPosition = v as ButtonElement['iconPosition']))
+            set((b) => {
+              if (v === NO_ICON) {
+                delete b.icon;
+                if (b.iconPosition === 'only') b.iconPosition = 'end';
+              } else b.icon = v as ButtonIcon;
+            })
           }
-          aria-label="Icon position"
         >
-          <ToggleGroupItem value="start" aria-label="Icon before the label">
-            Before
-          </ToggleGroupItem>
-          <ToggleGroupItem value="end" aria-label="Icon after the label">
-            After
-          </ToggleGroupItem>
-          <ToggleGroupItem value="only" aria-label="Icon only">
-            Only
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
+          <SelectTrigger className="h-8 w-full" aria-label="Icon">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_ICON}>No icon</SelectItem>
+            {BUTTON_ICONS.map((icon) => (
+              <SelectItem key={icon} value={icon}>
+                <IconGlyph icon={icon} /> {ICON_LABELS[icon]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <ToggleGroup
+        type="single"
+        size="sm"
+        variant="outline"
+        className="w-full"
+        disabled={!el.icon}
+        value={el.iconPosition}
+        onValueChange={(v) =>
+          v && set((b) => void (b.iconPosition = v as ButtonElement['iconPosition']))
+        }
+        aria-label="Icon position"
+      >
+        <ToggleGroupItem value="start" aria-label="Icon before the label" className="flex-1">
+          Before
+        </ToggleGroupItem>
+        <ToggleGroupItem value="end" aria-label="Icon after the label" className="flex-1">
+          After
+        </ToggleGroupItem>
+        <ToggleGroupItem value="only" aria-label="Icon only" className="flex-1">
+          Only
+        </ToggleGroupItem>
+      </ToggleGroup>
+
       <Field label="Font">
         <Select
           value={font.id}

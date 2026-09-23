@@ -93,6 +93,10 @@ function targetsFor(spec: KeyframeSpec, nodes: ElementNodes): Element[] {
       return [...nodes.anim.querySelectorAll('.fl-strip')];
     case 'poses':
       return [...nodes.anim.querySelectorAll('.fl-pose')];
+    case 'base':
+      return [
+        ...nodes.anim.querySelectorAll('.fl-image-flip > .fl-img, .fl-image-flip > .fl-strips'),
+      ];
     case 'chars':
       return [...nodes.anim.querySelectorAll('.fl-char')];
   }

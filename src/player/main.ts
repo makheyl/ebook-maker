@@ -7,6 +7,12 @@ import { Player } from './player';
  * Entry point of the standalone reader bundled into exported books. It reads the embedded
  * book JSON and mounts the player — no network, no framework.
  */
+function pageFromHash(): number | undefined {
+  const raw = new URLSearchParams(location.hash.slice(1)).get('page');
+  const n = raw === null ? NaN : Number(raw);
+  return Number.isInteger(n) && n >= 1 ? n - 1 : undefined;
+}
+
 function boot() {
   const mount = document.getElementById(BOOK_ROOT_ID);
   const dataEl = document.getElementById(BOOK_DATA_ID);
@@ -27,10 +33,9 @@ function boot() {
     project: data.project,
     resolveAsset: (id) => data.assets[id],
     showBadge: data.options.showBadge,
-    startPage: Math.max(
-      0,
-      Number(new URLSearchParams(location.hash.slice(1)).get('page') ?? 1) - 1,
-    ),
+    // "#page=3" opens a given page; otherwise the reader continues where they left off.
+    startPage: pageFromHash(),
+    resume: true,
   });
   (window as unknown as { folioPlayer?: Player }).folioPlayer = player;
 }

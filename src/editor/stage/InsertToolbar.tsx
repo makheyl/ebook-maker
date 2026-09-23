@@ -1,5 +1,6 @@
 import {
   Circle,
+  GalleryVerticalEnd,
   Image as ImageIcon,
   Minus,
   MousePointerClick,
@@ -20,12 +21,14 @@ import {
 } from '@/ui/dropdown-menu';
 import { insertImages, insertShape, insertText } from '../actions';
 import { insertCharacter } from '../character/actions';
-import { BUTTON_PRESETS, insertButton, insertHotspot } from '../interaction/actions';
+import { BUTTON_PRESETS, insertButton, insertFlap, insertHotspot } from '../interaction/actions';
+import { getSelectedElements } from '../store/selectors';
 
 /** Floating "insert" bar at the top of the stage: text, images, characters, shapes, buttons. */
 export function InsertToolbar() {
   const fileRef = useRef<HTMLInputElement>(null);
   const characterRef = useRef<HTMLInputElement>(null);
+  const flapRef = useRef<HTMLInputElement>(null);
   return (
     <div
       role="toolbar"
@@ -84,6 +87,18 @@ export function InsertToolbar() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <input
+        ref={flapRef}
+        type="file"
+        accept="image/*"
+        hidden
+        data-testid="insert-flap-input"
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = '';
+          void insertFlap(files);
+        }}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm">
@@ -100,6 +115,21 @@ export function InsertToolbar() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              const selected = getSelectedElements();
+              if (selected.length === 1 && selected[0]!.type === 'image') void insertFlap();
+              else flapRef.current?.click();
+            }}
+          >
+            <GalleryVerticalEnd />
+            <span className="grid">
+              <span>Lift-the-flap</span>
+              <span className="text-xs text-muted-foreground">
+                A flap hides a picture until it's tapped
+              </span>
+            </span>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => insertHotspot()}>
             <SquareDashed />
             <span className="grid">
