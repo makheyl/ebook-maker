@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from 'cn';
+import { cn } from '@/ui/utils';
 import { Toggle as TogglePrimitive } from 'radix-ui';
 
 const toggleVariants = cva(

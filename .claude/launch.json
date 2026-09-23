@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "folio-dev",
+      "runtimeExecutable": "/Users/mchaildelacruz/.local/node/bin/pnpm",
+      "runtimeArgs": ["dev", "--port", "5173", "--strictPort"],
+      "port": 5173,
+      "env": { "PATH": "/Users/mchaildelacruz/.local/node/bin:/usr/bin:/bin:/usr/sbin:/sbin" }
+    }
+  ]
+}

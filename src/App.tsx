@@ -1,14 +1,15 @@
-import { Router, Route, Switch } from 'wouter';
+import { Route, Router, Switch } from 'wouter';
 import { useHashLocation } from 'wouter/use-hash-location';
-import { PRODUCT_NAME } from '@/core/brand';
+import { Dashboard } from '@/dashboard/Dashboard';
+import { EditorRoute } from '@/editor/EditorRoute';
 import { Toaster } from '@/ui/sonner';
 import { ThemeProvider } from '@/ui/theme';
 import { TooltipProvider } from '@/ui/tooltip';
 
-function Home() {
+function NotFound() {
   return (
-    <main className="grid h-full place-items-center">
-      <h1 className="text-3xl font-semibold tracking-tight">{PRODUCT_NAME}</h1>
+    <main className="grid h-full place-items-center text-sm text-muted-foreground">
+      Page not found.
     </main>
   );
 }
@@ -17,9 +18,14 @@ export function App() {
   return (
     <ThemeProvider>
       <TooltipProvider delayDuration={300}>
+        {/* Hash routing keeps the built app working from any static host or sub-path. */}
         <Router hook={useHashLocation}>
           <Switch>
-            <Route path="/" component={Home} />
+            <Route path="/" component={Dashboard} />
+            <Route path="/p/:id">
+              {(params) => <EditorRoute key={params.id} id={params.id} />}
+            </Route>
+            <Route component={NotFound} />
           </Switch>
         </Router>
         <Toaster position="bottom-center" />
