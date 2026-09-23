@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ProjectLoadError } from '@/core/migrations';
-import { projectRepo } from '@/storage';
+import { projectAssetIds, projectRepo } from '@/storage';
+import { assetUrls } from './assets/asset-urls';
 import { useDocStore } from './store/doc-store';
 import { useUiStore } from './store/ui-store';
 
@@ -20,10 +21,13 @@ export function useProjectLoader(projectId: string): LoaderState {
     let cancelled = false;
     projectRepo
       .load(projectId)
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
         if (!result) return setState({ status: 'not-found' });
         if (!result.ok) return setState({ status: 'corrupt', error: result.error });
+        // Resolve image URLs up front so the first paint shows every image.
+        await assetUrls.ensure(projectAssetIds(result.project)).catch(() => undefined);
+        if (cancelled) return;
         useDocStore.getState().load(result.project);
         useUiStore.getState().reset(result.project.pages[0]?.id ?? null);
         setState({ status: 'ready' });

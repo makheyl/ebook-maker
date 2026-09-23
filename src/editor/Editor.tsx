@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { insertImages } from './actions';
+import { assetUrls } from './assets/asset-urls';
 import { useAutosave } from './autosave';
 import './editor.css';
 import { RightPanel } from './panels/RightPanel';
@@ -24,6 +25,11 @@ export function Editor() {
     [navigate, project.id],
   );
   useEditorShortcuts(shortcutOpts);
+
+  // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
+  useEffect(() => {
+    void assetUrls.ensure(Object.keys(project.assets)).catch(() => undefined);
+  }, [project.assets]);
 
   return (
     <div className="flex h-full flex-col">

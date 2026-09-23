@@ -1,6 +1,6 @@
 import type { AssetRef, Page, PageElement, PageSize } from '../schema/types';
 import { buildImage, buildShape, buildText, type AssetResolver } from './nodes';
-import { backgroundCss } from './styles';
+import { backgroundCss, filterCss } from './styles';
 
 /**
  * The one renderer. Editor stage, thumbnails, in-app preview and the exported player all
@@ -134,7 +134,9 @@ export function createPageView(options: PageViewOptions): PageView {
         const contentChanged =
           !sameContent(entry.element, el) || entry.assetRef !== asset || entry.split !== wantSplit;
         applyFrame(entry.frame, el, mode);
-        if (contentChanged) entry.anim.replaceChildren(buildContent(el, wantSplit, asset));
+        if (contentChanged && !patchImageInPlace(entry, el, asset)) {
+          entry.anim.replaceChildren(buildContent(el, wantSplit, asset));
+        }
         entry.element = el;
         entry.assetRef = asset;
         entry.split = wantSplit;
@@ -184,6 +186,34 @@ export function createPageView(options: PageViewOptions): PageView {
       root.remove();
     },
   };
+}
+
+/**
+ * Filter, corner-radius and flip changes only touch styles, so they are patched on the
+ * existing nodes — slider scrubs then update smoothly without re-creating the <img>.
+ */
+function patchImageInPlace(entry: Entry, next: PageElement, asset: AssetRef | undefined): boolean {
+  const prev = entry.element;
+  if (prev.type !== 'image' || next.type !== 'image' || entry.assetRef !== asset) return false;
+  if (
+    prev.assetId !== next.assetId ||
+    prev.crop !== next.crop ||
+    prev.width !== next.width ||
+    prev.height !== next.height ||
+    prev.alt !== next.alt
+  ) {
+    return false;
+  }
+  const box = entry.anim.querySelector<HTMLElement>('.fl-image');
+  const img = box?.querySelector<HTMLImageElement>('.fl-img');
+  const flip = box?.querySelector<HTMLElement>('.fl-image-flip');
+  if (!box || !img || !flip) return false;
+  box.style.borderRadius = `${next.borderRadius}px`;
+  img.style.filter = filterCss(next.filters);
+  const sx = next.flipX ? -1 : 1;
+  const sy = next.flipY ? -1 : 1;
+  flip.style.transform = sx !== 1 || sy !== 1 ? `scale(${sx}, ${sy})` : '';
+  return true;
 }
 
 /**
