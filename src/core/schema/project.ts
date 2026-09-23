@@ -124,6 +124,8 @@ export const imageElementSchema = z.object({
   flipX: z.boolean(),
   flipY: z.boolean(),
   borderRadius: z.number().min(0),
+  /** Description for screen readers in the exported book; empty = decorative. */
+  alt: z.string().max(500).optional(),
 });
 
 export const shapeElementSchema = z.object({

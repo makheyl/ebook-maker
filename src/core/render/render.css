@@ -1,0 +1,108 @@
+/*
+ * Page rendering styles shared by the editor, the in-app preview and the exported player.
+ * Everything is in page units (px); hosts scale the page with a CSS transform.
+ */
+.fl-page {
+  position: relative;
+  overflow: hidden;
+  contain: layout paint;
+  isolation: isolate;
+  box-sizing: border-box;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  /* Isolate pages from host-page typography so the editor and the export render identically. */
+  font-size: 16px;
+  line-height: normal;
+  letter-spacing: normal;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+  text-transform: none;
+  text-align: left;
+  color: #000;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.fl-page *,
+.fl-page *::before,
+.fl-page *::after {
+  box-sizing: border-box;
+}
+.fl-bg {
+  position: absolute;
+  inset: 0;
+}
+.fl-bg-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.fl-el {
+  position: absolute;
+  transform-origin: 50% 50%;
+}
+.fl-anim {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+.fl-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.fl-text-inner {
+  min-width: 0;
+}
+.fl-p {
+  margin: 0;
+  padding: 0;
+}
+.fl-image {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.fl-image-flip {
+  position: absolute;
+  inset: 0;
+}
+.fl-img {
+  position: absolute;
+  max-width: none;
+  max-height: none;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.fl-missing {
+  background:
+    repeating-conic-gradient(rgba(127, 127, 127, 0.18) 0 25%, transparent 0 50%) 0 0 / 32px 32px,
+    rgba(127, 127, 127, 0.08);
+  outline: 2px dashed rgba(127, 127, 127, 0.5);
+  outline-offset: -2px;
+}
+.fl-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fl-char {
+  display: inline;
+}
+.fl-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

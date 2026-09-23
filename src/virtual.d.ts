@@ -4,3 +4,8 @@ declare module 'virtual:player-bundle' {
   /** The reader runtime's stylesheet. */
   export const playerCss: string;
 }
+
+declare module '*.woff2?url' {
+  const url: string;
+  export default url;
+}
