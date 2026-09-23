@@ -19,7 +19,9 @@ describe('parseEditable', () => {
   });
 
   it('maps b/i/u tags and inline styles to marks', () => {
-    expect(fromHtml('<p>a<b>b</b><i>c</i><u>d</u><span style="font-weight:700">e</span></p>')).toEqual([
+    expect(
+      fromHtml('<p>a<b>b</b><i>c</i><u>d</u><span style="font-weight:700">e</span></p>'),
+    ).toEqual([
       {
         runs: [
           { text: 'a' },
@@ -38,7 +40,10 @@ describe('parseEditable', () => {
       { runs: [{ text: '' }] },
       { runs: [{ text: 'three' }] },
     ]);
-    expect(fromHtml('one<br>two')).toEqual([{ runs: [{ text: 'one' }] }, { runs: [{ text: 'two' }] }]);
+    expect(fromHtml('one<br>two')).toEqual([
+      { runs: [{ text: 'one' }] },
+      { runs: [{ text: 'two' }] },
+    ]);
   });
 
   it('drops unknown markup and attributes but keeps the text', () => {

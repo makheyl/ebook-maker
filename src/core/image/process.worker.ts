@@ -3,8 +3,7 @@ import { processImage, type ProcessedImage } from './process';
 
 export type WorkerRequest = { id: number; file: Blob };
 export type WorkerResponse =
-  | { id: number; ok: true; result: ProcessedImage }
-  | { id: number; ok: false; error: string };
+  { id: number; ok: true; result: ProcessedImage } | { id: number; ok: false; error: string };
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 

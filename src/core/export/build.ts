@@ -99,7 +99,9 @@ export function renderBookHtml(parts: HtmlParts): string {
   };
   const title = escapeHtml(project.title || 'Untitled book');
   const description = escapeHtml(bookDescription(project));
-  const author = project.author ? `\n<meta name="author" content="${escapeHtml(project.author)}">` : '';
+  const author = project.author
+    ? `\n<meta name="author" content="${escapeHtml(project.author)}">`
+    : '';
   const baseCss = `html,body{margin:0;height:100%;background:#111114}#${BOOK_ROOT_ID}{height:100%}`;
   const styles = parts.playerCss
     ? `<style>${escapeInlineCode(baseCss + parts.fontCss + parts.playerCss, 'style')}</style>`
@@ -193,11 +195,21 @@ export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
     csp: FOLDER_CSP,
   });
   zip.file('index.html', html);
-  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
   return { blob, filename: `${slugify(inputs.project.title)}.zip`, bytes: blob.size };
 }
 
-export type SizeEstimate = { bytes: number; images: number; fonts: number; runtime: number; data: number };
+export type SizeEstimate = {
+  bytes: number;
+  images: number;
+  fonts: number;
+  runtime: number;
+  data: number;
+};
 
 /**
  * Predicts the export size without building it. Base64 inlining grows binary data by 4/3

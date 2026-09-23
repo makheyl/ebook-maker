@@ -20,7 +20,10 @@ export function PreviewOverlay({ onClose }: { onClose: () => void }) {
   useLayoutEffect(() => {
     const ui = useUiStore.getState();
     ui.setPlayerOpen(true);
-    const startPage = Math.max(0, project.pages.findIndex((p) => p.id === ui.activePageId));
+    const startPage = Math.max(
+      0,
+      project.pages.findIndex((p) => p.id === ui.activePageId),
+    );
     const player = new Player({
       mount: hostRef.current!,
       project,

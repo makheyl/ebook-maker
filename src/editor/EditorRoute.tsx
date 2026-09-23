@@ -10,7 +10,10 @@ export function EditorRoute({ id, mode }: { id: string; mode?: string }) {
 
   if (state.status === 'loading' || (state.status === 'ready' && !project)) {
     return (
-      <div className="grid h-full place-items-center text-sm text-muted-foreground" aria-busy="true">
+      <div
+        className="grid h-full place-items-center text-sm text-muted-foreground"
+        aria-busy="true"
+      >
         Opening…
       </div>
     );

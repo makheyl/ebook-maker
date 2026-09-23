@@ -6,7 +6,10 @@ import { assetUrls } from './asset-urls';
 
 let worker: Worker | null | undefined;
 let seq = 0;
-const pending = new Map<number, { resolve: (r: ProcessedImage) => void; reject: (e: Error) => void }>();
+const pending = new Map<
+  number,
+  { resolve: (r: ProcessedImage) => void; reject: (e: Error) => void }
+>();
 
 function getWorker(): Worker | null {
   if (worker !== undefined) return worker;

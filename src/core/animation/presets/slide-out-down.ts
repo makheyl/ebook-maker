@@ -5,7 +5,9 @@ export const slideOutDown: AnimationPreset = {
   label: 'Slide out down',
   kind: 'exit',
   defaults: { duration: 700, delay: 0, easing: 'easeIn', params: { distance: 80 } },
-  params: [{ key: 'distance', label: 'Distance', type: 'number', min: 0, max: 1000, step: 10, unit: 'px' }],
+  params: [
+    { key: 'distance', label: 'Distance', type: 'number', min: 0, max: 1000, step: 10, unit: 'px' },
+  ],
   build: ({ params }) => [
     {
       target: 'element',

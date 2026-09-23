@@ -36,7 +36,9 @@ test('upload pipeline deduplicates identical files', async ({ page }) => {
 test('filters, crop, flip and reset are non-destructive', async ({ page }) => {
   await createBlankBook(page, 'Image tools');
   const png = await makePng(page, '#4cc38a', 400, 200);
-  await page.getByTestId('insert-image-input').setInputFiles({ name: 'green.png', mimeType: 'image/png', buffer: png });
+  await page
+    .getByTestId('insert-image-input')
+    .setInputFiles({ name: 'green.png', mimeType: 'image/png', buffer: png });
   const img = stageElements(page, 'image').locator('img');
   await expect(img).toHaveCount(1);
   const src = await img.getAttribute('src');
@@ -45,7 +47,10 @@ test('filters, crop, flip and reset are non-destructive', async ({ page }) => {
   await expect(img).toHaveCSS('filter', /grayscale\(1\)/);
 
   await page.getByRole('button', { name: 'Flip H' }).click();
-  await expect(stageElements(page, 'image').locator('.fl-image-flip')).toHaveAttribute('style', /scale\(-1, 1\)/);
+  await expect(stageElements(page, 'image').locator('.fl-image-flip')).toHaveAttribute(
+    'style',
+    /scale\(-1, 1\)/,
+  );
 
   await page.getByRole('button', { name: 'Crop' }).click();
   await page.getByRole('radio', { name: '1:1' }).click();
@@ -64,6 +69,8 @@ test('filters, crop, flip and reset are non-destructive', async ({ page }) => {
 test('image as page background', async ({ page }) => {
   await createBlankBook(page, 'Background');
   const png = await makePng(page, '#ffb84d', 200, 150);
-  await page.getByTestId('background-image-input').setInputFiles({ name: 'bg.png', mimeType: 'image/png', buffer: png });
+  await page
+    .getByTestId('background-image-input')
+    .setInputFiles({ name: 'bg.png', mimeType: 'image/png', buffer: png });
   await expect(page.locator('[data-testid=stage-page] .fl-bg-img')).toHaveCount(1);
 });

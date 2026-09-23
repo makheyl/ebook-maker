@@ -73,6 +73,10 @@ export function distributeDeltas(
   return withBounds.map(({ el, b }) => {
     const delta = cursor - pos(b);
     cursor += size(b) + gap;
-    return { id: el.id, dx: axis === 'horizontal' ? delta : 0, dy: axis === 'vertical' ? delta : 0 };
+    return {
+      id: el.id,
+      dx: axis === 'horizontal' ? delta : 0,
+      dy: axis === 'vertical' ? delta : 0,
+    };
   });
 }

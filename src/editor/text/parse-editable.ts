@@ -2,7 +2,19 @@ import { normalizeParagraphs, type Paragraph, type TextRun } from '@/core/schema
 
 type Marks = Omit<TextRun, 'text'>;
 
-const BLOCK_TAGS = new Set(['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE']);
+const BLOCK_TAGS = new Set([
+  'P',
+  'DIV',
+  'LI',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'BLOCKQUOTE',
+  'PRE',
+]);
 
 /**
  * Converts a contentEditable DOM subtree back into structured paragraphs/runs.
@@ -30,7 +42,10 @@ export function parseEditable(root: HTMLElement): Paragraph[] {
     if (weight === 'normal' || (Number(weight) > 0 && Number(weight) < 600)) delete marks.bold;
     if (style.fontStyle === 'italic') marks.italic = true;
     if (style.fontStyle === 'normal') delete marks.italic;
-    if (style.textDecorationLine?.includes('underline') || style.textDecoration?.includes('underline')) {
+    if (
+      style.textDecorationLine?.includes('underline') ||
+      style.textDecoration?.includes('underline')
+    ) {
       marks.underline = true;
     }
     const color = tag === 'FONT' ? el.getAttribute('color') : style.color;
@@ -49,7 +64,8 @@ export function parseEditable(root: HTMLElement): Paragraph[] {
     if (el.classList.contains('fl-sr-only')) return;
     if (el.tagName === 'BR') {
       // A trailing <br> inside a block is just the browser keeping an empty line open.
-      const isPlaceholder = !el.nextSibling && el.parentElement !== root && BLOCK_TAGS.has(el.parentElement!.tagName);
+      const isPlaceholder =
+        !el.nextSibling && el.parentElement !== root && BLOCK_TAGS.has(el.parentElement!.tagName);
       if (!isPlaceholder) endParagraph();
       return;
     }

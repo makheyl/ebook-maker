@@ -23,7 +23,11 @@ test('one drag is one undo step', async ({ page }) => {
 
   await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
   await page.mouse.down();
-  for (let i = 1; i <= 10; i++) await page.mouse.move(before.x + before.width / 2 + i * 15, before.y + before.height / 2 + i * 5);
+  for (let i = 1; i <= 10; i++)
+    await page.mouse.move(
+      before.x + before.width / 2 + i * 15,
+      before.y + before.height / 2 + i * 5,
+    );
   await page.mouse.up();
   const moved = (await shape.boundingBox())!;
   expect(moved.x - before.x).toBeGreaterThan(100);

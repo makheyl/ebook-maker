@@ -1,18 +1,34 @@
+import { useLayoutEffect, useRef, useState } from 'react';
+import { PageThumbnail } from '@/editor/stage/PageThumbnail';
+import { useEnsureAssets } from '@/editor/assets/asset-urls';
 import type { ProjectSummary } from '@/storage';
 
-/** Placeholder cover (M1). Replaced by a live render of the first page in M2. */
+/** Live render of a book's first page (same renderer as the editor and the export). */
 export function CoverThumbnail({ summary }: { summary: ProjectSummary }) {
-  const bg = summary.cover?.background;
-  const background =
-    bg?.type === 'color'
-      ? bg.color
-      : bg?.type === 'gradient'
-        ? `linear-gradient(${bg.angle}deg, ${bg.from}, ${bg.to})`
-        : undefined;
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const ready = useEnsureAssets(Object.keys(summary.coverAssets));
+  const { width: W, height: H } = summary.pageSize;
+
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    const ro = new ResizeObserver(
+      ([entry]) => entry && setWidth(Math.floor(entry.contentRect.width)),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div
-      className="w-full bg-white"
-      style={{ aspectRatio: `${summary.pageSize.width} / ${summary.pageSize.height}`, background }}
-    />
+    <div ref={ref} className="w-full bg-white" style={{ aspectRatio: `${W} / ${H}` }}>
+      {summary.cover && width > 0 && ready && (
+        <PageThumbnail
+          page={summary.cover}
+          pageSize={summary.pageSize}
+          assets={summary.coverAssets}
+          width={width}
+        />
+      )}
+    </div>
   );
 }

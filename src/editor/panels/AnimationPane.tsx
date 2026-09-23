@@ -15,7 +15,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, GripVertical, MousePointerClick, Play, Plus, Sparkles, Square, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  GripVertical,
+  MousePointerClick,
+  Play,
+  Plus,
+  Sparkles,
+  Square,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ANIMATION_PRESETS,
@@ -27,8 +36,21 @@ import {
   scheduleSteps,
   type ParamDef,
 } from '@/core/animation';
-import { addAnimation, moveAnimation, removeAnimations, updateAnimation, updatePage } from '@/core/ops';
-import type { AnimationKind, AnimationStep, AnimationTrigger, Page, PageElement, TransitionPreset } from '@/core/schema';
+import {
+  addAnimation,
+  moveAnimation,
+  removeAnimations,
+  updateAnimation,
+  updatePage,
+} from '@/core/ops';
+import type {
+  AnimationKind,
+  AnimationStep,
+  AnimationTrigger,
+  Page,
+  PageElement,
+  TransitionPreset,
+} from '@/core/schema';
 import { Button } from '@/ui/button';
 import {
   DropdownMenu,
@@ -52,7 +74,11 @@ const KIND_STYLES: Record<AnimationKind, string> = {
   emphasis: 'bg-amber-500',
   exit: 'bg-rose-500',
 };
-const KIND_LABELS: Record<AnimationKind, string> = { entrance: 'Entrance', emphasis: 'Emphasis', exit: 'Exit' };
+const KIND_LABELS: Record<AnimationKind, string> = {
+  entrance: 'Entrance',
+  emphasis: 'Emphasis',
+  exit: 'Exit',
+};
 const TRIGGER_LABELS: Record<AnimationTrigger, string> = {
   onPageEnter: 'When page opens',
   withPrevious: 'With previous',
@@ -71,7 +97,15 @@ function change(label: string, recipe: Parameters<typeof docStore.change>[0]) {
   docStore.change(recipe, { label });
 }
 
-function AddAnimationMenu({ element, page, onAdded }: { element?: PageElement; page: Page; onAdded: (id: string) => void }) {
+function AddAnimationMenu({
+  element,
+  page,
+  onAdded,
+}: {
+  element?: PageElement;
+  page: Page;
+  onAdded: (id: string) => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -91,9 +125,13 @@ function AddAnimationMenu({ element, page, onAdded }: { element?: PageElement; p
                 <DropdownMenuItem
                   key={preset.id}
                   onSelect={() => {
-                    const trigger: AnimationTrigger = page.animations.length ? 'afterPrevious' : 'onPageEnter';
+                    const trigger: AnimationTrigger = page.animations.length
+                      ? 'afterPrevious'
+                      : 'onPageEnter';
                     const step = createAnimationStep(element.id, preset.id, trigger);
-                    docStore.change((d) => addAnimation(d, page.id, step), { label: 'Add animation' });
+                    docStore.change((d) => addAnimation(d, page.id, step), {
+                      label: 'Add animation',
+                    });
                     onAdded(step.id);
                     // Show it right away, like PowerPoint does.
                     const updated = docStore.project()?.pages.find((p) => p.id === page.id);
@@ -151,7 +189,15 @@ function ParamField({ def, step, page }: { def: ParamDef; step: AnimationStep; p
   );
 }
 
-function StepEditor({ step, page, element }: { step: AnimationStep; page: Page; element: PageElement }) {
+function StepEditor({
+  step,
+  page,
+  element,
+}: {
+  step: AnimationStep;
+  page: Page;
+  element: PageElement;
+}) {
   const preset = getPreset(step.preset);
   const update = (label: string, recipe: (s: AnimationStep) => void) =>
     change(label, (d) => updateAnimation(d, page.id, step.id, recipe));
@@ -176,7 +222,9 @@ function StepEditor({ step, page, element }: { step: AnimationStep; page: Page; 
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ANIMATION_PRESETS.filter((p) => !p.appliesTo || p.appliesTo.includes(element.type)).map((p) => (
+            {ANIMATION_PRESETS.filter(
+              (p) => !p.appliesTo || p.appliesTo.includes(element.type),
+            ).map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 <span className={cn('size-2 rounded-full', KIND_STYLES[p.kind])} /> {p.label}
               </SelectItem>
@@ -185,7 +233,12 @@ function StepEditor({ step, page, element }: { step: AnimationStep; page: Page; 
         </Select>
       </Field>
       <Field label="Start">
-        <Select value={step.trigger} onValueChange={(v) => update('Change start', (s) => void (s.trigger = v as AnimationTrigger))}>
+        <Select
+          value={step.trigger}
+          onValueChange={(v) =>
+            update('Change start', (s) => void (s.trigger = v as AnimationTrigger))
+          }
+        >
           <SelectTrigger className="h-8 w-full" aria-label="Start">
             <SelectValue />
           </SelectTrigger>
@@ -221,7 +274,10 @@ function StepEditor({ step, page, element }: { step: AnimationStep; page: Page; 
         />
       </div>
       <Field label="Easing">
-        <Select value={step.easing} onValueChange={(v) => update('Easing', (s) => void (s.easing = v))}>
+        <Select
+          value={step.easing}
+          onValueChange={(v) => update('Easing', (s) => void (s.easing = v))}
+        >
           <SelectTrigger className="h-8 w-full" aria-label="Easing">
             <SelectValue />
           </SelectTrigger>
@@ -234,9 +290,16 @@ function StepEditor({ step, page, element }: { step: AnimationStep; page: Page; 
           </SelectContent>
         </Select>
       </Field>
-      {preset?.params?.map((def) => <ParamField key={def.key} def={def} step={step} page={page} />)}
+      {preset?.params?.map((def) => (
+        <ParamField key={def.key} def={def} step={step} page={page} />
+      ))}
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => play(page, [step.id])}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          onClick={() => play(page, [step.id])}
+        >
           <Play /> Preview
         </Button>
         <Button
@@ -269,13 +332,19 @@ function StepRow({
   open: boolean;
   onToggle: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: step.id,
+  });
   const preset = getPreset(step.preset);
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('overflow-hidden rounded-lg border bg-card', isDragging && 'z-10 shadow-lg', open && 'ring-2 ring-primary/40')}
+      className={cn(
+        'overflow-hidden rounded-lg border bg-card',
+        isDragging && 'z-10 shadow-lg',
+        open && 'ring-2 ring-primary/40',
+      )}
       data-testid="animation-step"
     >
       <div className="flex items-center gap-1.5 px-1.5 py-1.5">
@@ -294,8 +363,13 @@ function StepRow({
           aria-expanded={open}
           className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left text-sm focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="w-4 text-right text-xs text-muted-foreground tabular-nums">{index + 1}</span>
-          <span className={cn('size-2 shrink-0 rounded-full', KIND_STYLES[step.kind])} aria-label={KIND_LABELS[step.kind]} />
+          <span className="w-4 text-right text-xs text-muted-foreground tabular-nums">
+            {index + 1}
+          </span>
+          <span
+            className={cn('size-2 shrink-0 rounded-full', KIND_STYLES[step.kind])}
+            aria-label={KIND_LABELS[step.kind]}
+          />
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium">{element.name}</span>
             <span className="block truncate text-xs text-muted-foreground">
@@ -324,7 +398,9 @@ function TransitionSection({ page }: { page: Page }) {
     change('Page transition', (d) => updatePage(d, page.id, { transition: { ...t, ...patch } }));
   return (
     <Section title="Page transition">
-      <p className="-mt-1 text-[11px] text-muted-foreground">How this page appears when the reader turns to it.</p>
+      <p className="-mt-1 text-[11px] text-muted-foreground">
+        How this page appears when the reader turns to it.
+      </p>
       <div className="grid grid-cols-5 gap-1" role="radiogroup" aria-label="Page transition">
         {TRANSITIONS.map((tr) => (
           <button
@@ -335,7 +411,9 @@ function TransitionSection({ page }: { page: Page }) {
             onClick={() => set({ preset: tr.id as TransitionPreset })}
             className={cn(
               'rounded-md border px-1 py-1.5 text-[11px] focus-visible:ring-2 focus-visible:ring-ring',
-              t.preset === tr.id ? 'border-primary bg-accent text-accent-foreground' : 'hover:bg-muted',
+              t.preset === tr.id
+                ? 'border-primary bg-accent text-accent-foreground'
+                : 'hover:bg-muted',
             )}
           >
             {tr.label}
@@ -406,7 +484,9 @@ export function AnimationPane() {
           </Button>
         </div>
         {!single && (
-          <p className="text-[11px] text-muted-foreground">Select one element on the page to animate it.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Select one element on the page to animate it.
+          </p>
         )}
         {page.animations.length === 0 ? (
           <div className="grid place-items-center gap-2 rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
@@ -414,8 +494,16 @@ export function AnimationPane() {
             No animations on this page yet.
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis]}>
-            <SortableContext items={page.animations.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+            modifiers={[restrictToVerticalAxis]}
+          >
+            <SortableContext
+              items={page.animations.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
               <ol className="grid gap-1.5" aria-label="Animation order">
                 {page.animations.map((step, i) => {
                   const element = elementsById.get(step.elementId);

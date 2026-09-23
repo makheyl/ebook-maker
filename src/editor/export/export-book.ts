@@ -51,7 +51,10 @@ export async function exportBook(
   return opts.format === 'zip' ? buildZip(inputs) : buildSingleFile(inputs);
 }
 
-export async function estimateExport(project: Project, format: ExportFormat): Promise<SizeEstimate> {
+export async function estimateExport(
+  project: Project,
+  format: ExportFormat,
+): Promise<SizeEstimate> {
   const [player, assets, fonts] = await Promise.all([
     loadPlayer(),
     assetRepo.getMany(usedAssetIds(project)),

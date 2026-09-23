@@ -27,7 +27,10 @@ function boot() {
     project: data.project,
     resolveAsset: (id) => data.assets[id],
     showBadge: data.options.showBadge,
-    startPage: Math.max(0, Number(new URLSearchParams(location.hash.slice(1)).get('page') ?? 1) - 1),
+    startPage: Math.max(
+      0,
+      Number(new URLSearchParams(location.hash.slice(1)).get('page') ?? 1) - 1,
+    ),
   });
   (window as unknown as { folioPlayer?: Player }).folioPlayer = player;
 }

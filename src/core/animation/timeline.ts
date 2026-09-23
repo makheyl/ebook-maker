@@ -12,7 +12,11 @@ import type { KeyframeSpec } from './types';
  */
 
 export type NodeLookup = (elementId: string) => ElementNodes | undefined;
-export type AnimateFn = (target: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions) => Animation;
+export type AnimateFn = (
+  target: Element,
+  keyframes: Keyframe[],
+  options: KeyframeAnimationOptions,
+) => Animation;
 
 export type TimelineOptions = {
   pageSize: PageSize;
@@ -38,7 +42,8 @@ export type PageTimeline = {
   isRunning(group: number): boolean;
 };
 
-const defaultAnimate: AnimateFn = (target, keyframes, options) => target.animate(keyframes, options);
+const defaultAnimate: AnimateFn = (target, keyframes, options) =>
+  target.animate(keyframes, options);
 
 /** Element ids whose text must be split into character spans for their animations. */
 export function elementsNeedingCharSplit(page: Page): Set<string> {
@@ -50,15 +55,22 @@ export function elementsNeedingCharSplit(page: Page): Set<string> {
 }
 
 function reducedSpecs(kind: AnimationKind): KeyframeSpec[] {
-  if (kind === 'entrance') return [{ target: 'element', keyframes: [{ opacity: 0 }, { opacity: 1 }] }];
+  if (kind === 'entrance')
+    return [{ target: 'element', keyframes: [{ opacity: 0 }, { opacity: 1 }] }];
   if (kind === 'exit') return [{ target: 'element', keyframes: [{ opacity: 1 }, { opacity: 0 }] }];
   return [];
 }
 
-export function createPageTimeline(page: Page, lookup: NodeLookup, opts: TimelineOptions): PageTimeline {
+export function createPageTimeline(
+  page: Page,
+  lookup: NodeLookup,
+  opts: TimelineOptions,
+): PageTimeline {
   const animate = opts.animate ?? defaultAnimate;
   const steps = opts.onlyStepIds
-    ? page.animations.filter((s) => opts.onlyStepIds!.includes(s.id)).map((s) => ({ ...s, trigger: 'onPageEnter' as const, delay: 0 }))
+    ? page.animations
+        .filter((s) => opts.onlyStepIds!.includes(s.id))
+        .map((s) => ({ ...s, trigger: 'onPageEnter' as const, delay: 0 }))
     : page.animations;
   const schedule = scheduleSteps(steps);
   const groups: Animation[][] = schedule.groups.map(() => []);
@@ -82,7 +94,11 @@ export function createPageTimeline(page: Page, lookup: NodeLookup, opts: Timelin
         delay = 0;
       }
       const fill: FillMode =
-        preset.kind === 'entrance' ? 'both' : preset.kind === 'exit' || preset.holdEnd ? 'forwards' : 'none';
+        preset.kind === 'entrance'
+          ? 'both'
+          : preset.kind === 'exit' || preset.holdEnd
+            ? 'forwards'
+            : 'none';
       const easing = resolveEasing(step.easing);
 
       for (const spec of specs) {
@@ -93,11 +109,19 @@ export function createPageTimeline(page: Page, lookup: NodeLookup, opts: Timelin
           const spread = Math.max(0, duration - each);
           chars.forEach((char, i) => {
             const offset = chars.length > 1 ? (spread * i) / (chars.length - 1) : 0;
-            groups[gi]!.push(make(char, spec.keyframes, { duration: each, delay: delay + offset, easing: specEasing, fill }));
+            groups[gi]!.push(
+              make(char, spec.keyframes, {
+                duration: each,
+                delay: delay + offset,
+                easing: specEasing,
+                fill,
+              }),
+            );
           });
           continue;
         }
-        const targets = spec.target === 'media' ? [...nodes.anim.querySelectorAll('.fl-img')] : [nodes.anim];
+        const targets =
+          spec.target === 'media' ? [...nodes.anim.querySelectorAll('.fl-img')] : [nodes.anim];
         for (const target of targets) {
           groups[gi]!.push(
             make(target, spec.keyframes, {
@@ -113,7 +137,11 @@ export function createPageTimeline(page: Page, lookup: NodeLookup, opts: Timelin
     }
   });
 
-  function make(target: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions): Animation {
+  function make(
+    target: Element,
+    keyframes: Keyframe[],
+    options: KeyframeAnimationOptions,
+  ): Animation {
     let anim: Animation;
     try {
       anim = animate(target, keyframes, options);
@@ -135,7 +163,14 @@ export function createPageTimeline(page: Page, lookup: NodeLookup, opts: Timelin
         a.currentTime = 0;
         a.play();
       }
-      return Promise.all(anims.map((a) => a.finished.then(() => undefined, () => undefined))).then(() => undefined);
+      return Promise.all(
+        anims.map((a) =>
+          a.finished.then(
+            () => undefined,
+            () => undefined,
+          ),
+        ),
+      ).then(() => undefined);
     },
     finish(group) {
       for (const a of groups[group] ?? []) {

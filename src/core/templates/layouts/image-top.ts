@@ -12,19 +12,38 @@ export const imageTop: LayoutTemplate = {
     const m = Math.round(Math.min(W, H) * 0.05);
     const imageH = Math.round(H * 0.64);
     const image = asset
-      ? createImageElement(asset, { x: m, y: m, width: W - 2 * m, height: imageH - m }, { borderRadius: Math.round(m * 0.4) }, 'exact')
+      ? createImageElement(
+          asset,
+          { x: m, y: m, width: W - 2 * m, height: imageH - m },
+          { borderRadius: Math.round(m * 0.4) },
+          'exact',
+        )
       : null;
     const box = { x: m * 2, y: imageH + m, width: W - 4 * m, height: H - imageH - 2 * m };
-    const fontSize = fitFontSize(text, box, { min: 18, max: Math.round(H * 0.06), lineHeight: 1.3 });
+    const fontSize = fitFontSize(text, box, {
+      min: 18,
+      max: Math.round(H * 0.06),
+      lineHeight: 1.3,
+    });
     const caption = createTextElement(text, box, {
-      style: { fontFamily: fontId, fontSize, color: palette.text, align: 'center', verticalAlign: 'middle', lineHeight: 1.3 },
+      style: {
+        fontFamily: fontId,
+        fontSize,
+        color: palette.text,
+        align: 'center',
+        verticalAlign: 'middle',
+        lineHeight: 1.3,
+      },
     });
     const elements = image ? [image, caption] : [caption];
     const animations = !animate
       ? []
       : [
           ...(image ? [createAnimationStep(image.id, 'fadeIn', 'onPageEnter')] : []),
-          { ...createAnimationStep(caption.id, 'slideUp', image ? 'afterPrevious' : 'onPageEnter'), delay: 100 },
+          {
+            ...createAnimationStep(caption.id, 'slideUp', image ? 'afterPrevious' : 'onPageEnter'),
+            delay: 100,
+          },
         ];
     return { background: { type: 'color', color: palette.background }, elements, animations };
   },

@@ -50,7 +50,11 @@ export function ArrangeSection({ elements }: { elements: PageElement[] }) {
           <IconButton label="Align left" onClick={() => alignSelected('left')} disabled={locked}>
             <AlignStartVertical />
           </IconButton>
-          <IconButton label="Align center" onClick={() => alignSelected('center')} disabled={locked}>
+          <IconButton
+            label="Align center"
+            onClick={() => alignSelected('center')}
+            disabled={locked}
+          >
             <AlignCenterVertical />
           </IconButton>
           <IconButton label="Align right" onClick={() => alignSelected('right')} disabled={locked}>
@@ -59,18 +63,32 @@ export function ArrangeSection({ elements }: { elements: PageElement[] }) {
           <IconButton label="Align top" onClick={() => alignSelected('top')} disabled={locked}>
             <AlignStartHorizontal />
           </IconButton>
-          <IconButton label="Align middle" onClick={() => alignSelected('middle')} disabled={locked}>
+          <IconButton
+            label="Align middle"
+            onClick={() => alignSelected('middle')}
+            disabled={locked}
+          >
             <AlignCenterHorizontal />
           </IconButton>
-          <IconButton label="Align bottom" onClick={() => alignSelected('bottom')} disabled={locked}>
+          <IconButton
+            label="Align bottom"
+            onClick={() => alignSelected('bottom')}
+            disabled={locked}
+          >
             <AlignEndHorizontal />
           </IconButton>
           {elements.length >= 3 && (
             <>
-              <IconButton label="Distribute horizontally" onClick={() => distributeSelected('horizontal')}>
+              <IconButton
+                label="Distribute horizontally"
+                onClick={() => distributeSelected('horizontal')}
+              >
                 <AlignHorizontalSpaceAround />
               </IconButton>
-              <IconButton label="Distribute vertically" onClick={() => distributeSelected('vertical')}>
+              <IconButton
+                label="Distribute vertically"
+                onClick={() => distributeSelected('vertical')}
+              >
                 <AlignVerticalSpaceAround />
               </IconButton>
             </>
@@ -81,10 +99,32 @@ export function ArrangeSection({ elements }: { elements: PageElement[] }) {
         </p>
         {!multi && (
           <div className="grid grid-cols-2 gap-2">
-            <NumberField label="X" value={elements[0]!.x} disabled={locked} onCommit={(x) => patchSelected({ x }, { label: 'Move' })} />
-            <NumberField label="Y" value={elements[0]!.y} disabled={locked} onCommit={(y) => patchSelected({ y }, { label: 'Move' })} />
-            <NumberField label="Width" value={elements[0]!.width} min={1} disabled={locked} onCommit={(width) => patchSelected({ width }, { label: 'Resize' })} />
-            <NumberField label="Height" value={elements[0]!.height} min={1} disabled={locked} onCommit={(height) => patchSelected({ height }, { label: 'Resize' })} />
+            <NumberField
+              label="X"
+              value={elements[0]!.x}
+              disabled={locked}
+              onCommit={(x) => patchSelected({ x }, { label: 'Move' })}
+            />
+            <NumberField
+              label="Y"
+              value={elements[0]!.y}
+              disabled={locked}
+              onCommit={(y) => patchSelected({ y }, { label: 'Move' })}
+            />
+            <NumberField
+              label="Width"
+              value={elements[0]!.width}
+              min={1}
+              disabled={locked}
+              onCommit={(width) => patchSelected({ width }, { label: 'Resize' })}
+            />
+            <NumberField
+              label="Height"
+              value={elements[0]!.height}
+              min={1}
+              disabled={locked}
+              onCommit={(height) => patchSelected({ height }, { label: 'Resize' })}
+            />
             <NumberField
               label="Rotation"
               value={elements[0]!.rotation}
@@ -109,16 +149,32 @@ export function ArrangeSection({ elements }: { elements: PageElement[] }) {
       </Section>
       <Section title="Layer">
         <div className="flex flex-wrap items-center gap-0.5">
-          <IconButton label="Bring forward" shortcut={`${MOD}]`} onClick={() => reorderSelected('forward')}>
+          <IconButton
+            label="Bring forward"
+            shortcut={`${MOD}]`}
+            onClick={() => reorderSelected('forward')}
+          >
             <ChevronUp />
           </IconButton>
-          <IconButton label="Send backward" shortcut={`${MOD}[`} onClick={() => reorderSelected('backward')}>
+          <IconButton
+            label="Send backward"
+            shortcut={`${MOD}[`}
+            onClick={() => reorderSelected('backward')}
+          >
             <ChevronDown />
           </IconButton>
-          <IconButton label="Bring to front" shortcut={`${MOD}⌥]`} onClick={() => reorderSelected('front')}>
+          <IconButton
+            label="Bring to front"
+            shortcut={`${MOD}⌥]`}
+            onClick={() => reorderSelected('front')}
+          >
             <ArrowUpToLine />
           </IconButton>
-          <IconButton label="Send to back" shortcut={`${MOD}⌥[`} onClick={() => reorderSelected('back')}>
+          <IconButton
+            label="Send to back"
+            shortcut={`${MOD}⌥[`}
+            onClick={() => reorderSelected('back')}
+          >
             <ArrowDownToLine />
           </IconButton>
           <div className="mx-1 h-5 w-px bg-border" />

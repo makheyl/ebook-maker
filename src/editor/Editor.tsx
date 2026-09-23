@@ -13,6 +13,7 @@ import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
 import { InsertToolbar } from './stage/InsertToolbar';
 import { SelectionLayer } from './stage/SelectionLayer';
+import { StageHints } from './stage/StageHints';
 import { Stage } from './stage/Stage';
 import { setPendingCaret } from './stage/caret';
 import { TextEditing } from './stage/TextEditing';
@@ -57,15 +58,24 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
             }}
             overlay={({ view, scale, viewportEl, contentEl }) => (
               <>
-                <SelectionLayer view={view} scale={scale} viewportEl={viewportEl} contentEl={contentEl} />
+                <SelectionLayer
+                  view={view}
+                  scale={scale}
+                  viewportEl={viewportEl}
+                  contentEl={contentEl}
+                />
                 <TextEditing view={view} />
               </>
             )}
           />
           <InsertToolbar />
+          <StageHints />
         </main>
         <RightPanel animate={<AnimationPane />} />
       </div>
+      <p className="border-t bg-amber-500/10 px-3 py-1.5 text-center text-xs text-amber-800 md:hidden dark:text-amber-200">
+        The editor works best on a larger screen. Your books still read beautifully on phones.
+      </p>
       {mode === 'preview' && <PreviewOverlay onClose={closePreview} />}
     </div>
   );

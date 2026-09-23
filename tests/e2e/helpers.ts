@@ -17,7 +17,10 @@ export async function waitForSaved(page: Page) {
 }
 
 export async function insertShape(page: Page, name: 'Rectangle' | 'Ellipse' | 'Line') {
-  await page.getByRole('toolbar', { name: 'Insert' }).getByRole('button', { name: 'Shape' }).click();
+  await page
+    .getByRole('toolbar', { name: 'Insert' })
+    .getByRole('button', { name: 'Shape' })
+    .click();
   await page.getByRole('menuitem', { name }).click();
   await expect(page.getByRole('menu')).toBeHidden();
 }

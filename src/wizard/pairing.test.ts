@@ -58,10 +58,13 @@ describe('layout templates', () => {
       const project = createProject({ pageSize, pages });
       project.assets.a = img('a').asset;
       const result = projectSchema.safeParse(project);
-      expect(result.success, `${template.id}: ${JSON.stringify(result.error?.issues[0])}`).toBe(true);
+      expect(result.success, `${template.id}: ${JSON.stringify(result.error?.issues[0])}`).toBe(
+        true,
+      );
       expect(pages[1]!.elements.every((e) => e.type === 'text')).toBe(true);
       for (const page of pages) {
-        for (const a of page.animations) expect(page.elements.some((e) => e.id === a.elementId)).toBe(true);
+        for (const a of page.animations)
+          expect(page.elements.some((e) => e.id === a.elementId)).toBe(true);
       }
     }
   });

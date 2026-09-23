@@ -64,7 +64,10 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
   const locked = active.some((e) => e.locked);
   const targets = active.map((e) => frameSelector(e.id));
   const guidelineEls = useMemo(
-    () => page.elements.filter((e) => !selectedIds.includes(e.id) && !e.hidden).map((e) => frameSelector(e.id)),
+    () =>
+      page.elements
+        .filter((e) => !selectedIds.includes(e.id) && !e.hidden)
+        .map((e) => frameSelector(e.id)),
     [page, selectedIds],
   );
   const single = active.length === 1 ? active[0]! : null;
@@ -112,7 +115,8 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
           updateElement(d, page.id, id, (el) => {
             const { fontSize, ...geometry } = patch;
             Object.assign(el, roundGeometry(geometry));
-            if (fontSize !== undefined && el.type === 'text') el.style.fontSize = Math.round(fontSize * 10) / 10;
+            if (fontSize !== undefined && el.type === 'text')
+              el.style.fontSize = Math.round(fontSize * 10) / 10;
           }),
         ),
       { label },
@@ -132,14 +136,26 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     resizeDir.current = e.direction;
     e.setMin([8, 8]);
   };
-  const resizeOne = (target: HTMLElement | SVGElement, width: number, height: number, left: number, top: number, direction: number[]) => {
+  const resizeOne = (
+    target: HTMLElement | SVGElement,
+    width: number,
+    height: number,
+    left: number,
+    top: number,
+    direction: number[],
+  ) => {
     const id = idOf(target);
     const orig = start.current.get(id);
     if (!orig) return;
     const corner = direction[0] !== 0 && direction[1] !== 0;
     if (orig.type === 'text' && !corner) {
       const h = Math.max(20, measureTextHeight({ ...orig, width } as TextElement));
-      setLive(id, { x: left, y: direction[1] === -1 ? orig.y + orig.height - h : orig.y, width, height: h });
+      setLive(id, {
+        x: left,
+        y: direction[1] === -1 ? orig.y + orig.height - h : orig.y,
+        width,
+        height: h,
+      });
       return;
     }
     if ((orig.type === 'text' || orig.type === 'image') && corner) {
@@ -178,14 +194,18 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
 
   const onSelectEnd = (e: OnSelectEnd) => {
     const byId = new Map(page.elements.map((el) => [el.id, el]));
-    let ids = e.selected.map((el) => (el as HTMLElement).dataset.elementId!).filter((id) => byId.has(id));
+    let ids = e.selected
+      .map((el) => (el as HTMLElement).dataset.elementId!)
+      .filter((id) => byId.has(id));
     if (!e.isClick) ids = ids.filter((id) => !byId.get(id)!.locked);
     // Keep stacking order stable (bottom → top) for predictable group behaviour.
     ids.sort((a, b) => page.elements.indexOf(byId.get(a)!) - page.elements.indexOf(byId.get(b)!));
     useUiStore.getState().select(ids);
     if (e.isDragStart && ids.length && !ids.some((id) => byId.get(id)!.locked)) {
       e.inputEvent.preventDefault();
-      moveableRef.current?.waitToChangeTarget().then(() => moveableRef.current?.dragStart(e.inputEvent));
+      moveableRef.current
+        ?.waitToChangeTarget()
+        .then(() => moveableRef.current?.dragStart(e.inputEvent));
     }
   };
 
@@ -221,7 +241,11 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
         origin={false}
         rotationPosition="top"
         renderDirections={
-          locked ? [] : isTextOnly ? ['nw', 'ne', 'sw', 'se', 'w', 'e'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
+          locked
+            ? []
+            : isTextOnly
+              ? ['nw', 'ne', 'sw', 'se', 'w', 'e']
+              : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']
         }
         snappable
         snapThreshold={6}
@@ -260,7 +284,9 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
           resizeDir.current = e.direction;
         }}
         onResizeGroup={(e: OnResizeGroup) => {
-          e.events.forEach((ev) => resizeOne(ev.target, ev.width, ev.height, ev.drag.left, ev.drag.top, [0, 1]));
+          e.events.forEach((ev) =>
+            resizeOne(ev.target, ev.width, ev.height, ev.drag.left, ev.drag.top, [0, 1]),
+          );
           renderLive();
         }}
         onResizeGroupEnd={() => commit('Resize')}

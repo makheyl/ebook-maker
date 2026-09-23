@@ -7,7 +7,10 @@ export function ShapePanel({ elements }: { elements: ShapeElement[] }) {
   const key = elements.map((e) => e.id).join(',');
   const isLine = elements.every((e) => e.shape === 'line');
   const setShape = (recipe: (s: ShapeElement) => void, coalesceKey?: string) =>
-    updateSelected((d) => d.type === 'shape' && recipe(d as ShapeElement), { label: 'Shape style', coalesceKey });
+    updateSelected((d) => d.type === 'shape' && recipe(d as ShapeElement), {
+      label: 'Shape style',
+      coalesceKey,
+    });
 
   return (
     <Section title={isLine ? 'Line' : 'Shape'}>

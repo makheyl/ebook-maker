@@ -11,11 +11,22 @@ const EVIL = '</script><script>alert(1)</script><!-- &   "quotes"';
 
 function evilProject(): Project {
   const project = createProject({ title: `My ${EVIL} book` });
-  const asset = { id: 'img1', kind: 'image' as const, mime: 'image/png', width: 10, height: 10, bytes: 4 };
+  const asset = {
+    id: 'img1',
+    kind: 'image' as const,
+    mime: 'image/png',
+    width: 10,
+    height: 10,
+    bytes: 4,
+  };
   project.assets.img1 = asset;
   project.assets.unused = { ...asset, id: 'unused' };
   project.pages[0]!.elements.push(
-    createTextElement(EVIL, { x: 0, y: 0, width: 100, height: 100 }, { style: { fontFamily: 'lora', italic: true } }),
+    createTextElement(
+      EVIL,
+      { x: 0, y: 0, width: 100, height: 100 },
+      { style: { fontFamily: 'lora', italic: true } },
+    ),
     createImageElement(asset, { x: 0, y: 0, width: 10, height: 10 }),
   );
   return project;
@@ -35,7 +46,8 @@ function inputs(project: Project) {
     playerCss: '.fp-root{color:red}',
     showBadge: true,
     fontFiles: FONT_FILES,
-    getAsset: async (id: string) => (id === 'img1' ? new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }) : undefined),
+    getAsset: async (id: string) =>
+      id === 'img1' ? new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }) : undefined,
     getFont: async () => new Uint8Array([9, 9, 9]).buffer,
   };
 }
@@ -54,7 +66,9 @@ describe('escaping', () => {
   });
 
   it('escapes HTML text and attributes', () => {
-    expect(escapeHtml(`<a href="x">'&'</a>`)).toBe('&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;');
+    expect(escapeHtml(`<a href="x">'&'</a>`)).toBe(
+      '&lt;a href=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/a&gt;',
+    );
   });
 
   it('guards inline code against </script> and <!--', () => {
@@ -75,7 +89,9 @@ describe('usage', () => {
   it('selects only used font faces and subsets', () => {
     const project = evilProject();
     expect(usedFontFaces(project)).toEqual([{ fontId: 'lora', style: 'italic', subset: 'latin' }]);
-    project.pages[0]!.elements.push(createTextElement('Zażółć', { x: 0, y: 0, width: 10, height: 10 }));
+    project.pages[0]!.elements.push(
+      createTextElement('Zażółć', { x: 0, y: 0, width: 10, height: 10 }),
+    );
     const faces = selectFontFaces(project, FONT_FILES).map((f) => f.src);
     expect(faces).toEqual(['/lora-i.woff2', '/inter.woff2']);
   });
@@ -102,7 +118,9 @@ describe('single-file export', () => {
 
     expect(doc.title).toBe(project.title);
     expect(doc.querySelector('meta[name=generator]')!.getAttribute('content')).toBe('Folio');
-    expect(doc.querySelector('meta[http-equiv=Content-Security-Policy]')!.getAttribute('content')).toContain("default-src 'none'");
+    expect(
+      doc.querySelector('meta[http-equiv=Content-Security-Policy]')!.getAttribute('content'),
+    ).toContain("default-src 'none'");
     const css = doc.querySelector('style')!.textContent!;
     expect(css).toContain('@font-face');
     expect(css).toContain('data:font/woff2;base64,CQkJ');
@@ -117,7 +135,14 @@ describe('zip export', () => {
     const result = await buildZip(inputs(evilProject()));
     const zip = await JSZip.loadAsync(await result.blob.arrayBuffer());
     expect(Object.keys(zip.files).sort()).toEqual(
-      ['assets/', 'assets/images/', 'assets/images/img1.png', 'assets/player.css', 'assets/player.js', 'index.html'].sort(),
+      [
+        'assets/',
+        'assets/images/',
+        'assets/images/img1.png',
+        'assets/player.css',
+        'assets/player.js',
+        'index.html',
+      ].sort(),
     );
     const html = await zip.file('index.html')!.async('string');
     const doc = parse(html);
@@ -129,8 +154,20 @@ describe('zip export', () => {
 
 describe('size estimate', () => {
   it('accounts for base64 inflation in single-file mode', () => {
-    const html = estimateSize({ format: 'html', imageBytes: [3000, 3000], fontBytes: [300], playerBytes: 1000, projectJsonBytes: 500 });
-    const zip = estimateSize({ format: 'zip', imageBytes: [3000, 3000], fontBytes: [300], playerBytes: 1000, projectJsonBytes: 500 });
+    const html = estimateSize({
+      format: 'html',
+      imageBytes: [3000, 3000],
+      fontBytes: [300],
+      playerBytes: 1000,
+      projectJsonBytes: 500,
+    });
+    const zip = estimateSize({
+      format: 'zip',
+      imageBytes: [3000, 3000],
+      fontBytes: [300],
+      playerBytes: 1000,
+      projectJsonBytes: 500,
+    });
     expect(html.images).toBe(8000);
     expect(zip.images).toBe(6000);
     expect(html.fonts).toBe(400);
@@ -141,7 +178,15 @@ describe('size estimate', () => {
 describe('renderBookHtml', () => {
   it('escapes the author meta', () => {
     const project = { ...createProject({ title: 'T' }), author: '"><script>x</script>' };
-    const html = renderBookHtml({ project, assets: {}, playerJs: '', playerCss: '', fontCss: '', showBadge: false, csp: "default-src 'none'" });
+    const html = renderBookHtml({
+      project,
+      assets: {},
+      playerJs: '',
+      playerCss: '',
+      fontCss: '',
+      showBadge: false,
+      csp: "default-src 'none'",
+    });
     expect(parse(html).querySelectorAll('script')).toHaveLength(2);
   });
 });

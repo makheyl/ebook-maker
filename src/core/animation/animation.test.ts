@@ -19,7 +19,12 @@ import { TRANSITIONS } from './transitions';
 
 const PAGE_SIZE = { width: 1000, height: 800 };
 
-function step(trigger: AnimationTrigger, duration: number, delay = 0, extra: Partial<AnimationStep> = {}): AnimationStep {
+function step(
+  trigger: AnimationTrigger,
+  duration: number,
+  delay = 0,
+  extra: Partial<AnimationStep> = {},
+): AnimationStep {
   return {
     id: `s${Math.random()}`,
     elementId: 'e',
@@ -50,9 +55,16 @@ describe('preset registry', () => {
         type === 'text'
           ? createTextElement('Hi', { x: 0, y: 0, width: 10, height: 10 })
           : type === 'image'
-            ? createImageElement({ id: 'a', width: 10, height: 10 }, { x: 0, y: 0, width: 10, height: 10 })
+            ? createImageElement(
+                { id: 'a', width: 10, height: 10 },
+                { x: 0, y: 0, width: 10, height: 10 },
+              )
             : createShapeElement('rect', { x: 0, y: 0, width: 10, height: 10 });
-      const specs = preset.build({ element, params: { ...preset.defaults.params }, pageSize: PAGE_SIZE });
+      const specs = preset.build({
+        element,
+        params: { ...preset.defaults.params },
+        pageSize: PAGE_SIZE,
+      });
       expect(specs.length, preset.id).toBeGreaterThan(0);
       for (const spec of specs) expect(spec.keyframes.length, preset.id).toBeGreaterThanOrEqual(2);
       const created = createAnimationStep(element.id, preset.id);
@@ -70,7 +82,9 @@ describe('preset registry', () => {
 
   it('resolves easings to CSS strings', () => {
     for (const e of EASINGS) expect(resolveEasing(e.id)).toMatch(/^(linear|cubic-bezier|ease)/);
-    expect(resolveEasing('cubic-bezier(0.1, 0.2, 0.3, 0.4)')).toBe('cubic-bezier(0.1, 0.2, 0.3, 0.4)');
+    expect(resolveEasing('cubic-bezier(0.1, 0.2, 0.3, 0.4)')).toBe(
+      'cubic-bezier(0.1, 0.2, 0.3, 0.4)',
+    );
     expect(resolveEasing('url(evil)')).toBe('ease-out');
   });
 
@@ -120,7 +134,10 @@ describe('scheduleSteps (PowerPoint trigger semantics)', () => {
   });
 
   it('counts repeats in a step span', () => {
-    const s = scheduleSteps([step('onPageEnter', 300, 0, { params: { iterations: 3 } }), step('afterPrevious', 100)]);
+    const s = scheduleSteps([
+      step('onPageEnter', 300, 0, { params: { iterations: 3 } }),
+      step('afterPrevious', 100),
+    ]);
     expect(s.groups[0]!.steps[1]!.start).toBe(900);
   });
 });
@@ -138,7 +155,8 @@ describe('page timeline', () => {
       splitTextFor: elementsNeedingCharSplit,
     });
     view.update(page, {});
-    const calls: { target: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] = [];
+    const calls: { target: Element; keyframes: Keyframe[]; options: KeyframeAnimationOptions }[] =
+      [];
     const animate: AnimateFn = (target, keyframes, options) => {
       calls.push({ target, keyframes, options });
       const anim = {
@@ -152,7 +170,10 @@ describe('page timeline', () => {
       };
       return anim as unknown as Animation;
     };
-    const timeline = createPageTimeline(page, (id) => view.getNodes(id), { pageSize: PAGE_SIZE, animate });
+    const timeline = createPageTimeline(page, (id) => view.getNodes(id), {
+      pageSize: PAGE_SIZE,
+      animate,
+    });
     return { timeline, calls, view, text, shape };
   }
 
@@ -168,7 +189,9 @@ describe('page timeline', () => {
   });
 
   it('staggers typewriter characters across the duration', () => {
-    const { calls } = setup(({ text }) => [{ ...createAnimationStep(text, 'typewriter'), duration: 1000 }]);
+    const { calls } = setup(({ text }) => [
+      { ...createAnimationStep(text, 'typewriter'), duration: 1000 },
+    ]);
     expect(calls).toHaveLength(5); // "Hello"
     const delays = calls.map((c) => Number(c.options.delay));
     expect(delays[0]).toBe(0);
@@ -179,15 +202,26 @@ describe('page timeline', () => {
   it('reduced motion turns entrances into short fades and skips emphasis', () => {
     const text = createTextElement('Hi', { x: 0, y: 0, width: 10, height: 10 });
     const page: Page = { ...createPage(), elements: [text] };
-    page.animations = [createAnimationStep(text.id, 'slideUp', 'onPageEnter'), createAnimationStep(text.id, 'pulse')];
-    const view = createPageView({ pageSize: PAGE_SIZE, mode: 'player', resolveAsset: () => undefined });
+    page.animations = [
+      createAnimationStep(text.id, 'slideUp', 'onPageEnter'),
+      createAnimationStep(text.id, 'pulse'),
+    ];
+    const view = createPageView({
+      pageSize: PAGE_SIZE,
+      mode: 'player',
+      resolveAsset: () => undefined,
+    });
     view.update(page, {});
     const calls: KeyframeAnimationOptions[] = [];
     const animate: AnimateFn = (_t, kf, options) => {
       calls.push({ ...options, id: JSON.stringify(kf) });
       return { pause() {}, currentTime: 0, finished: Promise.resolve() } as unknown as Animation;
     };
-    createPageTimeline(page, (id) => view.getNodes(id), { pageSize: PAGE_SIZE, reducedMotion: true, animate });
+    createPageTimeline(page, (id) => view.getNodes(id), {
+      pageSize: PAGE_SIZE,
+      reducedMotion: true,
+      animate,
+    });
     expect(calls).toHaveLength(1);
     expect(Number(calls[0]!.duration)).toBeLessThanOrEqual(250);
     expect(calls[0]!.id).not.toContain('translate');
@@ -199,7 +233,9 @@ describe('page timeline', () => {
       { ...createAnimationStep(shape, 'zoomIn'), id: 'only-me', trigger: 'onClick', delay: 500 },
     ]);
     expect(calls).toHaveLength(2);
-    const preview = setup(({ shape }) => [{ ...createAnimationStep(shape, 'zoomIn'), id: 'only-me', trigger: 'onClick' }]);
+    const preview = setup(({ shape }) => [
+      { ...createAnimationStep(shape, 'zoomIn'), id: 'only-me', trigger: 'onClick' },
+    ]);
     expect(preview.calls).toHaveLength(1);
   });
 });

@@ -20,7 +20,9 @@ test('quick-create a 3-page book from bulk images + text, then edit it', async (
   );
   await page.getByTestId('bulk-images-input').setInputFiles(files);
   await expect(page.getByTestId('wizard-row')).toHaveCount(3);
-  await page.getByLabel('Paste your text').fill('Once upon a time\n\nA fox found a door\nAnd opened it');
+  await page
+    .getByLabel('Paste your text')
+    .fill('Once upon a time\n\nA fox found a door\nAnd opened it');
   await page.getByRole('button', { name: 'Add 3 lines' }).click();
   await expect(page.getByLabel('Text for page 1')).toHaveValue('Once upon a time');
   await expect(page.getByLabel('Text for page 3')).toHaveValue('And opened it');

@@ -12,14 +12,27 @@ export const sideBySide: LayoutTemplate = {
     const m = Math.round(Math.min(W, H) * 0.06);
     // Landscape pages split left/right; portrait pages split top/bottom.
     const landscape = W >= H;
-    const imageBox = landscape ? { x: 0, y: 0, width: Math.round(W / 2), height: H } : { x: 0, y: 0, width: W, height: Math.round(H / 2) };
+    const imageBox = landscape
+      ? { x: 0, y: 0, width: Math.round(W / 2), height: H }
+      : { x: 0, y: 0, width: W, height: Math.round(H / 2) };
     const textBox = landscape
       ? { x: Math.round(W / 2) + m, y: m, width: Math.round(W / 2) - 2 * m, height: H - 2 * m }
       : { x: m, y: Math.round(H / 2) + m, width: W - 2 * m, height: Math.round(H / 2) - 2 * m };
     const image = asset ? createImageElement(asset, imageBox, {}, 'exact') : null;
-    const fontSize = fitFontSize(text, textBox, { min: 18, max: Math.round(H * 0.07), lineHeight: 1.35 });
+    const fontSize = fitFontSize(text, textBox, {
+      min: 18,
+      max: Math.round(H * 0.07),
+      lineHeight: 1.35,
+    });
     const caption = createTextElement(text, textBox, {
-      style: { fontFamily: fontId, fontSize, color: palette.text, align: 'left', verticalAlign: 'middle', lineHeight: 1.35 },
+      style: {
+        fontFamily: fontId,
+        fontSize,
+        color: palette.text,
+        align: 'left',
+        verticalAlign: 'middle',
+        lineHeight: 1.35,
+      },
     });
     const elements = image ? [image, caption] : [caption];
     const animations = !animate

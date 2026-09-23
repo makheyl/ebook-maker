@@ -26,7 +26,9 @@ async function uploadBackground(pageId: string, file: File, color: string) {
   docStore.change(
     (d) => {
       addAsset(d, asset);
-      updatePage(d, pageId, { background: { type: 'image', assetId: asset.id, fit: 'cover', color } });
+      updatePage(d, pageId, {
+        background: { type: 'image', assetId: asset.id, fit: 'cover', color },
+      });
     },
     { label: 'Page background image' },
   );
@@ -52,7 +54,12 @@ export function PagePanel({ extra }: { extra?: React.ReactNode }) {
             onValueChange={(v) => {
               if (v === 'color') setBackground(page.id, { type: 'color', color: baseColor });
               if (v === 'gradient')
-                setBackground(page.id, { type: 'gradient', from: baseColor, to: '#c9bfff', angle: 180 });
+                setBackground(page.id, {
+                  type: 'gradient',
+                  from: baseColor,
+                  to: '#c9bfff',
+                  angle: 180,
+                });
               if (v === 'image') fileRef.current?.click();
             }}
             className="w-full"
@@ -127,7 +134,9 @@ export function PagePanel({ extra }: { extra?: React.ReactNode }) {
                 variant="outline"
                 size="sm"
                 value={bg.fit}
-                onValueChange={(fit) => fit && setBackground(page.id, { ...bg, fit: fit as 'cover' | 'contain' })}
+                onValueChange={(fit) =>
+                  fit && setBackground(page.id, { ...bg, fit: fit as 'cover' | 'contain' })
+                }
                 className="w-full"
               >
                 <ToggleGroupItem value="cover" className="flex-1">

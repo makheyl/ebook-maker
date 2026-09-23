@@ -20,7 +20,9 @@ async function addAnimation(page: Page, type: 'text' | 'shape', effect: string, 
 async function buildBook(page: Page) {
   await createBlankBook(page, 'Exported </script> Book');
   const png = await makePng(page, '#ff6b6b', 320, 240);
-  await page.getByTestId('insert-image-input').setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer: png });
+  await page
+    .getByTestId('insert-image-input')
+    .setInputFiles({ name: 'red.png', mimeType: 'image/png', buffer: png });
   await expect(stageElements(page, 'image')).toHaveCount(1);
   await insertText(page, 'Hello export');
   await addAnimation(page, 'text', 'Fade in');
@@ -63,17 +65,27 @@ async function assertBookWorks(reader: Page) {
 
   // Image decoded from the embedded asset.
   await expect
-    .poll(() => visible.locator('.fl-img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+    .poll(() =>
+      visible
+        .locator('.fl-img')
+        .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0),
+    )
     .toBe(true);
 
   // Page-enter animation runs; the on-click entrance waits for "next".
   const opacity = (type: string) =>
-    visible.locator(`.fl-el[data-type=${type}] .fl-anim`).evaluate((el) => Number(getComputedStyle(el).opacity));
+    visible
+      .locator(`.fl-el[data-type=${type}] .fl-anim`)
+      .evaluate((el) => Number(getComputedStyle(el).opacity));
   await expect.poll(() => opacity('text')).toBe(1);
   expect(await opacity('shape')).toBe(0);
   await reader.keyboard.press('ArrowRight');
   await expect.poll(() => opacity('shape')).toBe(1);
-  await expect.poll(() => reader.evaluate(() => document.getAnimations().every((a) => a.playState !== 'running'))).toBe(true);
+  await expect
+    .poll(() =>
+      reader.evaluate(() => document.getAnimations().every((a) => a.playState !== 'running')),
+    )
+    .toBe(true);
 
   // Next page.
   await reader.keyboard.press('ArrowRight');
@@ -89,7 +101,10 @@ function expectNoNetwork(requests: string[]) {
   expect(remote, `unexpected network requests: ${remote.join(', ')}`).toEqual([]);
 }
 
-test('export round-trip: single HTML file works offline via file:// with zero network requests', async ({ page, browser }) => {
+test('export round-trip: single HTML file works offline via file:// with zero network requests', async ({
+  page,
+  browser,
+}) => {
   await buildBook(page);
   const file = test.info().outputPath('book.html');
   const name = await download(page, 'HTML', file);
@@ -123,7 +138,10 @@ test('export round-trip: ZIP folder works offline via file://', async ({ page, b
     }
   }
 
-  const { reader, requests, errors, context } = await openOffline(browser, path.join(dir, 'index.html'));
+  const { reader, requests, errors, context } = await openOffline(
+    browser,
+    path.join(dir, 'index.html'),
+  );
   await assertBookWorks(reader);
   expectNoNetwork(requests);
   expect(errors).toEqual([]);

@@ -26,7 +26,11 @@ function Stepper({ step }: { step: number }) {
   return (
     <ol className="flex items-center gap-2 text-sm" aria-label="Progress">
       {STEPS.map((label, i) => (
-        <li key={label} className="flex items-center gap-2" aria-current={i === step ? 'step' : undefined}>
+        <li
+          key={label}
+          className="flex items-center gap-2"
+          aria-current={i === step ? 'step' : undefined}
+        >
           {i > 0 && <span className="h-px w-6 bg-border" aria-hidden="true" />}
           <span
             className={cn(
@@ -37,7 +41,11 @@ function Stepper({ step }: { step: number }) {
           >
             {i < step ? <Check className="size-3.5" /> : i + 1}
           </span>
-          <span className={cn('hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}>{label}</span>
+          <span
+            className={cn('hidden sm:inline', i === step ? 'font-medium' : 'text-muted-foreground')}
+          >
+            {label}
+          </span>
         </li>
       ))}
     </ol>
@@ -76,7 +84,12 @@ export function QuickCreateWizard() {
         title,
         pageSize,
         pages,
-        theme: { fontFamily: choice.fontId, background: palette.background, textColor: palette.text, accent: palette.accent },
+        theme: {
+          fontFamily: choice.fontId,
+          background: palette.background,
+          textColor: palette.text,
+          accent: palette.accent,
+        },
       });
       const assets: Record<string, AssetRef> = {};
       for (const r of rows) if (r.image) assets[r.image.asset.id] = r.image.asset;
@@ -95,7 +108,11 @@ export function QuickCreateWizard() {
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
-          <Link href="/" aria-label="All books" className="rounded-md focus-visible:ring-2 focus-visible:ring-ring">
+          <Link
+            href="/"
+            aria-label="All books"
+            className="rounded-md focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <LogoMark />
           </Link>
           <h1 className="flex items-center gap-2 font-semibold">
@@ -111,7 +128,9 @@ export function QuickCreateWizard() {
           <div className="mx-auto grid max-w-2xl gap-6">
             <div>
               <h2 className="text-xl font-semibold">Let’s start your book</h2>
-              <p className="text-sm text-muted-foreground">Give it a name and choose the page shape.</p>
+              <p className="text-sm text-muted-foreground">
+                Give it a name and choose the page shape.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="wizard-title">Title</Label>
@@ -136,8 +155,8 @@ export function QuickCreateWizard() {
             <div>
               <h2 className="text-xl font-semibold">Add your pages</h2>
               <p className="text-sm text-muted-foreground">
-                Each page gets one line of text and one image. Drop them in bulk — they pair up in order — then
-                drag to reorder or swap images.
+                Each page gets one line of text and one image. Drop them in bulk — they pair up in
+                order — then drag to reorder or swap images.
               </p>
             </div>
             <PagesStep rows={rows} setRows={setRows} />

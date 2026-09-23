@@ -10,7 +10,11 @@ export type ProcessOptions = {
   quality: number;
 };
 
-export const DEFAULT_PROCESS_OPTIONS: ProcessOptions = { maxEdge: 2400, thumbEdge: 320, quality: 0.85 };
+export const DEFAULT_PROCESS_OPTIONS: ProcessOptions = {
+  maxEdge: 2400,
+  thumbEdge: 320,
+  quality: 0.85,
+};
 
 export type ProcessedImage = {
   id: string;
@@ -30,7 +34,10 @@ export async function hashBytes(buffer: ArrayBuffer): Promise<string> {
 
 export function fitWithin(width: number, height: number, maxEdge: number) {
   const scale = Math.min(1, maxEdge / Math.max(width, height));
-  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
 }
 
 type Canvas2D = OffscreenCanvas | HTMLCanvasElement;
@@ -52,7 +59,8 @@ function toBlob(canvas: Canvas2D, type: string, quality?: number): Promise<Blob>
 
 function draw(source: CanvasImageSource, width: number, height: number): Canvas2D {
   const canvas = makeCanvas(width, height);
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  const ctx = canvas.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!ctx) throw new Error('Canvas 2D is not available');
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
@@ -62,7 +70,8 @@ function draw(source: CanvasImageSource, width: number, height: number): Canvas2
 
 function hasTransparency(canvas: Canvas2D): boolean {
   const probe = draw(canvas, Math.min(64, canvas.width), Math.min(64, canvas.height));
-  const ctx = probe.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  const ctx = probe.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   const { data } = ctx.getImageData(0, 0, probe.width, probe.height);
   for (let i = 3; i < data.length; i += 4) if (data[i]! < 255) return true;
   return false;
@@ -102,7 +111,15 @@ export async function processImage(
 
     const thumbSize = fitWithin(size.width, size.height, options.thumbEdge);
     const thumb = await encode(draw(canvas, thumbSize.width, thumbSize.height), 0.8);
-    return { id, blob, thumb, mime: blob.type, width: size.width, height: size.height, bytes: blob.size };
+    return {
+      id,
+      blob,
+      thumb,
+      mime: blob.type,
+      width: size.width,
+      height: size.height,
+      bytes: blob.size,
+    };
   } finally {
     bitmap.close();
   }

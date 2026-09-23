@@ -20,7 +20,8 @@ function isTypingTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el) return false;
   if (el.isContentEditable) return true;
-  if (el.closest('input, textarea, select, [role="dialog"], [role="menu"], [role="listbox"]')) return true;
+  if (el.closest('input, textarea, select, [role="dialog"], [role="menu"], [role="listbox"]'))
+    return true;
   return false;
 }
 

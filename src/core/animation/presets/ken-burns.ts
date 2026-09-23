@@ -7,7 +7,12 @@ export const kenBurns: AnimationPreset = {
   kind: 'emphasis',
   appliesTo: ['image'],
   holdEnd: true,
-  defaults: { duration: 7000, delay: 0, easing: 'easeInOut', params: { zoom: 1.2, direction: 'in-left' } },
+  defaults: {
+    duration: 7000,
+    delay: 0,
+    easing: 'easeInOut',
+    params: { zoom: 1.2, direction: 'in-left' },
+  },
   params: [
     { key: 'zoom', label: 'Zoom', type: 'number', min: 1, max: 2, step: 0.05 },
     {

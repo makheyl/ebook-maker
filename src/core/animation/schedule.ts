@@ -20,7 +20,8 @@ export type Schedule = { groups: StepGroup[] };
 
 /** Total time of one step including repeats. */
 export function stepSpan(step: AnimationStep): number {
-  const iterations = typeof step.params?.iterations === 'number' ? Math.max(1, step.params.iterations) : 1;
+  const iterations =
+    typeof step.params?.iterations === 'number' ? Math.max(1, step.params.iterations) : 1;
   return step.duration * iterations;
 }
 

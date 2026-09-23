@@ -15,12 +15,20 @@ test('Animation Pane: add, preview, set a click trigger, reorder and remove', as
   const chars = stageElements(page, 'text').locator('.fl-char');
   await expect(chars).toHaveCount('Typing out loud'.length);
   await expect
-    .poll(async () => (await chars.evaluateAll((els) => els.map((e) => getComputedStyle(e).opacity))).includes('0'))
+    .poll(async () =>
+      (await chars.evaluateAll((els) => els.map((e) => getComputedStyle(e).opacity))).includes('0'),
+    )
     .toBe(true);
   await expect
-    .poll(async () => (await chars.evaluateAll((els) => els.map((e) => getComputedStyle(e).opacity))).every((o) => o === '1'), {
-      timeout: 8000,
-    })
+    .poll(
+      async () =>
+        (await chars.evaluateAll((els) => els.map((e) => getComputedStyle(e).opacity))).every(
+          (o) => o === '1',
+        ),
+      {
+        timeout: 8000,
+      },
+    )
     .toBe(true);
 
   await insertShape(page, 'Ellipse');

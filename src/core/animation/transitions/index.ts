@@ -7,7 +7,11 @@ import type { TransitionPreset } from '../../schema/types';
 export type TransitionDef = {
   id: TransitionPreset;
   label: string;
-  build(direction: 1 | -1): { out: Keyframe[] | null; in: Keyframe[] | null; perspective?: boolean };
+  build(direction: 1 | -1): {
+    out: Keyframe[] | null;
+    in: Keyframe[] | null;
+    perspective?: boolean;
+  };
 };
 
 export const TRANSITIONS: readonly TransitionDef[] = [

@@ -1,16 +1,32 @@
-import { BookOpen, Plus, Sparkles } from 'lucide-react';
+import { BookHeart, BookOpen, Plus, Sparkles } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { toast } from 'sonner';
+import { Link, useLocation } from 'wouter';
 import { Button } from '@/ui/button';
 import { Logo } from '@/ui/Logo';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 import { NewBookDialog } from './NewBookDialog';
 import { ProjectCard } from './ProjectCard';
+import { createSampleBook } from './sample-book';
 import { useProjects } from './useProjects';
 
 export function Dashboard() {
   const state = useProjects();
   const [newOpen, setNewOpen] = useState(false);
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const [, navigate] = useLocation();
+
+  const openSample = async () => {
+    setSampleBusy(true);
+    try {
+      navigate(`/p/${await createSampleBook()}`);
+    } catch (err) {
+      toast.error(
+        `Could not create the sample: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      setSampleBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-full">
@@ -80,6 +96,9 @@ export function Dashboard() {
               </Button>
               <Button variant="outline" onClick={() => setNewOpen(true)}>
                 <Plus /> Start from blank
+              </Button>
+              <Button variant="ghost" onClick={openSample} disabled={sampleBusy}>
+                <BookHeart /> {sampleBusy ? 'Preparing…' : 'Try a sample book'}
               </Button>
             </div>
           </div>

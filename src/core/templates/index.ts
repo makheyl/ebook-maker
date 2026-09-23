@@ -9,7 +9,12 @@ import type { LayoutTemplate, PagePalette } from './types';
 export type { LayoutTemplate, LayoutInput, LayoutResult, PagePalette } from './types';
 
 /** Quick-create layouts. To add one, create a file in layouts/ and list it here. */
-export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [imageTop, fullBleed, sideBySide, textOnly];
+export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [
+  imageTop,
+  fullBleed,
+  sideBySide,
+  textOnly,
+];
 
 export const PALETTES: readonly PagePalette[] = [
   { id: 'paper', label: 'Paper', background: '#ffffff', text: '#1f1d2b', accent: '#6d4aff' },
@@ -26,7 +31,13 @@ export type PageSpec = { text: string; asset?: AssetRef };
 /** Builds editable pages from text + image rows with a template (text-only when a row has no image). */
 export function generatePages(
   rows: readonly PageSpec[],
-  opts: { templateId: string; pageSize: PageSize; palette: PagePalette; fontId: string; animate: boolean },
+  opts: {
+    templateId: string;
+    pageSize: PageSize;
+    palette: PagePalette;
+    fontId: string;
+    animate: boolean;
+  },
 ): Page[] {
   const template = getTemplate(opts.templateId);
   return rows.map((row) => {

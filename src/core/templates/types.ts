@@ -1,6 +1,18 @@
-import type { AnimationStep, AssetRef, PageBackground, PageElement, PageSize } from '../schema/types';
+import type {
+  AnimationStep,
+  AssetRef,
+  PageBackground,
+  PageElement,
+  PageSize,
+} from '../schema/types';
 
-export type PagePalette = { id: string; label: string; background: string; text: string; accent: string };
+export type PagePalette = {
+  id: string;
+  label: string;
+  background: string;
+  text: string;
+  accent: string;
+};
 
 export type LayoutInput = {
   text: string;

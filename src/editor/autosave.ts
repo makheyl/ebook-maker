@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 import type { Project } from '@/core/schema';
 import { projectRepo, StorageQuotaError } from '@/storage';
 import { useDocStore } from './store/doc-store';
@@ -22,6 +23,7 @@ export function useAutosave(): void {
     let savedRevision = initial.revision;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight: Promise<void> | null = null;
+    let failing = false;
     const setStatus = useUiStore.getState().setSaveStatus;
 
     const save = async (): Promise<void> => {
@@ -34,6 +36,7 @@ export function useAutosave(): void {
         .save(project)
         .then(() => {
           savedRevision = revision;
+          failing = false;
           setStatus(latest.revision === revision ? 'saved' : 'unsaved');
         })
         .catch((err: unknown) => {
@@ -42,6 +45,9 @@ export function useAutosave(): void {
               ? err.message
               : `Couldn’t save: ${err instanceof Error ? err.message : String(err)}`;
           setStatus('error', message);
+          // Tell the user once per failure streak (the top bar keeps showing "Not saved").
+          if (!failing) toast.error(message, { duration: 10_000 });
+          failing = true;
         })
         .finally(() => {
           inFlight = null;

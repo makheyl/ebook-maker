@@ -15,7 +15,18 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Circle, Eye, EyeOff, GripVertical, Image, Lock, Minus, Square, Type, Unlock } from 'lucide-react';
+import {
+  Circle,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Image,
+  Lock,
+  Minus,
+  Square,
+  Type,
+  Unlock,
+} from 'lucide-react';
 import { useState } from 'react';
 import { moveElementToIndex, patchElements } from '@/core/ops';
 import type { PageElement } from '@/core/schema';
@@ -34,8 +45,18 @@ function TypeIcon({ el }: { el: PageElement }) {
   return <Square className={cls} />;
 }
 
-function LayerRow({ el, pageId, selected }: { el: PageElement; pageId: string; selected: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: el.id });
+function LayerRow({
+  el,
+  pageId,
+  selected,
+}: {
+  el: PageElement;
+  pageId: string;
+  selected: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: el.id,
+  });
   const [renaming, setRenaming] = useState(false);
 
   return (
@@ -140,21 +161,37 @@ export function LayersPanel() {
   };
 
   if (!page.elements.length) {
-    return <p className="p-4 text-sm text-muted-foreground">This page is empty. Add text, images or shapes from the toolbar.</p>;
+    return (
+      <p className="p-4 text-sm text-muted-foreground">
+        This page is empty. Add text, images or shapes from the toolbar.
+      </p>
+    );
   }
 
   return (
     <div className="p-2">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis]}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+        modifiers={[restrictToVerticalAxis]}
+      >
         <SortableContext items={topFirst.map((e) => e.id)} strategy={verticalListSortingStrategy}>
           <ul aria-label="Layers" className="grid gap-0.5">
             {topFirst.map((el) => (
-              <LayerRow key={el.id} el={el} pageId={page.id} selected={selectedIds.includes(el.id)} />
+              <LayerRow
+                key={el.id}
+                el={el}
+                pageId={page.id}
+                selected={selectedIds.includes(el.id)}
+              />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
-      <p className="px-2 pt-3 text-[11px] text-muted-foreground">Double-click a name to rename. Drag to reorder.</p>
+      <p className="px-2 pt-3 text-[11px] text-muted-foreground">
+        Double-click a name to rename. Drag to reorder.
+      </p>
     </div>
   );
 }

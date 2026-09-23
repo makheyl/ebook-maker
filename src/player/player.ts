@@ -1,4 +1,9 @@
-import { createPageTimeline, elementsNeedingCharSplit, getTransition, type PageTimeline } from '../core/animation';
+import {
+  createPageTimeline,
+  elementsNeedingCharSplit,
+  getTransition,
+  type PageTimeline,
+} from '../core/animation';
 import { MADE_WITH_LABEL } from '../core/brand';
 import { createPageView, type PageView } from '../core/render';
 import type { Page, Project } from '../core/schema';
@@ -24,8 +29,10 @@ type Mounted = { page: Page; view: PageView; layer: HTMLElement; timeline: PageT
 const ICON_PATHS = {
   prev: 'M15 18l-6-6 6-6',
   next: 'M9 18l6-6-6-6',
-  fullscreen: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
-  exitFullscreen: 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
+  fullscreen:
+    'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
+  exitFullscreen:
+    'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
   close: 'M18 6 6 18M6 6l12 12',
 };
 
@@ -179,7 +186,8 @@ export class Player {
     const transition = getTransition(
       direction === -1 ? (this.pages[i + 1]?.transition.preset ?? 'none') : page.transition.preset,
     );
-    const duration = direction === -1 ? (this.pages[i + 1]?.transition.duration ?? 0) : page.transition.duration;
+    const duration =
+      direction === -1 ? (this.pages[i + 1]?.transition.duration ?? 0) : page.transition.duration;
     const animated = previous && direction !== 0 && transition.id !== 'none' && duration > 0;
 
     if (previous) {
@@ -315,7 +323,11 @@ export class Player {
     this.nextBtn.title = moreOnPage ? 'Next animation' : 'Next page';
   }
 
-  private button(label: string, name: keyof typeof ICON_PATHS, onClick: () => void): HTMLButtonElement {
+  private button(
+    label: string,
+    name: keyof typeof ICON_PATHS,
+    onClick: () => void,
+  ): HTMLButtonElement {
     const b = el('button', 'fp-btn');
     b.type = 'button';
     b.setAttribute('aria-label', label);

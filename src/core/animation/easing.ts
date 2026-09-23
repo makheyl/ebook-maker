@@ -36,7 +36,12 @@ function supportsLinear(): boolean {
 /** Resolves a named easing (or passes through a raw CSS easing) to a WAAPI easing string. */
 export function resolveEasing(name: string): string {
   const def = byId.get(name);
-  if (!def) return /^(linear|ease(-in|-out|-in-out)?|cubic-bezier\([\d.,\s-]+\)|steps\([\w\s,-]+\))$/.test(name) ? name : 'ease-out';
+  if (!def)
+    return /^(linear|ease(-in|-out|-in-out)?|cubic-bezier\([\d.,\s-]+\)|steps\([\w\s,-]+\))$/.test(
+      name,
+    )
+      ? name
+      : 'ease-out';
   if (def.css.startsWith('linear(') && !supportsLinear()) return def.fallback ?? 'ease-out';
   return def.css;
 }

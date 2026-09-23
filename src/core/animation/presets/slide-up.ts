@@ -5,7 +5,9 @@ export const slideUp: AnimationPreset = {
   label: 'Slide up',
   kind: 'entrance',
   defaults: { duration: 800, delay: 0, easing: 'easeOut', params: { distance: 80 } },
-  params: [{ key: 'distance', label: 'Distance', type: 'number', min: 0, max: 1000, step: 10, unit: 'px' }],
+  params: [
+    { key: 'distance', label: 'Distance', type: 'number', min: 0, max: 1000, step: 10, unit: 'px' },
+  ],
   build: ({ params }) => [
     {
       target: 'element',

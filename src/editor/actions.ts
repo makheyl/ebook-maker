@@ -1,7 +1,13 @@
 import type { Draft } from 'immer';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { alignDeltas, distributeDeltas, rotatedBounds, unionRects, type AlignEdge } from '@/core/geometry';
+import {
+  alignDeltas,
+  distributeDeltas,
+  rotatedBounds,
+  unionRects,
+  type AlignEdge,
+} from '@/core/geometry';
 import {
   addAsset,
   addElements,
@@ -81,8 +87,7 @@ export function insertShape(shape: ShapeElement['shape']) {
   const page = getActivePage();
   if (!p || !page) return;
   const size = Math.round(Math.min(p.pageSize.width, p.pageSize.height) * 0.3);
-  const box =
-    shape === 'line' ? pageCenterBox(size * 1.5, 24) : pageCenterBox(size, size);
+  const box = shape === 'line' ? pageCenterBox(size * 1.5, 24) : pageCenterBox(size, size);
   const el = createShapeElement(shape, box, shape === 'line' ? {} : { fill: p.theme.accent });
   docStore.change((d) => addElements(d, page.id, [el]), { label: 'Add shape' });
   selectIds([el.id]);
@@ -92,7 +97,9 @@ export function insertShape(shape: ShapeElement['shape']) {
 export async function insertImages(files: readonly File[], at?: { x: number; y: number }) {
   const images = imageFilesFrom(files);
   if (!images.length) return;
-  const toastId = toast.loading(images.length > 1 ? `Adding ${images.length} images…` : 'Adding image…');
+  const toastId = toast.loading(
+    images.length > 1 ? `Adding ${images.length} images…` : 'Adding image…',
+  );
   const { assets, errors } = await importImageFiles(images);
   toast.dismiss(toastId);
   errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
@@ -105,7 +112,12 @@ export async function insertImages(files: readonly File[], at?: { x: number; y: 
     const maxH = H * 0.6;
     const cx = (at?.x ?? W / 2) + i * 24;
     const cy = (at?.y ?? H / 2) + i * 24;
-    return createImageElement(asset, { x: cx - maxW / 2, y: cy - maxH / 2, width: maxW, height: maxH });
+    return createImageElement(asset, {
+      x: cx - maxW / 2,
+      y: cy - maxH / 2,
+      width: maxW,
+      height: maxH,
+    });
   });
   docStore.change(
     (d) => {
@@ -147,7 +159,12 @@ export function nudgeSelected(dx: number, dy: number) {
   const targets = getSelectedElements().filter((e) => !e.locked);
   if (!page || !targets.length) return;
   docStore.change(
-    (d) => patchElements(d, page.id, targets.map((e) => ({ id: e.id, patch: { x: e.x + dx, y: e.y + dy } }))),
+    (d) =>
+      patchElements(
+        d,
+        page.id,
+        targets.map((e) => ({ id: e.id, patch: { x: e.x + dx, y: e.y + dy } })),
+      ),
     { label: 'Move', coalesceKey: `nudge:${targets.map((e) => e.id).join(',')}` },
   );
 }
@@ -159,22 +176,41 @@ export function reorderSelected(move: LayerMove) {
   docStore.change((d) => reorderElements(d, page.id, ids, move), { label: 'Change layer order' });
 }
 
-export function patchSelected(patch: GeometryPatch, opts: { label?: string; coalesceKey?: string } = {}) {
+export function patchSelected(
+  patch: GeometryPatch,
+  opts: { label?: string; coalesceKey?: string } = {},
+) {
   const page = getActivePage();
   const ids = ui().selectedIds;
   if (!page || !ids.length) return;
-  docStore.change((d) => patchElements(d, page.id, ids.map((id) => ({ id, patch }))), {
-    label: opts.label ?? 'Edit',
-    coalesceKey: opts.coalesceKey,
-  });
+  docStore.change(
+    (d) =>
+      patchElements(
+        d,
+        page.id,
+        ids.map((id) => ({ id, patch })),
+      ),
+    {
+      label: opts.label ?? 'Edit',
+      coalesceKey: opts.coalesceKey,
+    },
+  );
 }
 
 export function setElementsFlag(ids: string[], flag: 'locked' | 'hidden', value: boolean) {
   const page = getActivePage();
   if (!page || !ids.length) return;
-  docStore.change((d) => patchElements(d, page.id, ids.map((id) => ({ id, patch: { [flag]: value } }))), {
-    label: flag === 'locked' ? (value ? 'Lock' : 'Unlock') : value ? 'Hide' : 'Show',
-  });
+  docStore.change(
+    (d) =>
+      patchElements(
+        d,
+        page.id,
+        ids.map((id) => ({ id, patch: { [flag]: value } })),
+      ),
+    {
+      label: flag === 'locked' ? (value ? 'Lock' : 'Unlock') : value ? 'Hide' : 'Show',
+    },
+  );
   if (flag === 'hidden' && value) ui().select(ui().selectedIds.filter((id) => !ids.includes(id)));
 }
 
@@ -186,10 +222,10 @@ export function updateSelected(
   const page = getActivePage();
   const ids = ui().selectedIds;
   if (!page || !ids.length) return;
-  docStore.change(
-    (d) => ids.forEach((id) => updateElement(d, page.id, id, recipe)),
-    { label: opts.label ?? 'Edit', coalesceKey: opts.coalesceKey },
-  );
+  docStore.change((d) => ids.forEach((id) => updateElement(d, page.id, id, recipe)), {
+    label: opts.label ?? 'Edit',
+    coalesceKey: opts.coalesceKey,
+  });
 }
 
 /** Updates text style on selected text elements, growing boxes so the text still fits. */
@@ -329,9 +365,12 @@ function pastePayload(payload: ClipboardPayload) {
   if (!page) return;
   pasteCount++;
   const offset = payload.pageId === page.id ? 24 * pasteCount : 0;
-  const ids = docStore.change((d) => pasteElements(d, page.id, payload.elements, payload.assets, offset), {
-    label: 'Paste',
-  });
+  const ids = docStore.change(
+    (d) => pasteElements(d, page.id, payload.elements, payload.assets, offset),
+    {
+      label: 'Paste',
+    },
+  );
   if (ids) selectIds(ids);
 }
 

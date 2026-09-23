@@ -158,6 +158,9 @@ export function Stage({
         ref={setViewportEl}
         className="absolute inset-0 overflow-auto"
         data-testid="stage-viewport"
+        role="region"
+        aria-label="Page canvas"
+        aria-describedby="stage-help"
         onDoubleClick={(e) => {
           const frame = (e.target as HTMLElement).closest<HTMLElement>('.fl-mode-editor .fl-el');
           if (frame?.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {
@@ -177,7 +180,10 @@ export function Stage({
           if (!hasFiles(e) || !pageEl) return;
           e.preventDefault();
           setDragOver(false);
-          onDropFiles?.([...e.dataTransfer.files], toPagePoint(pageEl, e.clientX, e.clientY, scale));
+          onDropFiles?.(
+            [...e.dataTransfer.files],
+            toPagePoint(pageEl, e.clientX, e.clientY, scale),
+          );
         }}
       >
         <div ref={setContentEl} className="relative" style={{ width: contentW, height: contentH }}>
@@ -214,6 +220,10 @@ export function Stage({
         </div>
       )}
       <ZoomControl />
+      <p id="stage-help" className="sr-only">
+        Select elements with the mouse, or from the Layers tab with the keyboard. Arrow keys move
+        the selection (Shift for 10 pixels), Enter edits selected text, Delete removes it.
+      </p>
     </div>
   );
 }

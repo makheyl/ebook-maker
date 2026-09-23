@@ -9,7 +9,12 @@ import { Switch } from '@/ui/switch';
 import { cn } from '@/ui/utils';
 import type { WizardRow } from '../pairing';
 
-export type LayoutChoice = { templateId: string; paletteId: string; fontId: string; animate: boolean };
+export type LayoutChoice = {
+  templateId: string;
+  paletteId: string;
+  fontId: string;
+  animate: boolean;
+};
 
 /** Step 3: pick a layout (live previews of the first page), colors, font and animations. */
 export function LayoutStep({
@@ -35,13 +40,16 @@ export function LayoutStep({
     () =>
       LAYOUT_TEMPLATES.map((template) => ({
         template,
-        page: generatePages([{ text: sample?.text || 'Your text here', asset: sample?.image?.asset }], {
-          templateId: template.id,
-          pageSize,
-          palette,
-          fontId: choice.fontId,
-          animate: false,
-        })[0]!,
+        page: generatePages(
+          [{ text: sample?.text || 'Your text here', asset: sample?.image?.asset }],
+          {
+            templateId: template.id,
+            pageSize,
+            palette,
+            fontId: choice.fontId,
+            animate: false,
+          },
+        )[0]!,
       })),
     [sample, pageSize, palette, choice.fontId],
   );
@@ -121,7 +129,9 @@ export function LayoutStep({
         <label className="flex items-center justify-between gap-3 self-end rounded-lg border p-3 text-sm">
           <span>
             Add animations
-            <span className="block text-xs text-muted-foreground">Gentle entrances on every page</span>
+            <span className="block text-xs text-muted-foreground">
+              Gentle entrances on every page
+            </span>
           </span>
           <Switch
             checked={choice.animate}

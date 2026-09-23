@@ -1,7 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createBlankBook, insertShape, insertText, stageElements } from './helpers';
 
-async function addAnimation(page: Page, element: ReturnType<typeof stageElements>, effect: string, start?: string) {
+async function addAnimation(
+  page: Page,
+  element: ReturnType<typeof stageElements>,
+  effect: string,
+  start?: string,
+) {
   await element.click();
   await page.getByRole('tab', { name: 'Animate' }).click();
   await page.getByRole('button', { name: /Add animation/ }).click();
@@ -30,7 +35,9 @@ const animOpacity = (page: Page, type: string) =>
     .locator(`.fp-page:not([aria-hidden]) .fl-el[data-type=${type}] .fl-anim`)
     .evaluate((el) => Number(getComputedStyle(el).opacity));
 
-test('reader: click groups, keyboard, click and swipe navigation, letterboxing', async ({ page }) => {
+test('reader: click groups, keyboard, click and swipe navigation, letterboxing', async ({
+  page,
+}) => {
   await buildTwoPageBook(page);
   await page.getByRole('button', { name: 'Preview' }).click();
   await expect(reader(page).locator('.fp-indicator')).toHaveText('1 / 2');
@@ -46,7 +53,9 @@ test('reader: click groups, keyboard, click and swipe navigation, letterboxing',
   await expect(reader(page).locator('.fp-indicator')).toHaveText('1 / 2');
   // Like PowerPoint, "next" during a running animation completes it; wait for it to settle.
   await expect
-    .poll(() => page.evaluate(() => document.getAnimations().every((a) => a.playState !== 'running')))
+    .poll(() =>
+      page.evaluate(() => document.getAnimations().every((a) => a.playState !== 'running')),
+    )
     .toBe(true);
 
   await page.keyboard.press('ArrowRight');
@@ -77,7 +86,10 @@ test('reader: click groups, keyboard, click and swipe navigation, letterboxing',
 
   await page.keyboard.press('Escape');
   await expect(reader(page)).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'Page 2', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 });
 
 test.describe('reduced motion', () => {

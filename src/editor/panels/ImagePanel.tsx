@@ -63,7 +63,9 @@ function setAsPageBackground(el: ImageElement) {
   const base = page.background.type === 'gradient' ? page.background.from : page.background.color;
   docStore.change(
     (d) => {
-      updatePage(d, page.id, { background: { type: 'image', assetId: el.assetId, fit: 'cover', color: base } });
+      updatePage(d, page.id, {
+        background: { type: 'image', assetId: el.assetId, fit: 'cover', color: base },
+      });
       deleteElements(d, page.id, [el.id]);
     },
     { label: 'Set page background' },
@@ -89,10 +91,20 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
       <Section title="Image">
         {single && (
           <div className="grid grid-cols-3 gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => setCropOpen(true)} disabled={!asset || el.locked}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCropOpen(true)}
+              disabled={!asset || el.locked}
+            >
               <Crop /> Crop
             </Button>
-            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={el.locked}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={el.locked}
+            >
               <Replace /> Replace
             </Button>
             <Button
@@ -152,10 +164,17 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
           max={maxRadius}
           format={(v) => `${v}px`}
           gestureLabel="Corner radius"
-          onChange={(r) => setImage((i) => void (i.borderRadius = r), 'Corner radius', `radius:${key}`)}
+          onChange={(r) =>
+            setImage((i) => void (i.borderRadius = r), 'Corner radius', `radius:${key}`)
+          }
         />
         {single && (
-          <Button variant="ghost" size="sm" className="justify-start" onClick={() => setAsPageBackground(el)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start"
+            onClick={() => setAsPageBackground(el)}
+          >
             <ImageUp /> Use as page background
           </Button>
         )}
@@ -171,10 +190,14 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setImage((i) => void (i.filters = { ...preset.filters }), 'Apply filter')}
+                onClick={() =>
+                  setImage((i) => void (i.filters = { ...preset.filters }), 'Apply filter')
+                }
                 className={cn(
                   'grid gap-1 rounded-md p-1 text-[11px] focus-visible:ring-2 focus-visible:ring-ring',
-                  active ? 'bg-accent text-accent-foreground ring-2 ring-primary' : 'hover:bg-muted',
+                  active
+                    ? 'bg-accent text-accent-foreground ring-2 ring-primary'
+                    : 'hover:bg-muted',
                 )}
               >
                 <span className="block aspect-square overflow-hidden rounded bg-muted">
@@ -222,14 +245,17 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
             placeholder="Describe the image, or leave empty if decorative"
             onBlur={(e) => {
               const alt = e.target.value.trim();
-              if (alt !== (el.alt ?? '')) setImage((i) => void (i.alt = alt || undefined), 'Alt text');
+              if (alt !== (el.alt ?? ''))
+                setImage((i) => void (i.alt = alt || undefined), 'Alt text');
             }}
             className="w-full resize-none rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </Field>
       </Section>
 
-      {single && asset && <CropDialog element={el} asset={asset} open={cropOpen} onOpenChange={setCropOpen} />}
+      {single && asset && (
+        <CropDialog element={el} asset={asset} open={cropOpen} onOpenChange={setCropOpen} />
+      )}
     </>
   );
 }

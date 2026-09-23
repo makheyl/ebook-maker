@@ -32,5 +32,7 @@ export function getPreset(id: string): AnimationPreset | undefined {
 }
 
 export function presetsFor(kind: AnimationKind, type: ElementType): AnimationPreset[] {
-  return ANIMATION_PRESETS.filter((p) => p.kind === kind && (!p.appliesTo || p.appliesTo.includes(type)));
+  return ANIMATION_PRESETS.filter(
+    (p) => p.kind === kind && (!p.appliesTo || p.appliesTo.includes(type)),
+  );
 }

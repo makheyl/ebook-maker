@@ -16,7 +16,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowUp, GripVertical, ImagePlus, Loader2, Plus, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  GripVertical,
+  ImagePlus,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { assetUrls } from '@/editor/assets/asset-urls';
@@ -24,7 +33,14 @@ import { imageFilesFrom, importImageFiles } from '@/editor/assets/upload';
 import { Button } from '@/ui/button';
 import { Textarea } from '@/ui/textarea';
 import { cn } from '@/ui/utils';
-import { mergeIntoRows, rowId, splitLines, swapImages, type WizardImage, type WizardRow } from '../pairing';
+import {
+  mergeIntoRows,
+  rowId,
+  splitLines,
+  swapImages,
+  type WizardImage,
+  type WizardRow,
+} from '../pairing';
 
 async function toWizardImages(files: File[]): Promise<WizardImage[]> {
   const { assets, errors } = await importImageFiles(files);
@@ -47,14 +63,19 @@ function Row({
   onRemove: () => void;
   onSwap: (dir: -1 | 1) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  });
   const fileRef = useRef<HTMLInputElement>(null);
   const thumb = row.image ? assetUrls.resolve(row.image.asset.id, 'thumb') : undefined;
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn('flex items-center gap-2 rounded-xl border bg-card p-2', isDragging && 'z-10 shadow-lg')}
+      className={cn(
+        'flex items-center gap-2 rounded-xl border bg-card p-2',
+        isDragging && 'z-10 shadow-lg',
+      )}
       data-testid="wizard-row"
     >
       <button
@@ -66,15 +87,23 @@ function Row({
       >
         <GripVertical className="size-4" />
       </button>
-      <span className="w-6 text-center text-sm text-muted-foreground tabular-nums">{index + 1}</span>
+      <span className="w-6 text-center text-sm text-muted-foreground tabular-nums">
+        {index + 1}
+      </span>
       <div className="relative">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           className="grid size-16 place-items-center overflow-hidden rounded-lg border bg-muted text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={row.image ? `Replace image for page ${index + 1}` : `Add image to page ${index + 1}`}
+          aria-label={
+            row.image ? `Replace image for page ${index + 1}` : `Add image to page ${index + 1}`
+          }
         >
-          {thumb ? <img src={thumb} alt="" className="size-full object-cover" /> : <ImagePlus className="size-5" />}
+          {thumb ? (
+            <img src={thumb} alt="" className="size-full object-cover" />
+          ) : (
+            <ImagePlus className="size-5" />
+          )}
         </button>
         <input
           ref={fileRef}
@@ -119,7 +148,12 @@ function Row({
         maxLength={1000}
         className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      <Button variant="ghost" size="icon-sm" aria-label={`Remove page ${index + 1}`} onClick={onRemove}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label={`Remove page ${index + 1}`}
+        onClick={onRemove}
+      >
         <Trash2 />
       </Button>
     </li>
@@ -190,11 +224,17 @@ export function PagesStep({
           )}
         >
           <span className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
-            {processing ? <Loader2 className="size-5 animate-spin" /> : <Upload className="size-5" />}
+            {processing ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Upload className="size-5" />
+            )}
           </span>
           <div>
             <p className="font-medium">Drop images here</p>
-            <p className="text-xs text-muted-foreground">One image per page, in order. JPG, PNG, WebP…</p>
+            <p className="text-xs text-muted-foreground">
+              One image per page, in order. JPG, PNG, WebP…
+            </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => bulkRef.current?.click()}>
             Browse images
@@ -212,13 +252,19 @@ export function PagesStep({
               void addImages(files);
             }}
           />
-          {processing > 0 && <p className="text-xs text-muted-foreground" role="status">Processing {processing}…</p>}
+          {processing > 0 && (
+            <p className="text-xs text-muted-foreground" role="status">
+              Processing {processing}…
+            </p>
+          )}
         </div>
         <div className="flex flex-col gap-2 rounded-2xl border p-4">
           <label htmlFor="bulk-lines" className="font-medium">
             Paste your text
           </label>
-          <p className="-mt-1 text-xs text-muted-foreground">One line per page. Lines are paired with images by order.</p>
+          <p className="-mt-1 text-xs text-muted-foreground">
+            One line per page. Lines are paired with images by order.
+          </p>
           <Textarea
             id="bulk-lines"
             value={lines}
@@ -227,7 +273,12 @@ export function PagesStep({
             placeholder={'Once upon a time…\nThere lived a curious fox.\nOne day, it found a door.'}
             className="flex-1 resize-none"
           />
-          <Button size="sm" variant="secondary" onClick={addLines} disabled={!splitLines(lines).length}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={addLines}
+            disabled={!splitLines(lines).length}
+          >
             Add {splitLines(lines).length || ''} {splitLines(lines).length === 1 ? 'line' : 'lines'}
           </Button>
         </div>
@@ -251,7 +302,12 @@ export function PagesStep({
             Add images and text above, or add pages one by one.
           </p>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+            modifiers={[restrictToVerticalAxis]}
+          >
             <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
               <ol className="grid gap-2" aria-label="Pages to create">
                 {rows.map((row, i) => (
@@ -260,7 +316,9 @@ export function PagesStep({
                     row={row}
                     index={i}
                     count={rows.length}
-                    onChange={(next) => setRows((prev) => prev.map((r) => (r.id === row.id ? next : r)))}
+                    onChange={(next) =>
+                      setRows((prev) => prev.map((r) => (r.id === row.id ? next : r)))
+                    }
                     onRemove={() => setRows((prev) => prev.filter((r) => r.id !== row.id))}
                     onSwap={(dir) => setRows((prev) => swapImages(prev, i, i + dir))}
                   />

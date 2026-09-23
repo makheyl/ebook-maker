@@ -171,16 +171,25 @@ export function PageList() {
       !(e.target as HTMLElement).matches('button[aria-label^="Page "]')
     )
       return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      const next = pages[activeIndex + (e.key === 'ArrowDown' ? 1 : -1)];
-      if (next) {
-        e.preventDefault();
-        useUiStore.getState().setActivePage(next.id);
-        requestAnimationFrame(() =>
-          scrollRef.current?.querySelector<HTMLElement>(`[aria-current="page"]`)?.focus(),
-        );
-      }
-    }
+    const target =
+      e.key === 'ArrowDown'
+        ? activeIndex + 1
+        : e.key === 'ArrowUp'
+          ? activeIndex - 1
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? pages.length - 1
+              : null;
+    const next = target === null ? undefined : pages[target];
+    if (!next) return;
+    e.preventDefault();
+    useUiStore.getState().setActivePage(next.id);
+    // Wait for the virtualized list to render the row before moving focus to it.
+    setTimeout(
+      () => scrollRef.current?.querySelector<HTMLElement>(`[aria-current="page"]`)?.focus(),
+      60,
+    );
   };
 
   return (

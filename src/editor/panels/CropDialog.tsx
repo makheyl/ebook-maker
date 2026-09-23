@@ -18,7 +18,11 @@ import { assetUrls } from '../assets/asset-urls';
 import { docStore } from '../store/doc-store';
 import { getActivePage } from '../store/selectors';
 
-type AspectOption = { id: string; label: string; value: (asset: AssetRef, el: ImageElement) => number };
+type AspectOption = {
+  id: string;
+  label: string;
+  value: (asset: AssetRef, el: ImageElement) => number;
+};
 
 const ASPECTS: AspectOption[] = [
   { id: 'current', label: 'Current', value: (_, el) => el.width / el.height },
@@ -67,7 +71,15 @@ export function CropDialog({
   );
 }
 
-function CropBody({ element, asset, onDone }: { element: ImageElement; asset: AssetRef; onDone: () => void }) {
+function CropBody({
+  element,
+  asset,
+  onDone,
+}: {
+  element: ImageElement;
+  asset: AssetRef;
+  onDone: () => void;
+}) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [aspectId, setAspectId] = useState('current');
@@ -103,7 +115,9 @@ function CropBody({ element, asset, onDone }: { element: ImageElement; asset: As
     <>
       <DialogHeader>
         <DialogTitle>Crop image</DialogTitle>
-        <DialogDescription>Drag to reposition, scroll or use the slider to zoom. The original is kept.</DialogDescription>
+        <DialogDescription>
+          Drag to reposition, scroll or use the slider to zoom. The original is kept.
+        </DialogDescription>
       </DialogHeader>
       <div className="relative h-[min(60vh,480px)] overflow-hidden rounded-lg bg-neutral-900">
         {src && (

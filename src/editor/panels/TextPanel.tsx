@@ -86,7 +86,9 @@ export function TextPanel({ elements }: { elements: TextElement[] }) {
           variant="outline"
           aria-label="Bold"
           pressed={s.fontWeight >= 600}
-          onPressedChange={(on) => updateTextStyle({ fontWeight: on ? Math.min(700, font.weight[1]) : 400 })}
+          onPressedChange={(on) =>
+            updateTextStyle({ fontWeight: on ? Math.min(700, font.weight[1]) : 400 })
+          }
         >
           <Bold />
         </Toggle>
@@ -126,7 +128,9 @@ export function TextPanel({ elements }: { elements: TextElement[] }) {
           size="sm"
           variant="outline"
           value={s.verticalAlign}
-          onValueChange={(v) => v && updateTextStyle({ verticalAlign: v as TextElement['style']['verticalAlign'] })}
+          onValueChange={(v) =>
+            v && updateTextStyle({ verticalAlign: v as TextElement['style']['verticalAlign'] })
+          }
           className="w-full"
         >
           <ToggleGroupItem value="top" aria-label="Top" className="flex-1">
@@ -163,7 +167,9 @@ export function TextPanel({ elements }: { elements: TextElement[] }) {
         step={0.5}
         format={(v) => `${v}px`}
         gestureLabel="Letter spacing"
-        onChange={(letterSpacing) => updateTextStyle({ letterSpacing }, { coalesceKey: `ls:${key}` })}
+        onChange={(letterSpacing) =>
+          updateTextStyle({ letterSpacing }, { coalesceKey: `ls:${key}` })
+        }
       />
       <ColorField
         label="Highlight"

@@ -94,8 +94,16 @@ export function TextEditing({ view }: { view: PageView | null }) {
               if (el.type !== 'text') return;
               el.content = content;
               el.height = height;
-              if (el.name === 'Text' || el.name === original.content[0]?.runs[0]?.text.slice(0, 32)) {
-                el.name = content[0]?.runs.map((r) => r.text).join('').trim().slice(0, 32) || 'Text';
+              if (
+                el.name === 'Text' ||
+                el.name === original.content[0]?.runs[0]?.text.slice(0, 32)
+              ) {
+                el.name =
+                  content[0]?.runs
+                    .map((r) => r.text)
+                    .join('')
+                    .trim()
+                    .slice(0, 32) || 'Text';
               }
             }),
           { label: 'Edit text' },

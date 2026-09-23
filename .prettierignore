@@ -5,3 +5,4 @@ test-results
 playwright-report
 pnpm-lock.yaml
 ebook-builder-claude-code-prompt.md
+docs/screenshots

@@ -9,7 +9,12 @@
   overflow: hidden;
   background: var(--fp-bg);
   color: var(--fp-fg);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   outline: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: pan-y pinch-zoom;

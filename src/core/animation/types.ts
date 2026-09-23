@@ -5,7 +5,15 @@ export type Params = Record<string, ParamValue>;
 
 /** UI hints for a preset parameter (rendered by the Animation Pane). */
 export type ParamDef =
-  | { key: string; label: string; type: 'number'; min: number; max: number; step: number; unit?: string }
+  | {
+      key: string;
+      label: string;
+      type: 'number';
+      min: number;
+      max: number;
+      step: number;
+      unit?: string;
+    }
   | { key: string; label: string; type: 'select'; options: { value: string; label: string }[] };
 
 /**

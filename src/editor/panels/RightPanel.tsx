@@ -15,7 +15,10 @@ function DesignPanel() {
   const texts = selected.filter((e): e is TextElement => e.type === 'text');
   const images = selected.filter((e): e is ImageElement => e.type === 'image');
   const shapes = selected.filter((e): e is ShapeElement => e.type === 'shape');
-  const uniform = texts.length === selected.length || images.length === selected.length || shapes.length === selected.length;
+  const uniform =
+    texts.length === selected.length ||
+    images.length === selected.length ||
+    shapes.length === selected.length;
   return (
     <div>
       {uniform && texts.length > 0 && <TextPanel elements={texts} />}
@@ -45,7 +48,9 @@ export function RightPanel({ animate }: { animate?: React.ReactNode }) {
           <DesignPanel />
         </TabsContent>
         <TabsContent value="animate" className="min-h-0 flex-1 overflow-y-auto">
-          {animate ?? <p className="p-4 text-sm text-muted-foreground">Animations are coming soon.</p>}
+          {animate ?? (
+            <p className="p-4 text-sm text-muted-foreground">Animations are coming soon.</p>
+          )}
         </TabsContent>
         <TabsContent value="layers" className="min-h-0 flex-1 overflow-y-auto">
           <LayersPanel />
