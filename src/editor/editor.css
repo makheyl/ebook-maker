@@ -1,0 +1,56 @@
+/* Editor-only affordances layered on top of the shared page renderer. */
+
+.fl-mode-editor .fl-el {
+  cursor: default;
+}
+.fl-mode-editor .fl-el[data-locked] {
+  cursor: not-allowed;
+}
+.fl-mode-editor .fl-editing {
+  outline: none;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.fl-mode-editor .fl-editing-frame {
+  outline: 2px solid var(--selection);
+  outline-offset: 2px;
+}
+.fl-mode-editor .fl-el:not(.fl-editing-frame):hover {
+  outline: 1px solid color-mix(in oklab, var(--selection) 70%, transparent);
+}
+.fl-mode-editor {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* react-moveable handles, restyled to match the app. */
+.folio-moveable {
+  --moveable-color: var(--selection) !important;
+}
+.folio-moveable .moveable-line {
+  background: var(--selection) !important;
+}
+.folio-moveable .moveable-control {
+  background: #fff !important;
+  border: 1.5px solid var(--selection) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  width: 12px !important;
+  height: 12px !important;
+  margin-top: -6px !important;
+  margin-left: -6px !important;
+}
+.folio-moveable .moveable-control.moveable-rotation-control {
+  border-radius: 50%;
+}
+.folio-moveable .moveable-rotation-line {
+  display: none;
+}
+.folio-moveable .moveable-guideline,
+.folio-moveable .moveable-line.moveable-guideline {
+  background: #ff3d8b !important;
+}
+.selecto-selection {
+  border: 1px solid var(--selection) !important;
+  background: color-mix(in oklab, var(--selection) 12%, transparent) !important;
+}

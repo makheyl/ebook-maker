@@ -18,6 +18,7 @@ import type {
   Project,
   ShapeElement,
   TextElement,
+  TextStyle,
   Theme,
 } from './types';
 
@@ -61,7 +62,7 @@ type Box = { x: number; y: number; width: number; height: number };
 export function createTextElement(
   text: string,
   box: Box,
-  overrides: Partial<Omit<TextElement, 'type'>> = {},
+  overrides: Partial<Omit<TextElement, 'type' | 'style'>> & { style?: Partial<TextStyle> } = {},
 ): TextElement {
   return {
     id: newId('el'),

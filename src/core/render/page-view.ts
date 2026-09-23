@@ -30,6 +30,8 @@ export type PageView = {
   update(page: Page, assets: Readonly<Record<string, AssetRef>>): void;
   /** Forces image nodes to re-resolve their URLs (e.g. after assets finished loading). */
   refreshAssets(): void;
+  /** Rebuilds one element's content from data (e.g. to discard DOM edits after inline editing). */
+  rerender(elementId: string): void;
   getNodes(elementId: string): ElementNodes | undefined;
   readonly page: Page | null;
   destroy(): void;
@@ -166,6 +168,12 @@ export function createPageView(options: PageViewOptions): PageView {
           );
         }
       }
+    },
+    rerender(elementId) {
+      const entry = entries.get(elementId);
+      if (!entry) return;
+      applyFrame(entry.frame, entry.element, mode);
+      entry.anim.replaceChildren(buildContent(entry.element, entry.split, entry.assetRef));
     },
     getNodes: (id) => entries.get(id),
     get page() {

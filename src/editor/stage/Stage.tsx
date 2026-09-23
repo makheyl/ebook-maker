@@ -1,5 +1,5 @@
 import { Maximize, Minus, Plus } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import type { PageView } from '@/core/render';
 import { Button } from '@/ui/button';
 import {
@@ -76,50 +76,67 @@ function resolveScale(
 export type StageOverlayProps = {
   view: PageView | null;
   scale: number;
-  pageEl: HTMLElement | null;
+  viewportEl: HTMLElement | null;
+  contentEl: HTMLElement | null;
 };
+
+/** Converts a client point to page coordinates. */
+function toPagePoint(pageEl: HTMLElement, clientX: number, clientY: number, scale: number) {
+  const rect = pageEl.getBoundingClientRect();
+  return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale };
+}
 
 /**
  * The center canvas: the active page drawn by the shared renderer at the current zoom.
- * `overlay` renders selection/transform UI (added in the editing milestone).
+ * `overlay` renders selection/transform UI inside the page box (unscaled coordinates).
  */
-export function Stage({ overlay }: { overlay?: (props: StageOverlayProps) => React.ReactNode }) {
+export function Stage({
+  overlay,
+  onDropFiles,
+  onEditText,
+}: {
+  overlay?: (props: StageOverlayProps) => React.ReactNode;
+  onDropFiles?: (files: File[], at: { x: number; y: number }) => void;
+  onEditText?: (elementId: string, client: { x: number; y: number }) => void;
+}) {
   const project = useProject();
   const page = useActivePage();
   const zoom = useUiStore((s) => s.zoom);
   const scale = useUiStore((s) => s.scale);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const [viewportEl, setViewportEl] = useState<HTMLDivElement | null>(null);
+  const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [view, setView] = useState<PageView | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const { width: pw, height: ph } = project.pageSize;
 
   useLayoutEffect(() => {
-    const el = viewportRef.current!;
+    if (!viewportEl) return;
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
       setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
     });
-    ro.observe(el);
+    ro.observe(viewportEl);
     return () => ro.disconnect();
-  }, []);
+  }, [viewportEl]);
 
   useLayoutEffect(() => {
     useUiStore.getState().setScale(resolveScale(zoom, viewport, project.pageSize));
   }, [zoom, viewport, project.pageSize]);
 
-  // Ctrl/⌘ + wheel zooms around the stage.
+  // Ctrl/⌘ + wheel (and trackpad pinch) zooms the stage.
   useEffect(() => {
-    const el = viewportRef.current!;
+    if (!viewportEl) return;
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const { scale: s, setZoom } = useUiStore.getState();
       setZoom(Math.max(0.1, Math.min(4, s * (e.deltaY < 0 ? 1.1 : 1 / 1.1))));
     };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+    viewportEl.addEventListener('wheel', onWheel, { passive: false });
+    return () => viewportEl.removeEventListener('wheel', onWheel);
+  }, [viewportEl]);
 
   const onView = useCallback((v: PageView | null) => setView(v), []);
 
@@ -128,19 +145,37 @@ export function Stage({ overlay }: { overlay?: (props: StageOverlayProps) => Rea
   const left = (contentW - pw * scale) / 2;
   const top = (contentH - ph * scale) / 2;
 
+  const hasFiles = (e: React.DragEvent) => [...e.dataTransfer.types].includes('Files');
+
   return (
     <div className="relative min-w-0 flex-1 bg-canvas">
       <div
-        ref={viewportRef}
+        ref={setViewportEl}
         className="absolute inset-0 overflow-auto"
         data-testid="stage-viewport"
-        onPointerDown={(e) => {
-          if (e.target === e.currentTarget || e.target === e.currentTarget.firstChild) {
-            useUiStore.getState().clearSelection();
+        onDoubleClick={(e) => {
+          const frame = (e.target as HTMLElement).closest<HTMLElement>('.fl-mode-editor .fl-el');
+          if (frame?.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {
+            onEditText?.(frame.dataset.elementId!, { x: e.clientX, y: e.clientY });
           }
         }}
+        onDragOver={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setDragOver(false);
+        }}
+        onDrop={(e) => {
+          if (!hasFiles(e) || !pageEl) return;
+          e.preventDefault();
+          setDragOver(false);
+          onDropFiles?.([...e.dataTransfer.files], toPagePoint(pageEl, e.clientX, e.clientY, scale));
+        }}
       >
-        <div className="relative" style={{ width: contentW, height: contentH }}>
+        <div ref={setContentEl} className="relative" style={{ width: contentW, height: contentH }}>
           <div
             ref={setPageEl}
             className="absolute bg-white shadow-[0_1px_3px_rgba(0,0,0,.12),0_8px_24px_-6px_rgba(0,0,0,.18)]"
@@ -163,10 +198,15 @@ export function Stage({ overlay }: { overlay?: (props: StageOverlayProps) => Rea
                 onView={onView}
               />
             </div>
+            {overlay?.({ view, scale, viewportEl, contentEl })}
           </div>
-          {overlay?.({ view, scale, pageEl })}
         </div>
       </div>
+      {dragOver && (
+        <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-primary/5 text-sm font-medium text-primary">
+          Drop images to add them to this page
+        </div>
+      )}
       <ZoomControl />
     </div>
   );
