@@ -3,6 +3,7 @@ import { useHashLocation } from 'wouter/use-hash-location';
 import { Dashboard } from '@/dashboard/Dashboard';
 import { EditorRoute } from '@/editor/EditorRoute';
 import { Toaster } from '@/ui/sonner';
+import { QuickCreateWizard } from '@/wizard/QuickCreateWizard';
 import { ThemeProvider } from '@/ui/theme';
 import { TooltipProvider } from '@/ui/tooltip';
 
@@ -22,6 +23,7 @@ export function App() {
         <Router hook={useHashLocation}>
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/new" component={QuickCreateWizard} />
             <Route path="/p/:id/:mode?">
               {(params) => <EditorRoute key={params.id} id={params.id} mode={params.mode} />}
             </Route>
