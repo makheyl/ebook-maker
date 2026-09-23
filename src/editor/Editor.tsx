@@ -12,6 +12,7 @@ import { RightPanel } from './panels/RightPanel';
 import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
 import { InsertToolbar } from './stage/InsertToolbar';
+import { PivotHandle } from './stage/PivotHandle';
 import { SelectionLayer } from './stage/SelectionLayer';
 import { StageHints } from './stage/StageHints';
 import { Stage } from './stage/Stage';
@@ -65,6 +66,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
                   contentEl={contentEl}
                 />
                 <TextEditing view={view} />
+                <PivotHandle scale={scale} />
               </>
             )}
           />

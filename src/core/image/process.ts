@@ -1,3 +1,5 @@
+import { analyzeAlpha, sampleSize, type AlphaInfo } from '../character/alpha';
+
 /**
  * Image upload pipeline (runs in a Web Worker when possible, else on the main thread):
  * decode → downscale to ≤ maxEdge → encode WebP (fallback JPEG, or PNG when transparent)
@@ -24,7 +26,10 @@ export type ProcessedImage = {
   width: number;
   height: number;
   bytes: number;
-};
+} & AlphaInfo;
+
+/** Images with transparency (characters, stickers) are encoded a little finer to avoid halos. */
+const ALPHA_QUALITY = 0.95;
 
 export async function hashBytes(buffer: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', buffer);
@@ -68,6 +73,18 @@ function draw(source: CanvasImageSource, width: number, height: number): Canvas2
   return canvas;
 }
 
+/** Transparency and the box of visible pixels, from a small sample of the image. */
+export function alphaInfo(
+  source: CanvasImageSource & { width: number; height: number },
+): AlphaInfo {
+  const size = sampleSize(source.width, source.height);
+  const probe = draw(source, size.width, size.height);
+  const ctx = probe.getContext('2d') as
+    CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  const { data } = ctx.getImageData(0, 0, size.width, size.height);
+  return analyzeAlpha(data, size.width, size.height);
+}
+
 function hasTransparency(canvas: Canvas2D): boolean {
   const probe = draw(canvas, Math.min(64, canvas.width), Math.min(64, canvas.height));
   const ctx = probe.getContext('2d') as
@@ -104,7 +121,8 @@ export async function processImage(
     const size = fitWithin(bitmap.width, bitmap.height, options.maxEdge);
     const resized = size.width !== bitmap.width || size.height !== bitmap.height;
     const canvas = draw(bitmap, size.width, size.height);
-    let blob = await encode(canvas, options.quality);
+    const alpha = alphaInfo(canvas);
+    let blob = await encode(canvas, alpha.hasAlpha ? ALPHA_QUALITY : options.quality);
     // Small web-ready originals are kept as-is to avoid a lossy re-encode.
     const keepable = ['image/webp', 'image/jpeg', 'image/png'].includes(file.type);
     if (!resized && keepable && file.size <= blob.size) blob = file;
@@ -119,6 +137,7 @@ export async function processImage(
       width: size.width,
       height: size.height,
       bytes: blob.size,
+      ...alpha,
     };
   } finally {
     bitmap.close();

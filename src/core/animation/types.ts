@@ -55,6 +55,8 @@ export type BuildContext = {
   pageSize: PageSize;
   /** Set when the element is a character instance. */
   character?: Character;
+  /** The character's feet in element-local 0–1 coordinates. */
+  pivot?: { x: number; y: number };
   /** The step being built (custom keyframe tracks live on it). */
   step?: AnimationStep;
 };

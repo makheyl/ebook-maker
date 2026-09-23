@@ -37,3 +37,19 @@ export function visibleWidthLocal(
   const fraction = asset.opaqueBounds?.width ?? 1;
   return Math.min(1, (fraction * layout.width) / element.width);
 }
+
+/** Inverse of pivotToLocal: element-local 0–1 point → pivot in artwork coordinates (clamped). */
+export function localToPivot(
+  asset: Pick<AssetRef, 'width' | 'height'>,
+  element: Pick<ImageElement, 'crop' | 'width' | 'height' | 'flipX' | 'flipY'>,
+  local: { x: number; y: number },
+): Character['pivot'] {
+  const layout = imageLayout(asset, element.crop, element);
+  const lx = element.flipX ? 1 - local.x : local.x;
+  const ly = element.flipY ? 1 - local.y : local.y;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return {
+    x: clamp((lx * element.width - layout.left) / layout.width),
+    y: clamp((ly * element.height - layout.top) / layout.height),
+  };
+}

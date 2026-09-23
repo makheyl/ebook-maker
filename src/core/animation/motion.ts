@@ -15,12 +15,16 @@ export type MotionFrame = {
   scaleX?: number;
   scaleY?: number;
   opacity?: number;
+  /** Clips everything below this many px from the bottom (element-local, before transforms). */
+  clipBottom?: number;
   /** Easing from this frame to the next (named or CSS). */
   easing?: string;
 };
 
 export type MotionTracks = {
   element?: MotionFrame[];
+  /** Transform origin for the element track (default: the character's feet). */
+  elementOrigin?: string;
   idle?: MotionFrame[];
   /** Horizontal facing, as scaleX of the flip layer (−1 = mirrored). */
   face?: { offset: number; scaleX: number; easing?: string }[];
@@ -40,11 +44,14 @@ export function compileTransform(f: MotionFrame): string {
   return `translate(${round(x)}px, ${round(y)}px) rotate(${round(r)}deg) scale(${round(sx)}, ${round(sy)})`;
 }
 
-export function compileFrames(frames: readonly MotionFrame[]): Keyframe[] {
+export function compileFrames(frames: readonly MotionFrame[], origin?: string): Keyframe[] {
   const withOpacity = frames.some((f) => f.opacity !== undefined);
+  const withClip = frames.some((f) => f.clipBottom !== undefined);
   return frames.map((f) => {
     const kf: Keyframe = { offset: f.offset, transform: compileTransform(f) };
     if (withOpacity) kf.opacity = f.opacity ?? 1;
+    if (withClip) kf.clipPath = `inset(-200% -200% ${round(f.clipBottom ?? -10000)}px -200%)`;
+    if (origin) kf.transformOrigin = origin;
     if (f.easing) kf.easing = resolveEasing(f.easing);
     return kf;
   });
@@ -78,7 +85,10 @@ export function shadowFrames(
 export function compileMotion(tracks: MotionTracks, ctx: BuildContext): KeyframeSpec[] {
   const specs: KeyframeSpec[] = [];
   if (tracks.element?.length) {
-    specs.push({ target: 'element', keyframes: compileFrames(tracks.element) });
+    specs.push({
+      target: 'element',
+      keyframes: compileFrames(tracks.element, tracks.elementOrigin),
+    });
     if (ctx.character?.shadow.enabled) {
       specs.push({
         target: 'shadow',

@@ -99,10 +99,40 @@ export function buildText(element: TextElement, splitChars = false): HTMLElement
 
 // ─── Image ─────────────────────────────────────────────────────────────────────
 
+export const STRIP_COUNT = 16;
+/** Strips overlap slightly so no hairline seams show while they bend. */
+const STRIP_OVERLAP = 1;
+
+function buildImg(
+  element: ImageElement,
+  src: string,
+  layout: ReturnType<typeof imageLayout>,
+  top = 0,
+) {
+  const img = el('img', 'fl-img');
+  img.draggable = false;
+  img.decoding = 'async';
+  img.alt = '';
+  img.src = src;
+  img.style.left = `${layout.left}px`;
+  img.style.top = `${layout.top - top}px`;
+  img.style.width = `${layout.width}px`;
+  img.style.height = `${layout.height}px`;
+  const filter = filterCss(element.filters);
+  if (filter) img.style.filter = filter;
+  return img;
+}
+
+export type ImageBuildOptions = {
+  /** Render as this many horizontal strips (bending characters); 0 = one image. */
+  strips?: number;
+};
+
 export function buildImage(
   element: ImageElement,
   asset: AssetRef | undefined,
   resolve: AssetResolver,
+  options: ImageBuildOptions = {},
 ): HTMLElement {
   const box = el('div', 'fl-image');
   box.style.borderRadius = `${element.borderRadius}px`;
@@ -117,21 +147,32 @@ export function buildImage(
   const sx = element.flipX ? -1 : 1;
   const sy = element.flipY ? -1 : 1;
   if (sx !== 1 || sy !== 1) flip.style.transform = `scale(${sx}, ${sy})`;
-
-  const img = el('img', 'fl-img');
-  img.draggable = false;
-  img.decoding = 'async';
-  img.alt = element.alt ?? '';
-  img.src = src;
   const layout = imageLayout(asset, element.crop, element);
-  img.style.left = `${layout.left}px`;
-  img.style.top = `${layout.top}px`;
-  img.style.width = `${layout.width}px`;
-  img.style.height = `${layout.height}px`;
-  const filter = filterCss(element.filters);
-  if (filter) img.style.filter = filter;
 
-  flip.appendChild(img);
+  const n = Math.max(0, Math.floor(options.strips ?? 0));
+  if (n > 1) {
+    // Each strip shows its band of the same image; bending motions shear each strip.
+    const strips = el('div', 'fl-strips');
+    strips.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < n; i++) {
+      const top = (i * element.height) / n - (i > 0 ? STRIP_OVERLAP : 0);
+      const bottom = ((i + 1) * element.height) / n + (i < n - 1 ? STRIP_OVERLAP : 0);
+      const strip = el('div', 'fl-strip');
+      strip.style.top = `${top}px`;
+      strip.style.height = `${bottom - top}px`;
+      strip.appendChild(buildImg(element, src, layout, top));
+      strips.appendChild(strip);
+    }
+    flip.appendChild(strips);
+    if (element.alt) {
+      box.setAttribute('role', 'img');
+      box.setAttribute('aria-label', element.alt);
+    }
+  } else {
+    const img = buildImg(element, src, layout);
+    img.alt = element.alt ?? '';
+    flip.appendChild(img);
+  }
   box.appendChild(flip);
   return box;
 }

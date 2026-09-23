@@ -1,4 +1,5 @@
 import type { AnimationKind, ElementType } from '../../schema/types';
+import { CHARACTER_MOTIONS } from '../motions';
 import type { AnimationPreset } from '../types';
 import { fadeIn } from './fade-in';
 import { fadeOut } from './fade-out';
@@ -25,6 +26,7 @@ export const ANIMATION_PRESETS: readonly AnimationPreset[] = [
   fadeOut,
   slideOutDown,
   keyframesPreset,
+  ...CHARACTER_MOTIONS,
 ];
 
 const byId = new Map(ANIMATION_PRESETS.map((p) => [p.id, p]));

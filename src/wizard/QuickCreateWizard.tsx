@@ -8,6 +8,9 @@ import {
   getPageSizePreset,
   type AssetRef,
 } from '@/core/schema';
+import { produce } from 'immer';
+import { createCharacter } from '@/core/character';
+import { applyStoryPlan, suggestPlan, type StoryPlanRow } from '@/core/story';
 import { generatePages, PALETTES } from '@/core/templates';
 import { projectRepo } from '@/storage';
 import { Button } from '@/ui/button';
@@ -18,9 +21,10 @@ import { PageSizePicker } from '@/ui/PageSizePicker';
 import { cn } from '@/ui/utils';
 import type { WizardRow } from './pairing';
 import { LayoutStep, type LayoutChoice } from './steps/LayoutStep';
+import { CharacterStep, type WizardMascot } from './steps/CharacterStep';
 import { PagesStep } from './steps/PagesStep';
 
-const STEPS = ['Book', 'Pages', 'Layout'] as const;
+const STEPS = ['Book', 'Pages', 'Character', 'Layout'] as const;
 
 function Stepper({ step }: { step: number }) {
   return (
@@ -52,8 +56,21 @@ function Stepper({ step }: { step: number }) {
   );
 }
 
+/** Adds the character to every page — placed consistently, animated from the text if asked. */
+function withMascot(project: ReturnType<typeof createProject>, mascot: WizardMascot) {
+  const character = createCharacter(mascot.asset, mascot.name.trim() || 'My character');
+  const rows: StoryPlanRow[] = mascot.animate
+    ? suggestPlan(project)
+    : project.pages.map((p) => ({ pageId: p.id, include: true, reasons: [] }));
+  return produce(project, (d) => {
+    d.assets[mascot.asset.id] = mascot.asset;
+    d.characters[character.id] = character;
+    applyStoryPlan(d, character.id, rows);
+  });
+}
+
 /**
- * Quick-create: title + size → rows of text + image (bulk pairing) → layout template.
+ * Quick-create: title + size → rows of text + image (bulk pairing) → character → layout.
  * The generated pages are ordinary, fully editable elements.
  */
 export function QuickCreateWizard() {
@@ -68,6 +85,7 @@ export function QuickCreateWizard() {
     fontId: 'lora',
     animate: true,
   });
+  const [mascot, setMascot] = useState<WizardMascot | null>(null);
   const [busy, setBusy] = useState(false);
   const { width, height } = getPageSizePreset(sizeId);
   const pageSize = { width, height };
@@ -94,15 +112,16 @@ export function QuickCreateWizard() {
       const assets: Record<string, AssetRef> = {};
       for (const r of rows) if (r.image) assets[r.image.asset.id] = r.image.asset;
       project.assets = assets;
-      await projectRepo.save(project);
-      navigate(`/p/${project.id}`);
+      const book = mascot ? withMascot(project, mascot) : project;
+      await projectRepo.save(book);
+      navigate(`/p/${book.id}`);
     } catch (err) {
       toast.error(`Could not create the book: ${err instanceof Error ? err.message : String(err)}`);
       setBusy(false);
     }
   };
 
-  const canContinue = step === 0 || (step === 1 && rows.length > 0) || step === 2;
+  const canContinue = step === 0 || (step === 1 && rows.length > 0) || step >= 2;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -164,6 +183,17 @@ export function QuickCreateWizard() {
         )}
         {step === 2 && (
           <div className="grid gap-4">
+            <div className="mx-auto max-w-xl text-center">
+              <h2 className="text-xl font-semibold">Add a character (optional)</h2>
+              <p className="text-sm text-muted-foreground">
+                A mascot who appears throughout the story and moves with it.
+              </p>
+            </div>
+            <CharacterStep mascot={mascot} onChange={setMascot} />
+          </div>
+        )}
+        {step === 3 && (
+          <div className="grid gap-4">
             <div>
               <h2 className="text-xl font-semibold">Pick a layout</h2>
               <p className="text-sm text-muted-foreground">
@@ -187,7 +217,7 @@ export function QuickCreateWizard() {
             </Button>
           )}
           <div className="flex-1" />
-          {step < 2 ? (
+          {step < 3 ? (
             <Button onClick={() => setStep(step + 1)} disabled={!canContinue}>
               Continue <ArrowRight />
             </Button>

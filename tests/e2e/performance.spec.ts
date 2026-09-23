@@ -13,6 +13,7 @@ test('a 100-page book stays responsive (virtualized sidebar, fast page switches)
   await page.getByRole('button', { name: 'Add 100 lines' }).click();
   await expect(page.getByTestId('wizard-row')).toHaveCount(100);
   await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click(); // skip the character step
 
   const started = Date.now();
   await page.getByRole('button', { name: 'Create 100-page book' }).click();

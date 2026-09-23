@@ -1,4 +1,4 @@
-import { Circle, Image as ImageIcon, Minus, Shapes, Square, Type } from 'lucide-react';
+import { Circle, Image as ImageIcon, Minus, Shapes, Smile, Square, Type } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '@/ui/button';
 import {
@@ -8,10 +8,12 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu';
 import { insertImages, insertShape, insertText } from '../actions';
+import { insertCharacter } from '../character/actions';
 
 /** Floating "insert" bar at the top of the stage: text, image upload, basic shapes. */
 export function InsertToolbar() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const characterRef = useRef<HTMLInputElement>(null);
   return (
     <div
       role="toolbar"
@@ -35,6 +37,21 @@ export function InsertToolbar() {
           const files = [...(e.target.files ?? [])];
           e.target.value = '';
           void insertImages(files);
+        }}
+      />
+      <Button variant="ghost" size="sm" onClick={() => characterRef.current?.click()}>
+        <Smile /> Character
+      </Button>
+      <input
+        ref={characterRef}
+        type="file"
+        accept="image/png,image/webp,image/gif,image/*"
+        hidden
+        data-testid="insert-character-input"
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
+          e.target.value = '';
+          void insertCharacter(files);
         }}
       />
       <DropdownMenu>

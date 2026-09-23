@@ -31,6 +31,9 @@ test('quick-create a 3-page book from bulk images + text, then edit it', async (
   await page.getByRole('button', { name: 'Move image of page 1 down' }).click();
 
   await page.getByRole('button', { name: 'Continue' }).click();
+  // Skip the optional character step.
+  await expect(page.getByRole('heading', { name: 'Add a character (optional)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('radio', { name: 'Full-page picture' }).click();
   await page.getByRole('radio', { name: 'Cream' }).click();
   await page.getByRole('button', { name: 'Create 3-page book' }).click();

@@ -15,12 +15,17 @@ function tipsDismissed(): boolean {
   }
 }
 
-/** Empty-page guidance and a dismissible first-run tips card. */
+/**
+ * Empty-page guidance and a dismissible tips card. The card is open on empty pages; once the
+ * page has content it collapses to a small "Tips" pill so it never covers the artwork.
+ */
 export function StageHints() {
   const page = useActivePage();
   const previewing = useUiStore((s) => s.previewing);
   const [showTips, setShowTips] = useState(() => !tipsDismissed());
+  const [openedWithContent, setOpenedWithContent] = useState(false);
   const empty = page.elements.length === 0;
+  const expanded = empty || openedWithContent;
 
   return (
     <>
@@ -35,7 +40,17 @@ export function StageHints() {
           </div>
         </div>
       )}
-      {showTips && (
+      {showTips && !expanded && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="absolute bottom-3 left-3 z-10 shadow-md"
+          onClick={() => setOpenedWithContent(true)}
+        >
+          <Lightbulb className="text-amber-500" /> Tips
+        </Button>
+      )}
+      {showTips && expanded && (
         <aside
           aria-label="Tips"
           className="absolute bottom-3 left-3 z-10 w-72 rounded-xl border bg-popover p-3 text-sm shadow-md"
@@ -43,6 +58,11 @@ export function StageHints() {
           <div className="mb-2 flex items-center gap-2 font-medium">
             <Lightbulb className="size-4 text-amber-500" /> Quick tips
             <div className="flex-1" />
+            {!empty && (
+              <Button variant="ghost" size="xs" onClick={() => setOpenedWithContent(false)}>
+                Hide
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon-xs"

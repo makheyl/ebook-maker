@@ -6,6 +6,7 @@ import {
   buildImage,
   buildShape,
   buildText,
+  STRIP_COUNT,
   type AssetResolver,
 } from './nodes';
 import { backgroundCss, filterCss } from './styles';
@@ -44,6 +45,8 @@ export type ElementNodes = {
   shadow?: HTMLElement;
   element: PageElement;
   character?: Character;
+  /** The character's feet in element-local 0–1 coordinates (its transform origin). */
+  pivot?: { x: number; y: number };
 };
 
 export type PageView = {
@@ -109,6 +112,7 @@ function applyCharacter(entry: Entry, asset: AssetRef | undefined) {
   const { element: el, character } = entry;
   if (!character || el.type !== 'image' || !asset) return;
   const pivot = pivotToLocal(asset, el, character.pivot);
+  entry.pivot = pivot;
   const origin = `${pivot.x * 100}% ${pivot.y * 100}%`;
   entry.anim.style.transformOrigin = origin;
   if (entry.idle) entry.idle.style.transformOrigin = origin;
@@ -160,12 +164,17 @@ export function createPageView(options: PageViewOptions): PageView {
     }
   }
 
-  function buildContent(el: PageElement, split: boolean, asset: AssetRef | undefined): Element {
+  function buildContent(
+    el: PageElement,
+    split: boolean,
+    asset: AssetRef | undefined,
+    character?: Character,
+  ): Element {
     switch (el.type) {
       case 'text':
         return buildText(el, split);
       case 'image':
-        return buildImage(el, asset, resolveAsset);
+        return buildImage(el, asset, resolveAsset, { strips: character?.warp ? STRIP_COUNT : 0 });
       case 'shape':
         return buildShape(el);
       case 'button':
@@ -202,7 +211,7 @@ export function createPageView(options: PageViewOptions): PageView {
       idle.className = 'fl-idle';
       anim.appendChild(idle);
     }
-    (idle ?? anim).appendChild(buildContent(el, split, asset));
+    (idle ?? anim).appendChild(buildContent(el, split, asset, character));
     frame.appendChild(anim);
     applyFrame(frame, el, mode);
     const entry: Entry = {
@@ -249,7 +258,7 @@ export function createPageView(options: PageViewOptions): PageView {
           !sameContent(entry.element, el) || entry.assetRef !== asset || entry.split !== wantSplit;
         applyFrame(entry.frame, el, mode);
         if (contentChanged && !patchImageInPlace(entry, el, asset)) {
-          contentHost(entry).replaceChildren(buildContent(el, wantSplit, asset));
+          contentHost(entry).replaceChildren(buildContent(el, wantSplit, asset, entry.character));
         }
         entry.element = el;
         entry.assetRef = asset;
@@ -282,7 +291,9 @@ export function createPageView(options: PageViewOptions): PageView {
       for (const entry of entries.values()) {
         if (entry.element.type === 'image') {
           const asset = currentAssets[entry.element.assetId];
-          contentHost(entry).replaceChildren(buildContent(entry.element, false, asset));
+          contentHost(entry).replaceChildren(
+            buildContent(entry.element, false, asset, entry.character),
+          );
           applyCharacter(entry, asset);
         }
       }
@@ -291,7 +302,9 @@ export function createPageView(options: PageViewOptions): PageView {
       const entry = entries.get(elementId);
       if (!entry) return;
       applyFrame(entry.frame, entry.element, mode);
-      contentHost(entry).replaceChildren(buildContent(entry.element, entry.split, entry.assetRef));
+      contentHost(entry).replaceChildren(
+        buildContent(entry.element, entry.split, entry.assetRef, entry.character),
+      );
     },
     getNodes: (id) => entries.get(id),
     get page() {
@@ -324,11 +337,12 @@ function patchImageInPlace(entry: Entry, next: PageElement, asset: AssetRef | un
     return false;
   }
   const box = entry.anim.querySelector<HTMLElement>('.fl-image');
-  const img = box?.querySelector<HTMLImageElement>('.fl-img');
+  const imgs = box?.querySelectorAll<HTMLImageElement>('.fl-img');
   const flip = box?.querySelector<HTMLElement>('.fl-image-flip');
-  if (!box || !img || !flip) return false;
+  if (!box || !imgs?.length || !flip) return false;
   box.style.borderRadius = `${next.borderRadius}px`;
-  img.style.filter = filterCss(next.filters);
+  const filter = filterCss(next.filters);
+  imgs.forEach((img) => (img.style.filter = filter));
   const sx = next.flipX ? -1 : 1;
   const sy = next.flipY ? -1 : 1;
   flip.style.transform = sx !== 1 || sy !== 1 ? `scale(${sx}, ${sy})` : '';

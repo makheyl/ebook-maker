@@ -83,6 +83,8 @@ export async function importImageFiles(files: readonly File[]): Promise<{
         height: img.height,
         bytes: img.bytes,
         name: file.name.slice(0, 200) || undefined,
+        hasAlpha: img.hasAlpha,
+        ...(img.opaqueBounds ? { opaqueBounds: img.opaqueBounds } : {}),
       });
     } catch (err) {
       errors.push({ name: file.name, message: err instanceof Error ? err.message : String(err) });

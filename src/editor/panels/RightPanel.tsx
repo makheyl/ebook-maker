@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
 import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 import { ArrangeSection } from './ArrangeSection';
+import { CharacterPanel } from './CharacterPanel';
 import { ImagePanel } from './ImagePanel';
 import { LayersPanel } from './LayersPanel';
 import { PagePanel } from './PagePanel';
@@ -22,6 +23,7 @@ function DesignPanel() {
   return (
     <div>
       {uniform && texts.length > 0 && <TextPanel elements={texts} />}
+      {images.length === 1 && selected.length === 1 && <CharacterPanel element={images[0]!} />}
       {uniform && images.length > 0 && <ImagePanel elements={images} />}
       {uniform && shapes.length > 0 && <ShapePanel elements={shapes} />}
       <ArrangeSection elements={selected} />

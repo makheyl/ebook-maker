@@ -165,6 +165,7 @@ export function createPageTimeline(
       params,
       pageSize: opts.pageSize,
       character: nodes.character,
+      pivot: nodes.pivot,
       step,
     });
     let duration = step.duration;
@@ -182,8 +183,19 @@ export function createPageTimeline(
         : preset.kind === 'exit' || preset.holdEnd
           ? 'forwards'
           : 'none');
-    const easing = resolveEasing(step.easing);
 
+    applySpecs(
+      specs,
+      nodes,
+      { duration, delay, easing: resolveEasing(step.easing), fill, loop },
+      into,
+    );
+  }
+
+  type Timing = { duration: number; delay: number; easing: string; fill: FillMode; loop: boolean };
+
+  function applySpecs(specs: KeyframeSpec[], nodes: ElementNodes, timing: Timing, into: Tracked[]) {
+    const { duration, delay, easing, fill, loop } = timing;
     for (const spec of specs) {
       const specEasing = spec.easing ? resolveEasing(spec.easing) : easing;
       const targets = targetsFor(spec, nodes);
@@ -240,25 +252,25 @@ export function createPageTimeline(
       const id = element.idleOverride ?? nodes.character.idle?.preset;
       const motion = id === 'none' ? undefined : getIdleMotion(id);
       if (!motion) continue;
-      const frames = motion.frames({
+      const tracks = motion.build({
         element,
         character: nodes.character,
         intensity: nodes.character.idle?.intensity ?? 1,
+        pivot: nodes.pivot ?? { x: 0.5, y: 1 },
       });
-      const specs = compileMotion(
-        { idle: frames },
-        { element, params: {}, pageSize: opts.pageSize, character: nodes.character },
+      const specs = compileMotion(tracks, {
+        element,
+        params: {},
+        pageSize: opts.pageSize,
+        character: nodes.character,
+        pivot: nodes.pivot,
+      });
+      applySpecs(
+        specs,
+        nodes,
+        { duration: motion.duration, delay: 0, easing: 'linear', fill: 'none', loop: true },
+        idle,
       );
-      for (const spec of specs) {
-        for (const target of targetsFor(spec, nodes)) {
-          make(
-            target,
-            spec.keyframes,
-            { duration: motion.duration, iterations: Infinity, fill: 'none', easing: 'linear' },
-            idle,
-          );
-        }
-      }
     }
   }
 

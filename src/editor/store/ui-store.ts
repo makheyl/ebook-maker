@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type RightTab = 'design' | 'animate' | 'layers';
+export type RightTab = 'design' | 'animate' | 'interact' | 'layers';
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 export type Zoom = 'fit' | number;
 
@@ -19,6 +19,8 @@ type UiState = {
   previewing: boolean;
   /** The full-screen reader preview is open (editor shortcuts are suspended). */
   playerOpen: boolean;
+  /** Showing the draggable pivot (feet) handle for the selected character. */
+  editingPivot: boolean;
 };
 
 type UiActions = {
@@ -34,6 +36,7 @@ type UiActions = {
   setSaveStatus: (status: SaveStatus, error?: string | null) => void;
   setPreviewing: (previewing: boolean) => void;
   setPlayerOpen: (open: boolean) => void;
+  setEditingPivot: (on: boolean) => void;
 };
 
 export const useUiStore = create<UiState & UiActions>()((set) => ({
@@ -47,8 +50,10 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   saveError: null,
   previewing: false,
   playerOpen: false,
+  editingPivot: false,
 
   setPlayerOpen: (playerOpen) => set({ playerOpen }),
+  setEditingPivot: (editingPivot) => set({ editingPivot }),
   reset: (activePageId) =>
     set({
       activePageId,
@@ -59,9 +64,11 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
       saveStatus: 'saved',
       saveError: null,
       previewing: false,
+      editingPivot: false,
     }),
-  setActivePage: (activePageId) => set({ activePageId, selectedIds: [], editingTextId: null }),
-  select: (selectedIds) => set({ selectedIds, editingTextId: null }),
+  setActivePage: (activePageId) =>
+    set({ activePageId, selectedIds: [], editingTextId: null, editingPivot: false }),
+  select: (selectedIds) => set({ selectedIds, editingTextId: null, editingPivot: false }),
   toggleSelect: (id) =>
     set((s) => ({
       selectedIds: s.selectedIds.includes(id)
@@ -69,7 +76,7 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
         : [...s.selectedIds, id],
       editingTextId: null,
     })),
-  clearSelection: () => set({ selectedIds: [], editingTextId: null }),
+  clearSelection: () => set({ selectedIds: [], editingTextId: null, editingPivot: false }),
   setEditingText: (editingTextId) =>
     set((s) => ({ editingTextId, selectedIds: editingTextId ? [editingTextId] : s.selectedIds })),
   setZoom: (zoom) => set({ zoom }),

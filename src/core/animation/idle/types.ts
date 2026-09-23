@@ -1,7 +1,13 @@
 import type { Character, PageElement } from '../../schema/types';
-import type { MotionFrame } from '../motion';
+import type { MotionTracks } from '../motion';
 
-export type IdleContext = { element: PageElement; character: Character; intensity: number };
+export type IdleContext = {
+  element: PageElement;
+  character: Character;
+  intensity: number;
+  /** Feet in element-local 0–1 coordinates. */
+  pivot: { x: number; y: number };
+};
 
 /**
  * A looping idle motion for characters (breathing, floating…). Idle loops run on their own
@@ -12,7 +18,7 @@ export type IdleMotion = {
   label: string;
   /** One cycle, in ms. */
   duration: number;
-  /** Bends the character (needs strips). */
+  /** Bends the character (turns on strip rendering). */
   warp?: boolean;
-  frames(ctx: IdleContext): MotionFrame[];
+  build(ctx: IdleContext): MotionTracks;
 };

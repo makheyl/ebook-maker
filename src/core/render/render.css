@@ -185,3 +185,13 @@
   outline: 5px solid #8b73ff;
   outline-offset: 4px;
 }
+.fl-strips {
+  position: absolute;
+  inset: 0;
+}
+.fl-strip {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+}

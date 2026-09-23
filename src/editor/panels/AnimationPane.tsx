@@ -24,6 +24,7 @@ import {
   Sparkles,
   Square,
   Trash2,
+  Wand2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -63,9 +64,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { cn } from '@/ui/utils';
 import { previewAnimations, stopPreview } from '../animation/preview';
+import { AnimateStoryDialog } from '../character/AnimateStoryDialog';
 import { getStageView } from '../stage/stage-view';
 import { docStore } from '../store/doc-store';
-import { useActivePage, useSelectedElements } from '../store/selectors';
+import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
 import { Field, NumberField, Section } from './controls';
 
@@ -98,6 +100,38 @@ function change(label: string, recipe: Parameters<typeof docStore.change>[0]) {
   docStore.change(recipe, { label });
 }
 
+/** Entry point for animating the whole book's character from its text. */
+function StoryAutomation() {
+  const project = useProject();
+  const [open, setOpen] = useState(false);
+  const hasCharacter = Object.keys(project.characters).length > 0;
+  return (
+    <div className="border-b px-4 py-3">
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-full"
+        disabled={!hasCharacter}
+        onClick={() => setOpen(true)}
+      >
+        <Wand2 /> Animate my story
+      </Button>
+      {!hasCharacter && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Make a picture a character first (Design tab), or insert one with “Character”.
+        </p>
+      )}
+      <AnimateStoryDialog open={open} onOpenChange={setOpen} />
+    </div>
+  );
+}
+
+/** Presets for an element; a character's own moves come first. */
+function orderedPresets(kind: AnimationKind, element: PageElement, isCharacter: boolean) {
+  const list = presetsFor(kind, element.type, isCharacter);
+  return [...list.filter((p) => p.requiresCharacter), ...list.filter((p) => !p.requiresCharacter)];
+}
+
 function AddAnimationMenu({
   element,
   page,
@@ -107,6 +141,9 @@ function AddAnimationMenu({
   page: Page;
   onAdded: (id: string) => void;
 }) {
+  const project = useProject();
+  const isCharacter =
+    element?.type === 'image' && !!element.characterId && !!project.characters[element.characterId];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -114,7 +151,7 @@ function AddAnimationMenu({
           <Plus /> Add animation <ChevronDown className="opacity-60" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="max-h-[70vh] w-60 overflow-y-auto">
         {(['entrance', 'emphasis', 'exit'] as const).map((kind, i) => (
           <div key={kind}>
             {i > 0 && <DropdownMenuSeparator />}
@@ -122,7 +159,7 @@ function AddAnimationMenu({
               <span className={cn('size-2 rounded-full', KIND_STYLES[kind])} /> {KIND_LABELS[kind]}
             </DropdownMenuLabel>
             {element &&
-              presetsFor(kind, element.type).map((preset) => (
+              orderedPresets(kind, element, isCharacter).map((preset) => (
                 <DropdownMenuItem
                   key={preset.id}
                   onSelect={() => {
@@ -140,6 +177,9 @@ function AddAnimationMenu({
                   }}
                 >
                   {preset.label}
+                  {preset.requiresCharacter && (
+                    <span className="ml-auto text-[10px] text-muted-foreground">character</span>
+                  )}
                 </DropdownMenuItem>
               ))}
           </div>
@@ -224,7 +264,10 @@ function StepEditor({
           </SelectTrigger>
           <SelectContent>
             {ANIMATION_PRESETS.filter(
-              (p) => !p.appliesTo || p.appliesTo.includes(element.type),
+              (p) =>
+                p.id !== 'keyframes' &&
+                (!p.appliesTo || p.appliesTo.includes(element.type)) &&
+                (!p.requiresCharacter || (element.type === 'image' && !!element.characterId)),
             ).map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 <span className={cn('size-2 rounded-full', KIND_STYLES[p.kind])} /> {p.label}
@@ -471,6 +514,7 @@ export function AnimationPane() {
 
   return (
     <div>
+      <StoryAutomation />
       <Section title="Animations">
         <div className="flex gap-2">
           <AddAnimationMenu element={single} page={page} onAdded={setOpenId} />
