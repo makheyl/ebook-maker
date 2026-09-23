@@ -5,6 +5,15 @@ import {
   type PageTimeline,
 } from '../core/animation';
 import { MADE_WITH_LABEL } from '../core/brand';
+import {
+  initialReaderState,
+  isNextLocked,
+  nextTarget,
+  reduce,
+  type ReaderEffect,
+  type ReaderEvent,
+  type ReaderState,
+} from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
 import type { Page, Project } from '../core/schema';
 
@@ -34,6 +43,8 @@ const ICON_PATHS = {
   exitFullscreen:
     'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
   close: 'M18 6 6 18M6 6l12 12',
+  restart: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
+  lock: 'M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z',
 };
 
 function icon(name: keyof typeof ICON_PATHS): SVGSVGElement {
@@ -64,13 +75,16 @@ export class Player {
   private readonly nextBtn: HTMLButtonElement;
   private readonly fsBtn: HTMLButtonElement;
   private readonly pages: Page[];
+  private readonly endEl: HTMLElement;
+  private state: ReaderState;
+  /** Index of the page on screen (can lag `state.page` only inside `showPage`). */
   private index = -1;
-  private group = 0;
   private current: Mounted | null = null;
   private outgoing: Mounted | null = null;
   private transitionAnims: Animation[] = [];
   private scale = 1;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  private hintTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly cleanups: (() => void)[] = [];
   private readonly reducedMotion: boolean;
   private destroyed = false;
@@ -96,6 +110,7 @@ export class Player {
     controls.setAttribute('role', 'toolbar');
     controls.setAttribute('aria-label', 'Book navigation');
     this.prevBtn = this.button('Previous page', 'prev', () => this.prev());
+    if (!project.reader.showNavButtons) controls.classList.add('fp-minimal');
     this.nextBtn = this.button('Next', 'next', () => this.next());
     this.indicator = el('span', 'fp-indicator');
     this.fsBtn = this.button('Enter full screen', 'fullscreen', () => this.toggleFullscreen());
@@ -114,7 +129,8 @@ export class Player {
     this.live = el('div', 'fl-sr-only');
     this.live.setAttribute('aria-live', 'polite');
 
-    this.root.append(stage, controls, bar, this.live);
+    this.endEl = this.buildEnd();
+    this.root.append(stage, controls, bar, this.endEl, this.live);
     if (opts.showBadge) {
       const badge = el('div', 'fp-badge', MADE_WITH_LABEL);
       this.root.appendChild(badge);
@@ -123,7 +139,9 @@ export class Player {
 
     this.bindEvents(stage);
     this.layout();
-    this.goTo(Math.max(0, Math.min(opts.startPage ?? 0, this.pages.length - 1)), 0);
+    const start = Math.max(0, Math.min(opts.startPage ?? 0, this.pages.length - 1));
+    this.state = initialReaderState(start);
+    this.showPage(start, 0);
     this.root.focus({ preventScroll: true });
   }
 
@@ -146,37 +164,166 @@ export class Player {
   /** Advances the next click group on this page, or turns to the next page. */
   next(): void {
     if (this.finishTransition()) return;
-    const tl = this.current?.timeline;
-    if (tl) {
-      if (tl.isRunning(this.group)) {
-        tl.finish(this.group);
-        return;
-      }
-      if (this.group + 1 < tl.groupCount) {
-        this.group++;
-        void tl.play(this.group);
-        this.updateChrome();
-        return;
-      }
-    }
-    if (this.index < this.pages.length - 1) this.goTo(this.index + 1, 1);
+    this.dispatch({ type: 'next', groupRunning: this.groupRunning() });
   }
 
+  /** Goes back: to the page the reader came from (after a choice), else the previous page. */
   prev(): void {
     this.finishTransition();
-    if (this.index > 0) this.goTo(this.index - 1, -1);
+    this.dispatch({ type: 'prev' });
   }
 
-  /** Shows page `i`. direction 1/-1 animates the page transition; 0 shows it immediately. */
-  goTo(i: number, direction: 1 | -1 | 0 = i > this.index ? 1 : -1): void {
-    if (i < 0 || i >= this.pages.length || i === this.index || this.destroyed) return;
+  /** Jumps to page `i`. direction 1/-1 animates the page transition; 0 shows it immediately. */
+  goTo(i: number, direction?: 1 | -1 | 0): void {
     this.finishTransition();
+    this.dispatch({ type: 'goto', page: i, direction });
+  }
+
+  /** Starts the book again from the first page. */
+  restart(): void {
+    this.finishTransition();
+    this.dispatch({ type: 'restart' });
+  }
+
+  /** Reader state (for tests and the in-app preview). */
+  get readerState(): Readonly<ReaderState> {
+    return this.state;
+  }
+
+  // ─── State machine ───────────────────────────────────────────────────────────
+
+  private groupRunning(): boolean {
+    return !!this.current?.timeline?.isRunning(this.state.group);
+  }
+
+  private dispatch(event: ReaderEvent): void {
+    if (this.destroyed) return;
+    const { state, effects } = reduce(this.opts.project, this.state, event);
+    this.state = state;
+    for (const effect of effects) this.apply(effect);
+    this.updateChrome();
+  }
+
+  private apply(effect: ReaderEffect): void {
+    const tl = this.current?.timeline;
+    switch (effect.type) {
+      case 'showPage':
+        this.showPage(effect.page, effect.direction);
+        break;
+      case 'playGroup':
+        void tl?.play(effect.group);
+        break;
+      case 'finishGroup':
+        tl?.finish(effect.group);
+        break;
+      case 'playStep':
+        void tl?.playStep(effect.stepId);
+        break;
+      case 'hint':
+        this.hint();
+        break;
+      case 'unlocked':
+        this.say('The next page is unlocked.');
+        break;
+      case 'showEnd':
+        this.showEnd(true);
+        break;
+      case 'hideEnd':
+        this.showEnd(false);
+        break;
+      case 'burst':
+      case 'collect':
+        break;
+    }
+  }
+
+  private tap(elementId: string): void {
+    this.finishTransition();
+    this.dispatch({ type: 'tap', elementId, groupRunning: this.groupRunning() });
+  }
+
+  /** Shows the reader where to tap when the page can't be turned yet. */
+  private hint(): void {
+    if (!this.opts.project.reader.hints) return;
+    this.say('Tap something on the page to continue.');
+    this.root.classList.remove('fp-hinting');
+    void this.root.offsetWidth;
+    this.root.classList.add('fp-hinting');
+    clearTimeout(this.hintTimer);
+    this.hintTimer = setTimeout(() => this.root.classList.remove('fp-hinting'), 1600);
+  }
+
+  private say(text: string): void {
+    this.live.textContent = text;
+  }
+
+  private buildEnd(): HTMLElement {
+    const end = el('div', 'fp-end');
+    end.hidden = true;
+    end.setAttribute('role', 'dialog');
+    end.setAttribute('aria-modal', 'false');
+    end.setAttribute('aria-labelledby', 'fp-end-title');
+    const card = el('div', 'fp-end-card');
+    const title = el('h2', 'fp-end-title', 'The End');
+    title.id = 'fp-end-title';
+    const actions = el('div', 'fp-end-actions');
+    const again = el('button', 'fp-end-btn fp-end-primary');
+    again.type = 'button';
+    again.append(icon('restart'), document.createTextNode('Read again'));
+    again.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.restart();
+    });
+    const back = el('button', 'fp-end-btn', 'Back');
+    back.type = 'button';
+    back.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.prev();
+    });
+    actions.append(back, again);
+    card.append(title, actions);
+    end.appendChild(card);
+    return end;
+  }
+
+  private showEnd(show: boolean): void {
+    this.endEl.hidden = !show;
+    this.root.classList.toggle('fp-ended', show);
+    if (this.current) this.current.layer.inert = show;
+    if (show) {
+      this.say('The End.');
+      this.endEl
+        .querySelector<HTMLButtonElement>('.fp-end-primary')
+        ?.focus({ preventScroll: true });
+    } else if (this.endEl.contains(document.activeElement)) {
+      this.root.focus({ preventScroll: true });
+    }
+  }
+
+  /** Shows page `i` (effect of the state machine). */
+  private showPage(i: number, direction: 1 | -1 | 0): void {
+    if (i < 0 || i >= this.pages.length || this.destroyed) return;
+    if (i === this.index) {
+      // Restarting on the same page: replay it from the start.
+      if (this.current?.timeline) {
+        if (document.activeElement && this.current.layer.contains(document.activeElement)) {
+          this.root.focus({ preventScroll: true });
+        }
+        this.current.timeline.cancel();
+        this.unmountPage(this.current);
+        this.current = null;
+        this.index = -1;
+      } else return;
+    }
+    this.finishTransition();
+    // A story button that turned the page is about to disappear: keep keyboard focus in the book.
+    const active = document.activeElement;
+    const hadFocus = !!active && !!this.current?.layer.contains(active);
     const page = this.pages[i]!;
     const incoming = this.mountPage(page);
     const previous = this.current;
     this.current = incoming;
     this.index = i;
-    this.group = 0;
 
     // Timeline built before the page is revealed so entrances start hidden.
     incoming.timeline = createPageTimeline(page, (id) => incoming.view.getNodes(id), {
@@ -185,10 +332,7 @@ export class Player {
     });
     incoming.timeline.startIdle();
     // Going back shows the page as it ends; going forward plays it.
-    if (direction === -1) {
-      incoming.timeline.finishAll();
-      this.group = incoming.timeline.groupCount - 1;
-    }
+    if (direction === -1) incoming.timeline.finishAll();
 
     const transition = getTransition(
       direction === -1 ? (this.pages[i + 1]?.transition.preset ?? 'none') : page.transition.preset,
@@ -197,6 +341,7 @@ export class Player {
       direction === -1 ? (this.pages[i + 1]?.transition.duration ?? 0) : page.transition.duration;
     const animated = previous && direction !== 0 && transition.id !== 'none' && duration > 0;
 
+    if (hadFocus) this.root.focus({ preventScroll: true });
     if (previous) {
       previous.layer.setAttribute('aria-hidden', 'true');
       previous.layer.inert = true;
@@ -233,13 +378,14 @@ export class Player {
 
     this.preloadAround(i);
     this.updateChrome();
-    this.live.textContent = `Page ${i + 1} of ${this.pages.length}`;
+    this.say(`Page ${i + 1} of ${this.pages.length}`);
   }
 
   destroy(): void {
     this.destroyed = true;
     this.cleanups.forEach((fn) => fn());
     clearTimeout(this.idleTimer);
+    clearTimeout(this.hintTimer);
     for (const a of this.transitionAnims) a.cancel();
     if (this.outgoing) this.unmountPage(this.outgoing);
     if (this.current) this.unmountPage(this.current);
@@ -319,15 +465,28 @@ export class Player {
   }
 
   private updateChrome(): void {
+    if (this.index < 0) return;
     const n = this.pages.length;
+    const { ended, history, group } = this.state;
     this.indicator.textContent = `${this.index + 1} / ${n}`;
-    this.progress.style.width = `${((this.index + 1) / n) * 100}%`;
-    this.prevBtn.disabled = this.index === 0;
+    this.progress.style.width = `${(ended ? 1 : (this.index + 1) / n) * 100}%`;
+    this.prevBtn.disabled = this.index === 0 && !history.length && !ended;
     const tl = this.current?.timeline;
-    const moreOnPage = !!tl && this.group + 1 < tl.groupCount;
-    this.nextBtn.disabled = this.index === n - 1 && !moreOnPage;
-    this.nextBtn.setAttribute('aria-label', moreOnPage ? 'Next animation' : 'Next page');
-    this.nextBtn.title = moreOnPage ? 'Next animation' : 'Next page';
+    const moreOnPage = !!tl && group + 1 < tl.groupCount;
+    const locked = !moreOnPage && isNextLocked(this.opts.project, this.state);
+    const toEnd = !moreOnPage && nextTarget(this.opts.project, this.index) === 'end';
+    this.nextBtn.disabled = ended;
+    this.nextBtn.classList.toggle('fp-locked', locked);
+    this.nextBtn.replaceChildren(icon(locked ? 'lock' : 'next'));
+    const label = moreOnPage
+      ? 'Next animation'
+      : locked
+        ? 'Next page (locked — finish this page first)'
+        : toEnd
+          ? 'Finish the book'
+          : 'Next page';
+    this.nextBtn.setAttribute('aria-label', label);
+    this.nextBtn.title = label;
   }
 
   private button(
@@ -363,11 +522,33 @@ export class Player {
       this.cleanups.push(() => target.removeEventListener(type, fn as EventListener, options));
     };
 
+    const interactiveOf = (target: EventTarget | null) =>
+      target instanceof Element ? target.closest<HTMLElement>('.fp-page [data-interactive]') : null;
+    const elementIdOf = (node: HTMLElement) => node.dataset.elementId;
+
     on(this.root, 'keydown', (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const key = e.key;
+      const target = e.target as HTMLElement;
+      if (key === ' ' || key === 'Enter') {
+        // Buttons (story buttons and the reader's own) handle these keys with a click.
+        if (target.closest('button')) return;
+        const interactive = interactiveOf(target);
+        if (interactive) {
+          e.preventDefault();
+          const id = elementIdOf(interactive);
+          if (id) this.tap(id);
+          return;
+        }
+      }
+      if (this.state.ended && key !== 'ArrowLeft' && key !== 'PageUp' && key !== 'Backspace') {
+        if (key === 'Home') {
+          e.preventDefault();
+          this.restart();
+        }
+        return;
+      }
       if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(key)) {
-        if (key === 'Enter' && (e.target as HTMLElement).closest('button')) return;
         e.preventDefault();
         this.next();
       } else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(key)) {
@@ -376,7 +557,8 @@ export class Player {
       } else if (key === 'Home') {
         e.preventDefault();
         this.goTo(0, -1);
-      } else if (key === 'End') {
+      } else if (key === 'End' && !this.opts.project.pages.some((p) => p.flow)) {
+        // Only for straight-through books: in a branching one "the last page" means nothing.
         e.preventDefault();
         this.goTo(this.pages.length - 1, 1);
       } else if (key === 'f' || key === 'F') {
@@ -386,20 +568,38 @@ export class Player {
       }
     });
 
+    // Taps on story buttons, hotspots and characters run their actions (never turn the page).
+    on(stage, 'click', (e) => {
+      const interactive = interactiveOf(e.target);
+      const id = interactive && elementIdOf(interactive);
+      if (id) {
+        e.stopPropagation();
+        this.tap(id);
+      }
+    });
+
     // Click / tap the page to advance; swipe to turn.
-    let start: { x: number; y: number; t: number } | null = null;
+    let start: { x: number; y: number; t: number; interactive: boolean } | null = null;
     on(stage, 'pointerdown', (e) => {
-      start = { x: e.clientX, y: e.clientY, t: Date.now() };
+      start = {
+        x: e.clientX,
+        y: e.clientY,
+        t: Date.now(),
+        interactive: !!interactiveOf(e.target),
+      };
     });
     on(stage, 'pointerup', (e) => {
       if (!start) return;
       const dx = e.clientX - start.x;
       const dy = e.clientY - start.y;
+      const { interactive } = start;
       start = null;
+      if (this.state.ended) return;
       if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
         if (dx < 0) this.next();
         else this.prev();
       } else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+        if (interactive || !this.opts.project.reader.tapToAdvance) return;
         if (window.getSelection()?.toString()) return;
         this.next();
       }

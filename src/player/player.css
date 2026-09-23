@@ -155,9 +155,120 @@
     bottom: 76px;
   }
 }
+/* Story buttons, hotspots and tappable characters. */
+.fp-page [data-interactive] {
+  cursor: pointer;
+}
+.fp-page [data-interactive]:focus-visible,
+.fp-page [data-interactive] .fl-button:focus-visible {
+  outline: 3px solid var(--fp-accent);
+  outline-offset: 3px;
+}
+/* "Tap something to continue": locked pages glow what can be tapped. */
+.fp-hinting .fp-page [data-interactive] {
+  animation: fp-hint 0.8s ease-in-out 2;
+}
+@keyframes fp-hint {
+  50% {
+    filter: drop-shadow(0 0 10px #ffd84d) drop-shadow(0 0 3px #ffb300);
+  }
+}
+.fp-btn.fp-locked {
+  color: #ffd84d;
+}
+.fp-minimal .fp-btn:not(:last-child) {
+  display: none;
+}
+
+/* The End */
+.fp-end {
+  position: absolute;
+  inset: 0 0 72px;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 14, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: fp-fade 0.4s ease both;
+}
+.fp-end[hidden] {
+  display: none;
+}
+.fp-end-card {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+  padding: 32px 40px;
+  border-radius: 20px;
+  background: #fffdf7;
+  color: #1d1b26;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
+  animation: fp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.fp-end-title {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(36px, 7vw, 64px);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.fp-end-actions {
+  display: flex;
+  gap: 10px;
+}
+.fp-end-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fp-end-primary {
+  border-color: transparent;
+  background: var(--fp-accent);
+  color: #fff;
+}
+.fp-end-btn:focus-visible {
+  outline: 3px solid var(--fp-accent);
+  outline-offset: 2px;
+}
+.fp-end-btn .fp-icon {
+  width: 18px;
+  height: 18px;
+}
+@keyframes fp-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fp-progress-bar,
   .fp-controls {
     transition: none;
+  }
+  .fp-end,
+  .fp-end-card {
+    animation: none;
+  }
+  /* A steady glow instead of a pulse. */
+  .fp-hinting .fp-page [data-interactive] {
+    animation: none;
+    filter: drop-shadow(0 0 6px #ffd84d) drop-shadow(0 0 2px #ffb300);
   }
 }

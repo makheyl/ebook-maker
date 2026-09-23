@@ -1,16 +1,28 @@
-import { Circle, Image as ImageIcon, Minus, Shapes, Smile, Square, Type } from 'lucide-react';
+import {
+  Circle,
+  Image as ImageIcon,
+  Minus,
+  MousePointerClick,
+  Shapes,
+  Smile,
+  Square,
+  SquareDashed,
+  Type,
+} from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '@/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu';
 import { insertImages, insertShape, insertText } from '../actions';
 import { insertCharacter } from '../character/actions';
+import { BUTTON_PRESETS, insertButton, insertHotspot } from '../interaction/actions';
 
-/** Floating "insert" bar at the top of the stage: text, image upload, basic shapes. */
+/** Floating "insert" bar at the top of the stage: text, images, characters, shapes, buttons. */
 export function InsertToolbar() {
   const fileRef = useRef<HTMLInputElement>(null);
   const characterRef = useRef<HTMLInputElement>(null);
@@ -69,6 +81,33 @@ export function InsertToolbar() {
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => insertShape('line')}>
             <Minus /> Line
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <MousePointerClick /> Button
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="w-60">
+          {BUTTON_PRESETS.map((p) => (
+            <DropdownMenuItem key={p.id} onSelect={() => insertButton(p.id)}>
+              <span className="grid">
+                <span>{p.label}</span>
+                <span className="text-xs text-muted-foreground">{p.hint}</span>
+              </span>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => insertHotspot()}>
+            <SquareDashed />
+            <span className="grid">
+              <span>Tap area</span>
+              <span className="text-xs text-muted-foreground">
+                Invisible — make part of a picture tappable
+              </span>
+            </span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
