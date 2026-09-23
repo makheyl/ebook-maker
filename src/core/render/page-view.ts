@@ -62,6 +62,7 @@ export type PageView = {
   rerender(elementId: string): void;
   getNodes(elementId: string): ElementNodes | undefined;
   readonly page: Page | null;
+  readonly assets: Readonly<Record<string, AssetRef>>;
   readonly characters: Readonly<Record<string, Character>>;
   destroy(): void;
 };
@@ -309,6 +310,9 @@ export function createPageView(options: PageViewOptions): PageView {
     getNodes: (id) => entries.get(id),
     get page() {
       return current;
+    },
+    get assets() {
+      return currentAssets;
     },
     get characters() {
       return currentCharacters;

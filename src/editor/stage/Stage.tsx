@@ -1,4 +1,4 @@
-import { Maximize, Minus, Plus } from 'lucide-react';
+import { GanttChart, Maximize, Minus, Plus } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import type { PageView } from '@/core/render';
 import { Button } from '@/ui/button';
@@ -14,6 +14,7 @@ import { useUiStore, type Zoom } from '../store/ui-store';
 import { elementsNeedingCharSplit } from '@/core/animation';
 import { PageCanvas } from './PageCanvas';
 import { setStageView } from './stage-view';
+import { endScrub, isScrubbing } from '../timeline/session';
 import { stepZoom, ZOOM_STEPS } from './zoom';
 
 const PAD = 48;
@@ -22,8 +23,19 @@ function ZoomControl() {
   const zoom = useUiStore((s) => s.zoom);
   const scale = useUiStore((s) => s.scale);
   const setZoom = useUiStore((s) => s.setZoom);
+  const timelineOpen = useUiStore((s) => s.timelineOpen);
   return (
     <div className="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border bg-popover p-0.5 shadow-sm">
+      <Button
+        variant={timelineOpen ? 'secondary' : 'ghost'}
+        size="xs"
+        aria-pressed={timelineOpen}
+        title="Timeline (T)"
+        onClick={() => useUiStore.getState().setTimelineOpen(!timelineOpen)}
+      >
+        <GanttChart /> Timeline
+      </Button>
+      <div className="mx-0.5 h-4 w-px bg-border" />
       <Button
         variant="ghost"
         size="icon-xs"
@@ -161,6 +173,9 @@ export function Stage({
         role="region"
         aria-label="Page canvas"
         aria-describedby="stage-help"
+        onPointerDownCapture={() => {
+          if (isScrubbing()) endScrub();
+        }}
         onDoubleClick={(e) => {
           const frame = (e.target as HTMLElement).closest<HTMLElement>('.fl-mode-editor .fl-el');
           if (frame?.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {

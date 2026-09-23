@@ -223,6 +223,7 @@ export function createPageTimeline(
             easing: specEasing,
             fill,
             iterations: loop ? Infinity : (spec.iterations ?? 1),
+            ...(spec.composite ? { composite: spec.composite } : {}),
           },
           into,
         );

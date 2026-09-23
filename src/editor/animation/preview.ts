@@ -2,6 +2,7 @@ import { createPageTimeline, type PageTimeline } from '@/core/animation';
 import type { PageView } from '@/core/render';
 import type { Page, PageSize } from '@/core/schema';
 import { useUiStore } from '../store/ui-store';
+import { endScrub, isScrubbing } from '../timeline/session';
 
 /**
  * Plays a page's animations on the editor stage with the same runtime as the exported book.
@@ -21,6 +22,7 @@ export async function previewAnimations(
   onlyStepIds?: readonly string[],
 ): Promise<void> {
   stopPreview();
+  if (isScrubbing()) endScrub();
   useUiStore.getState().setPreviewing(true);
   const timeline = createPageTimeline(page, (id) => view.getNodes(id), {
     pageSize,

@@ -31,3 +31,4 @@ export {
 } from './timeline';
 export { TRANSITIONS, getTransition, type TransitionDef } from './transitions';
 export { createAnimationStep } from './factory';
+export { bakeStep, canBake, framesToTracks } from './bake';

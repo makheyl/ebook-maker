@@ -11,6 +11,7 @@ import {
   selectAll,
 } from './actions';
 import { stopPreview } from './animation/preview';
+import { endScrub } from './timeline/session';
 import { stepZoom } from './stage/zoom';
 import { getSelectedElements } from './store/selectors';
 import { useUiStore } from './store/ui-store';
@@ -51,7 +52,10 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
       }
       if (isTypingTarget(e.target)) return;
       if (ui.previewing) {
-        if (e.key === 'Escape') stopPreview();
+        if (e.key === 'Escape') {
+          stopPreview();
+          endScrub();
+        }
         return;
       }
 
@@ -96,6 +100,12 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
         return;
       }
       if (mod) return;
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        ui.setTimelineOpen(!ui.timelineOpen);
+        return;
+      }
 
       switch (e.key) {
         case 'Delete':

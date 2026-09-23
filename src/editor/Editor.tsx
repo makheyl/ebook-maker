@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { insertImages } from './actions';
 import { assetUrls } from './assets/asset-urls';
@@ -12,6 +12,7 @@ import { RightPanel } from './panels/RightPanel';
 import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
 import { InsertToolbar } from './stage/InsertToolbar';
+import { MotionPathOverlay } from './stage/MotionPathOverlay';
 import { PivotHandle } from './stage/PivotHandle';
 import { SelectionLayer } from './stage/SelectionLayer';
 import { StageHints } from './stage/StageHints';
@@ -21,6 +22,9 @@ import { TextEditing } from './stage/TextEditing';
 import { useProject } from './store/selectors';
 import { useUiStore } from './store/ui-store';
 import { TopBar } from './topbar/TopBar';
+
+// The timeline is only loaded when opened.
+const TimelineDock = lazy(() => import('./timeline/TimelineDock'));
 
 export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
   const project = useProject();
@@ -37,6 +41,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
   );
   const closePreview = useCallback(() => navigate(`/p/${project.id}`), [navigate, project.id]);
   const [exportOpen, setExportOpen] = useState(false);
+  const timelineOpen = useUiStore((s) => s.timelineOpen);
   useEditorShortcuts(shortcutOpts);
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
@@ -50,28 +55,36 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
       <div className="flex min-h-0 flex-1">
         <PageList />
-        <main className="relative isolate flex min-w-0 flex-1" aria-label="Page editor">
-          <Stage
-            onDropFiles={(files, at) => void insertImages(files, at)}
-            onEditText={(id, point) => {
-              setPendingCaret(point);
-              useUiStore.getState().setEditingText(id);
-            }}
-            overlay={({ view, scale, viewportEl, contentEl }) => (
-              <>
-                <SelectionLayer
-                  view={view}
-                  scale={scale}
-                  viewportEl={viewportEl}
-                  contentEl={contentEl}
-                />
-                <TextEditing view={view} />
-                <PivotHandle scale={scale} />
-              </>
-            )}
-          />
-          <InsertToolbar />
-          <StageHints />
+        <main className="isolate flex min-w-0 flex-1 flex-col" aria-label="Page editor">
+          <div className="relative flex min-h-0 flex-1">
+            <Stage
+              onDropFiles={(files, at) => void insertImages(files, at)}
+              onEditText={(id, point) => {
+                setPendingCaret(point);
+                useUiStore.getState().setEditingText(id);
+              }}
+              overlay={({ view, scale, viewportEl, contentEl }) => (
+                <>
+                  <SelectionLayer
+                    view={view}
+                    scale={scale}
+                    viewportEl={viewportEl}
+                    contentEl={contentEl}
+                  />
+                  <TextEditing view={view} />
+                  <PivotHandle scale={scale} />
+                  <MotionPathOverlay scale={scale} />
+                </>
+              )}
+            />
+            <InsertToolbar />
+            <StageHints />
+          </div>
+          {timelineOpen && (
+            <Suspense fallback={<div className="h-60 shrink-0 border-t bg-sidebar" />}>
+              <TimelineDock />
+            </Suspense>
+          )}
         </main>
         <RightPanel animate={<AnimationPane />} />
       </div>

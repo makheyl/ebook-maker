@@ -80,9 +80,10 @@ test('reader: click groups, keyboard, click and swipe navigation, letterboxing',
   const b = (await book.boundingBox())!;
   expect(b.width / b.height).toBeCloseTo(1600 / 1200, 1);
   await page.setViewportSize({ width: 600, height: 900 });
+  // The reader re-lays out on its resize observer; wait for it.
+  await expect.poll(async () => (await book.boundingBox())!.width).toBeLessThanOrEqual(600);
   const narrow = (await book.boundingBox())!;
   expect(narrow.width / narrow.height).toBeCloseTo(1600 / 1200, 1);
-  expect(narrow.width).toBeLessThanOrEqual(600);
 
   await page.keyboard.press('Escape');
   await expect(reader(page)).toHaveCount(0);

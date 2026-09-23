@@ -45,10 +45,10 @@ function checkOffsets(frames: readonly { offset: number }[], id: string) {
 }
 
 describe('character motions', () => {
-  it('has 22 step motions with unique ids, all character-only', () => {
+  it('has 24 step motions with unique ids, all character-only', () => {
     const ids = CHARACTER_MOTIONS.map((m) => m.id);
-    expect(ids).toHaveLength(22);
-    expect(new Set(ids).size).toBe(22);
+    expect(ids).toHaveLength(24);
+    expect(new Set(ids).size).toBe(24);
     expect(
       CHARACTER_MOTIONS.every((m) => m.requiresCharacter && m.appliesTo?.[0] === 'image'),
     ).toBe(true);
@@ -57,8 +57,16 @@ describe('character motions', () => {
   it('are deterministic and have valid, ordered keyframes', () => {
     for (const m of CHARACTER_MOTIONS) {
       const a = tracksOf(m);
-      expect(tracksOf(m), m.id).toEqual(a);
+      // Functions (per-strip keyframes) are compared by what they produce.
+      const comparable = (t: ReturnType<typeof tracksOf>) => ({
+        ...t,
+        extra: t.extra?.map((e) => ({ ...e, perTarget: e.perTarget?.(3, 8) })),
+      });
+      expect(comparable(tracksOf(m)), m.id).toEqual(comparable(a));
       if (a.element) checkOffsets(a.element, m.id);
+      for (const spec of a.extra ?? [])
+        if (spec.perTarget)
+          checkOffsets(spec.perTarget(0, 8) as { offset: number }[], `${m.id} strips`);
       if (a.face) checkOffsets(a.face, `${m.id} face`);
       const specs = m.build(ctx(m.defaults.params));
       expect(specs.length, m.id).toBeGreaterThan(0);

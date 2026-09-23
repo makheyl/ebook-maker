@@ -45,6 +45,8 @@ export type KeyframeSpec = {
   /** Per-target duration as a fraction of the step duration (chars); default 1. */
   durationFraction?: number;
   iterations?: number;
+  /** 'add' layers the effect on top of others on the same target (e.g. a bend over the sway idle). */
+  composite?: CompositeOperation;
   /** Overrides the step easing (e.g. 'linear' for character reveals). */
   easing?: string;
 };

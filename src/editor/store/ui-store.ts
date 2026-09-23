@@ -21,6 +21,12 @@ type UiState = {
   playerOpen: boolean;
   /** Showing the draggable pivot (feet) handle for the selected character. */
   editingPivot: boolean;
+  /** The page timeline dock is open. */
+  timelineOpen: boolean;
+  /** Timeline playhead: a time within a click group. */
+  playhead: { group: number; ms: number };
+  /** Step selected on the timeline / Animation Pane. */
+  selectedStepId: string | null;
 };
 
 type UiActions = {
@@ -37,6 +43,9 @@ type UiActions = {
   setPreviewing: (previewing: boolean) => void;
   setPlayerOpen: (open: boolean) => void;
   setEditingPivot: (on: boolean) => void;
+  setTimelineOpen: (open: boolean) => void;
+  setPlayhead: (playhead: { group: number; ms: number }) => void;
+  setSelectedStep: (id: string | null) => void;
 };
 
 export const useUiStore = create<UiState & UiActions>()((set) => ({
@@ -51,7 +60,13 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   previewing: false,
   playerOpen: false,
   editingPivot: false,
+  timelineOpen: false,
+  playhead: { group: 0, ms: 0 },
+  selectedStepId: null,
 
+  setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
+  setPlayhead: (playhead) => set({ playhead }),
+  setSelectedStep: (selectedStepId) => set({ selectedStepId }),
   setPlayerOpen: (playerOpen) => set({ playerOpen }),
   setEditingPivot: (editingPivot) => set({ editingPivot }),
   reset: (activePageId) =>
@@ -65,9 +80,18 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
       saveError: null,
       previewing: false,
       editingPivot: false,
+      playhead: { group: 0, ms: 0 },
+      selectedStepId: null,
     }),
   setActivePage: (activePageId) =>
-    set({ activePageId, selectedIds: [], editingTextId: null, editingPivot: false }),
+    set({
+      activePageId,
+      selectedIds: [],
+      editingTextId: null,
+      editingPivot: false,
+      playhead: { group: 0, ms: 0 },
+      selectedStepId: null,
+    }),
   select: (selectedIds) => set({ selectedIds, editingTextId: null, editingPivot: false }),
   toggleSelect: (id) =>
     set((s) => ({

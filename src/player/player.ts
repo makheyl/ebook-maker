@@ -137,6 +137,12 @@ export class Player {
     return this.pages.length;
   }
 
+  /** Freezes the current page at a moment (used by tests to compare with the editor). */
+  seek(group: number, ms: number): void {
+    this.finishTransition();
+    this.current?.timeline?.seek(group, ms);
+  }
+
   /** Advances the next click group on this page, or turns to the next page. */
   next(): void {
     if (this.finishTransition()) return;

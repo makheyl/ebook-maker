@@ -22,6 +22,7 @@ import {
   Play,
   Plus,
   Sparkles,
+  Spline,
   Square,
   Trash2,
   Wand2,
@@ -29,12 +30,14 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import {
   ANIMATION_PRESETS,
+  canBake,
   EASINGS,
   TRANSITIONS,
   createAnimationStep,
   getPreset,
   presetsFor,
   scheduleSteps,
+  type MotionTracks,
   type ParamDef,
 } from '@/core/animation';
 import {
@@ -65,6 +68,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/ui/utils';
 import { previewAnimations, stopPreview } from '../animation/preview';
 import { AnimateStoryDialog } from '../character/AnimateStoryDialog';
+import { convertToKeyframes } from '../timeline/actions';
 import { getStageView } from '../stage/stage-view';
 import { docStore } from '../store/doc-store';
 import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
@@ -167,9 +171,17 @@ function AddAnimationMenu({
                       ? 'afterPrevious'
                       : 'onPageEnter';
                     const step = createAnimationStep(element.id, preset.id, trigger);
-                    docStore.change((d) => addAnimation(d, page.id, step), {
-                      label: 'Add animation',
-                    });
+                    const characterId = element.type === 'image' ? element.characterId : undefined;
+                    docStore.change(
+                      (d) => {
+                        addAnimation(d, page.id, step);
+                        // Bending moves need the character drawn as strips.
+                        if (preset.warp && characterId && d.characters[characterId]) {
+                          d.characters[characterId]!.warp = true;
+                        }
+                      },
+                      { label: 'Add animation' },
+                    );
                     onAdded(step.id);
                     // Show it right away, like PowerPoint does.
                     const updated = docStore.project()?.pages.find((p) => p.id === page.id);
@@ -230,6 +242,28 @@ function ParamField({ def, step, page }: { def: ParamDef; step: AnimationStep; p
   );
 }
 
+/** Character moves made only of whole-body motion can become editable keyframes. */
+function useCanConvert(step: AnimationStep, element: PageElement): boolean {
+  const project = useProject();
+  const preset = getPreset(step.preset) as
+    ({ tracks?: (ctx: never) => MotionTracks } & ReturnType<typeof getPreset>) | undefined;
+  if (!preset?.tracks || element.type !== 'image' || !element.characterId) return false;
+  const character = project.characters[element.characterId];
+  if (!character) return false;
+  try {
+    const tracks = (preset.tracks as (ctx: unknown) => MotionTracks)({
+      element,
+      params: { ...preset.defaults.params, ...step.params },
+      pageSize: project.pageSize,
+      character,
+      step,
+    });
+    return canBake(tracks);
+  } catch {
+    return false;
+  }
+}
+
 function StepEditor({
   step,
   page,
@@ -240,6 +274,7 @@ function StepEditor({
   element: PageElement;
 }) {
   const preset = getPreset(step.preset);
+  const canConvert = useCanConvert(step, element);
   const update = (label: string, recipe: (s: AnimationStep) => void) =>
     change(label, (d) => updateAnimation(d, page.id, step.id, recipe));
 
@@ -346,6 +381,18 @@ function StepEditor({
         >
           <Play /> Preview
         </Button>
+        {canConvert && (
+          <Button
+            variant="outline"
+            size="sm"
+            title="Turn this move into keyframes you can edit on the timeline"
+            onClick={() => {
+              if (convertToKeyframes(step.id)) useUiStore.getState().setTimelineOpen(true);
+            }}
+          >
+            <Spline /> Edit as keyframes
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -485,7 +532,8 @@ export function AnimationPane() {
   const page = useActivePage();
   const selected = useSelectedElements();
   const previewing = useUiStore((s) => s.previewing);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const openId = useUiStore((s) => s.selectedStepId);
+  const setOpenId = (id: string | null) => useUiStore.getState().setSelectedStep(id);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),

@@ -6,7 +6,9 @@ import { grow } from './grow';
 import { hop } from './hop';
 import { hopIn } from './hop-in';
 import { hopOut } from './hop-out';
+import { jelly } from './jelly';
 import { jumpAway } from './jump-away';
+import { lean } from './lean';
 import { lookAround } from './look-around';
 import { peekIn } from './peek-in';
 import { popUp } from './pop-up';
@@ -41,6 +43,8 @@ export const CHARACTER_MOTIONS = [
   grow,
   dance,
   talk,
+  jelly,
+  lean,
   walkOut,
   hopOut,
   jumpAway,
