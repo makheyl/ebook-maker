@@ -19,6 +19,15 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
+    environmentOptions: {
+      happyDOM: {
+        settings: {
+          disableCSSFileLoading: true,
+          disableJavaScriptFileLoading: true,
+          handleDisabledFileLoadingAsSuccess: true,
+        },
+      },
+    },
     include: ['src/**/*.test.{ts,tsx}', 'vite-plugins/**/*.test.ts'],
     setupFiles: ['src/test/setup.ts'],
     restoreMocks: true,

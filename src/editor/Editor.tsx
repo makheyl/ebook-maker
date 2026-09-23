@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { insertImages } from './actions';
 import { assetUrls } from './assets/asset-urls';
 import { useAutosave } from './autosave';
 import './editor.css';
 import { stopPreview } from './animation/preview';
+import { ExportDialog } from './export/ExportDialog';
 import { AnimationPane } from './panels/AnimationPane';
 import { PreviewOverlay } from './preview/PreviewOverlay';
 import { RightPanel } from './panels/RightPanel';
@@ -33,6 +34,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
     [navigate, project.id],
   );
   const closePreview = useCallback(() => navigate(`/p/${project.id}`), [navigate, project.id]);
+  const [exportOpen, setExportOpen] = useState(false);
   useEditorShortcuts(shortcutOpts);
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
@@ -42,7 +44,8 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
 
   return (
     <div className="flex h-full flex-col">
-      <TopBar onPreview={shortcutOpts.onPreview} onExport={() => undefined} />
+      <TopBar onPreview={shortcutOpts.onPreview} onExport={() => setExportOpen(true)} />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
       <div className="flex min-h-0 flex-1">
         <PageList />
         <main className="relative isolate flex min-w-0 flex-1" aria-label="Page editor">
