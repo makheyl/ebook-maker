@@ -4,6 +4,7 @@ import { insertImages } from './actions';
 import { assetUrls } from './assets/asset-urls';
 import { useAutosave } from './autosave';
 import './editor.css';
+import { AnimationPane } from './panels/AnimationPane';
 import { RightPanel } from './panels/RightPanel';
 import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
@@ -52,7 +53,7 @@ export function Editor() {
           />
           <InsertToolbar />
         </main>
-        <RightPanel />
+        <RightPanel animate={<AnimationPane />} />
       </div>
     </div>
   );

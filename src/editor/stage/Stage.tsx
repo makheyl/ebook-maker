@@ -11,7 +11,9 @@ import {
 } from '@/ui/dropdown-menu';
 import { useActivePage, useProject } from '../store/selectors';
 import { useUiStore, type Zoom } from '../store/ui-store';
+import { elementsNeedingCharSplit } from '@/core/animation';
 import { PageCanvas } from './PageCanvas';
+import { setStageView } from './stage-view';
 import { stepZoom, ZOOM_STEPS } from './zoom';
 
 const PAD = 48;
@@ -138,7 +140,10 @@ export function Stage({
     return () => viewportEl.removeEventListener('wheel', onWheel);
   }, [viewportEl]);
 
-  const onView = useCallback((v: PageView | null) => setView(v), []);
+  const onView = useCallback((v: PageView | null) => {
+    setView(v);
+    setStageView(v);
+  }, []);
 
   const contentW = Math.max(viewport.width, pw * scale + PAD * 2);
   const contentH = Math.max(viewport.height, ph * scale + PAD * 2);
@@ -195,6 +200,7 @@ export function Stage({
                 pageSize={project.pageSize}
                 assets={project.assets}
                 mode="editor"
+                splitTextFor={elementsNeedingCharSplit}
                 onView={onView}
               />
             </div>

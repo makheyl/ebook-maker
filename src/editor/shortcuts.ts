@@ -10,6 +10,7 @@ import {
   reorderSelected,
   selectAll,
 } from './actions';
+import { stopPreview } from './animation/preview';
 import { stepZoom } from './stage/zoom';
 import { getSelectedElements } from './store/selectors';
 import { useUiStore } from './store/ui-store';
@@ -47,7 +48,10 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
         return;
       }
       if (isTypingTarget(e.target)) return;
-      if (ui.previewing) return;
+      if (ui.previewing) {
+        if (e.key === 'Escape') stopPreview();
+        return;
+      }
 
       if (mod && (key === '=' || key === '+')) {
         e.preventDefault();
