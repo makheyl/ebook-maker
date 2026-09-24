@@ -1,16 +1,24 @@
-import { Crop, FlipHorizontal2, FlipVertical2, ImageUp, Replace, RotateCcw } from 'lucide-react';
+import {
+  Crop,
+  FlipHorizontal2,
+  FlipVertical2,
+  ImageUp,
+  Maximize,
+  Replace,
+  RotateCcw,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { filterCss } from '@/core/render';
 import { FILTER_PRESETS, sameFilters } from '@/core/image/filter-presets';
-import { addAsset, deleteElements, updateElement, updatePage } from '@/core/ops';
+import { deleteElements, updatePage } from '@/core/ops';
 import { DEFAULT_FILTERS, FULL_CROP, type ImageElement, type ImageFilters } from '@/core/schema';
 import { Button } from '@/ui/button';
 import { Toggle } from '@/ui/toggle';
 import { cn } from '@/ui/utils';
 import { updateSelected } from '../actions';
 import { assetUrls } from '../assets/asset-urls';
-import { imageFilesFrom, importImageFiles } from '../assets/upload';
+import { imageFilesFrom } from '../assets/upload';
+import { fitWholePictureOf, replacePicture } from '../replace/actions';
 import { docStore } from '../store/doc-store';
 import { getActivePage, useProject } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
@@ -36,26 +44,6 @@ const ADJUSTMENTS: Adjustment[] = [
   { key: 'grayscale', label: 'Grayscale', min: 0, max: 1, step: 0.01, format: pct },
   { key: 'blur', label: 'Blur', min: 0, max: 20, step: 0.5, format: (v) => `${v}px` },
 ];
-
-async function replaceImage(el: ImageElement, file: File) {
-  const { assets, errors } = await importImageFiles([file]);
-  errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
-  const asset = assets[0];
-  const page = getActivePage();
-  if (!asset || !page) return;
-  docStore.change(
-    (d) => {
-      addAsset(d, asset);
-      updateElement(d, page.id, el.id, (img) => {
-        if (img.type !== 'image') return;
-        img.assetId = asset.id;
-        img.crop = { ...FULL_CROP };
-        img.name = asset.name?.replace(/\.[a-z0-9]+$/i, '').slice(0, 32) || img.name;
-      });
-    },
-    { label: 'Replace image' },
-  );
-}
 
 function setAsPageBackground(el: ImageElement) {
   const page = getActivePage();
@@ -107,6 +95,20 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
             >
               <Replace /> Replace
             </Button>
+            {asset &&
+              Math.abs(el.width / el.height - asset.width / asset.height) > 0.02 &&
+              el.crop.width === 1 &&
+              el.crop.height === 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title="Show the whole picture: the box takes the picture's shape"
+                  onClick={() => fitWholePictureOf(el.id)}
+                  disabled={el.locked}
+                >
+                  <Maximize /> Fit whole picture
+                </Button>
+              )}
             <Button
               variant="outline"
               size="sm"
@@ -132,7 +134,7 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
               onChange={(e) => {
                 const [file] = imageFilesFrom(e.target.files);
                 e.target.value = '';
-                if (file) void replaceImage(el, file);
+                if (file) void replacePicture(el.id, [file]);
               }}
             />
           </div>

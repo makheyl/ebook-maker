@@ -1,8 +1,14 @@
 import { canGroup } from '@/core/ops';
 import {
   ArrowDownToLine,
-  Boxes,
   ArrowUpToLine,
+  Boxes,
+  Circle,
+  Image as ImageIcon,
+  RectangleHorizontal,
+  Replace,
+  Square,
+  Type,
   ChevronDown,
   ChevronUp,
   ClipboardPaste,
@@ -28,8 +34,12 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/ui/context-menu';
+import { pickReplacementPicture, replaceWith } from '../replace/actions';
 import {
   copyToAppClipboard,
   cutToAppClipboard,
@@ -66,6 +76,7 @@ export function SelectionMenuItems() {
   const selected = useSelectedElements();
   const ids = selected.map((e) => e.id);
   const allLocked = selected.length > 0 && selected.every((e) => e.locked);
+  const only = selected.length === 1 ? selected[0]! : null;
   const canPaste = useHasClipboard();
   const page = useActivePage();
   const groupable = canGroup(page, ids);
@@ -120,6 +131,52 @@ export function SelectionMenuItems() {
           {SHIFT}[
         </ContextMenuShortcut>
       </ContextMenuItem>
+      {only && only.type !== 'group' && (
+        <>
+          <ContextMenuSeparator />
+          {only.type === 'image' && (
+            <ContextMenuItem onSelect={() => pickReplacementPicture(only.id)}>
+              <Replace /> Replace picture…
+            </ContextMenuItem>
+          )}
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <Replace /> Replace with…
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              {only.type !== 'image' && (
+                <ContextMenuItem onSelect={() => pickReplacementPicture(only.id)}>
+                  <ImageIcon /> Picture…
+                </ContextMenuItem>
+              )}
+              {!(only.type === 'shape' && only.shape === 'rect') && (
+                <ContextMenuItem
+                  onSelect={() => replaceWith(only.id, { kind: 'shape', shape: 'rect' })}
+                >
+                  <Square /> Rectangle
+                </ContextMenuItem>
+              )}
+              {!(only.type === 'shape' && only.shape === 'ellipse') && (
+                <ContextMenuItem
+                  onSelect={() => replaceWith(only.id, { kind: 'shape', shape: 'ellipse' })}
+                >
+                  <Circle /> Ellipse
+                </ContextMenuItem>
+              )}
+              {only.type !== 'text' && (
+                <ContextMenuItem onSelect={() => replaceWith(only.id, { kind: 'text' })}>
+                  <Type /> Text
+                </ContextMenuItem>
+              )}
+              {only.type !== 'button' && (
+                <ContextMenuItem onSelect={() => replaceWith(only.id, { kind: 'button' })}>
+                  <RectangleHorizontal /> Button
+                </ContextMenuItem>
+              )}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        </>
+      )}
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => setElementsFlag(ids, 'locked', !allLocked)}>
         {allLocked ? <LockOpen /> : <Lock />} {allLocked ? 'Unlock' : 'Lock'}

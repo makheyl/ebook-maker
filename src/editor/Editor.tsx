@@ -1,3 +1,5 @@
+import { replacePicture } from './replace/actions';
+import { ReplaceCharacterDialog } from './replace/ReplaceCharacterDialog';
 import { StageContextMenu } from './menus/EditorContextMenu';
 import { CollapsedRail } from './layout/CollapsedRail';
 import { useLayoutStore } from './layout/layout-store';
@@ -75,6 +77,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
             <StageContextMenu>
               <Stage
                 onDropFiles={(files, at) => void insertImages(files, at)}
+                onReplaceImage={(id, files) => void replacePicture(id, files)}
                 onEditText={(id, point) => {
                   setPendingCaret(point);
                   useUiStore.getState().setEditingText(id);
@@ -124,6 +127,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
         The editor works best on a larger screen. Your books still read beautifully on phones.
       </p>
       {mode === 'preview' && <PreviewOverlay onClose={closePreview} />}
+      <ReplaceCharacterDialog />
     </div>
   );
 }

@@ -107,10 +107,13 @@ function toPagePoint(pageEl: HTMLElement, clientX: number, clientY: number, scal
 export function Stage({
   overlay,
   onDropFiles,
+  onReplaceImage,
   onEditText,
 }: {
   overlay?: (props: StageOverlayProps) => React.ReactNode;
   onDropFiles?: (files: File[], at: { x: number; y: number }) => void;
+  /** A picture file dropped onto a picture replaces it (keeping its animations). */
+  onReplaceImage?: (elementId: string, files: File[]) => void;
   onEditText?: (elementId: string, client: { x: number; y: number }) => void;
 }) {
   const project = useProject();
@@ -123,6 +126,15 @@ export function Stage({
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
   const [view, setView] = useState<PageView | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** The picture a file would replace if dropped now. */
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const pictureAt = (x: number, y: number) =>
+    document
+      .elementsFromPoint(x, y)
+      .find(
+        (n): n is HTMLElement =>
+          n instanceof HTMLElement && n.matches('.fl-mode-editor .fl-el[data-type=image]'),
+      )?.dataset.elementId ?? null;
   const { width: pw, height: ph } = project.pageSize;
 
   useLayoutEffect(() => {
@@ -205,14 +217,26 @@ export function Stage({
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           setDragOver(true);
+          const target = onReplaceImage ? pictureAt(e.clientX, e.clientY) : null;
+          if (target !== dropTarget) setDropTarget(target);
         }}
         onDragLeave={(e) => {
-          if (e.currentTarget === e.target) setDragOver(false);
+          if (e.currentTarget === e.target) {
+            setDragOver(false);
+            setDropTarget(null);
+          }
         }}
         onDrop={(e) => {
           if (!hasFiles(e) || !pageEl) return;
           e.preventDefault();
           setDragOver(false);
+          const target = onReplaceImage ? pictureAt(e.clientX, e.clientY) : null;
+          setDropTarget(null);
+          const images = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
+          if (target && images.length === 1) {
+            onReplaceImage?.(target, images);
+            return;
+          }
           onDropFiles?.(
             [...e.dataTransfer.files],
             toPagePoint(pageEl, e.clientX, e.clientY, scale),
@@ -248,9 +272,12 @@ export function Stage({
           </div>
         </div>
       </div>
+      {dropTarget && (
+        <style>{`.fl-mode-editor .fl-el[data-element-id="${CSS.escape(dropTarget)}"] { outline: 3px solid var(--primary); outline-offset: 2px; }`}</style>
+      )}
       {dragOver && (
         <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-primary/5 text-sm font-medium text-primary">
-          Drop images to add them to this page
+          {dropTarget ? 'Drop to replace this picture' : 'Drop images to add them to this page'}
         </div>
       )}
       <ZoomControl />

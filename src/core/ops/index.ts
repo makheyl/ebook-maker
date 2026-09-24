@@ -7,3 +7,4 @@ export * from './references';
 export * from './characters';
 export * from './sounds';
 export * from './groups';
+export * from './replace';
