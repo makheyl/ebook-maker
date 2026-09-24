@@ -18,6 +18,7 @@ import {
 import { createPageView, type PageView } from '../core/render';
 import type { BurstEffect, Page, Project } from '../core/schema';
 import { bookHasSound, SoundBoard } from './audio';
+import { Curl } from './curl';
 import { burst } from './burst';
 import { el, icon, type IconName } from './dom';
 import { buildEnd } from './end';
@@ -47,6 +48,28 @@ const IDLE_HINT_MS = 4000;
 
 type Mounted = { page: Page; view: PageView; layer: HTMLElement; timeline: PageTimeline | null };
 
+/** A page turn drawn as a curl; `complete` jumps it to its end and runs what follows. */
+type Turning = { curl: Curl; complete: () => void };
+
+/** The reader dragging a page's corner (forward: bottom-right; back: bottom-left). */
+type CornerDrag = {
+  pointerId: number;
+  forward: boolean;
+  startX: number;
+  startY: number;
+  /** Where the turn leads (null: the page is locked, so the corner only resists). */
+  target: number | null;
+  duration: number;
+  curl: Curl | null;
+  mounted: Mounted | null;
+  samples: { x: number; t: number }[];
+};
+
+/** Past this share of a turn, letting go completes it; before, the page springs back. */
+const TURN_THRESHOLD = 0.35;
+/** A flick at this speed (px/ms) turns the page however little it was dragged. */
+const FLING_SPEED = 0.6;
+
 export class Player {
   private readonly root: HTMLElement;
   private readonly bookEl: HTMLElement;
@@ -73,6 +96,10 @@ export class Player {
   private current: Mounted | null = null;
   private outgoing: Mounted | null = null;
   private transitionAnims: Animation[] = [];
+  private turning: Turning | null = null;
+  private cornerDrag: CornerDrag | null = null;
+  /** A page already mounted by a corner drag, taken over by showPage when the turn commits. */
+  private adopt: { index: number; mounted: Mounted } | null = null;
   private scale = 1;
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
   private hintTimer: ReturnType<typeof setTimeout> | undefined;
@@ -458,31 +485,27 @@ export class Player {
         this.index = -1;
       } else return;
     }
+    const adopted = this.adopt?.index === i ? this.adopt.mounted : null;
+    this.adopt = null;
     this.finishTransition();
     // A story button that turned the page is about to disappear: keep keyboard focus in the book.
     const active = document.activeElement;
     const hadFocus = !!active && !!this.current?.layer.contains(active);
     const page = this.pages[i]!;
-    const incoming = this.mountPage(page);
+    const incoming = adopted ?? this.prepare(i, direction);
+    incoming.layer.removeAttribute('aria-hidden');
+    incoming.layer.inert = false;
     const previous = this.current;
     this.current = incoming;
     this.index = i;
-
-    // Timeline built before the page is revealed so entrances start hidden.
-    incoming.timeline = createPageTimeline(page, (id) => incoming.view.getNodes(id), {
-      pageSize: this.opts.project.pageSize,
-      reducedMotion: this.reducedMotion,
-    });
-    incoming.timeline.startIdle();
-    // Going back shows the page as it ends; going forward plays it.
-    if (direction === -1) incoming.timeline.finishAll();
 
     const transition = getTransition(
       direction === -1 ? (this.pages[i + 1]?.transition.preset ?? 'none') : page.transition.preset,
     );
     const duration =
       direction === -1 ? (this.pages[i + 1]?.transition.duration ?? 0) : page.transition.duration;
-    const animated = previous && direction !== 0 && transition.id !== 'none' && duration > 0;
+    const animated =
+      !adopted && previous && direction !== 0 && transition.id !== 'none' && duration > 0;
 
     if (hadFocus) this.root.focus({ preventScroll: true });
     if (previous) {
@@ -498,7 +521,26 @@ export class Player {
       if (direction !== -1 && this.current === incoming) void incoming.timeline?.play(0);
     };
 
-    if (animated) {
+    if (animated && transition.curl && !this.reducedMotion) {
+      // Forward: the page on screen curls away. Back: the previous page uncurls over it.
+      const forward = direction === 1;
+      const curl = new Curl(
+        this.bookEl,
+        forward ? previous.layer : incoming.layer,
+        forward ? incoming.layer : previous.layer,
+        forward ? 0 : 1,
+      );
+      let settled = false;
+      const complete = () => {
+        if (settled) return;
+        settled = true;
+        if (this.turning?.curl === curl) this.turning = null;
+        curl.destroy();
+        afterTransition();
+      };
+      this.turning = { curl, complete };
+      void curl.run(forward ? 1 : 0, duration).then(complete);
+    } else if (animated) {
       const kf = transition.build(direction as 1 | -1);
       const d = this.reducedMotion ? Math.min(duration, 200) : duration;
       const easing = 'cubic-bezier(0.65, 0, 0.35, 1)';
@@ -539,12 +581,28 @@ export class Player {
     this.menu?.close();
     this.sounds.destroy();
     for (const a of this.transitionAnims) a.cancel();
+    this.turning?.curl.destroy();
+    this.cancelCornerDrag();
     if (this.outgoing) this.unmountPage(this.outgoing);
     if (this.current) this.unmountPage(this.current);
     this.root.remove();
   }
 
   // ─── Pages ───────────────────────────────────────────────────────────────────
+
+  /** Mounts page `i` with its timeline ready (entrances hidden until it plays). */
+  private prepare(i: number, direction: 1 | -1 | 0): Mounted {
+    const page = this.pages[i]!;
+    const mounted = this.mountPage(page);
+    mounted.timeline = createPageTimeline(page, (id) => mounted.view.getNodes(id), {
+      pageSize: this.opts.project.pageSize,
+      reducedMotion: this.reducedMotion,
+    });
+    mounted.timeline.startIdle();
+    // Going back shows the page as it ends; going forward plays it.
+    if (direction === -1) mounted.timeline.finishAll();
+    return mounted;
+  }
 
   private mountPage(page: Page): Mounted {
     const view = createPageView({
@@ -574,6 +632,12 @@ export class Player {
   }
 
   private finishTransition(): boolean {
+    // A corner still held by the reader is let go (springs back) when something else turns.
+    if (this.cornerDrag) this.cancelCornerDrag();
+    if (this.turning) {
+      this.turning.complete();
+      return true;
+    }
     if (!this.transitionAnims.length) return false;
     for (const a of this.transitionAnims) {
       try {
@@ -661,6 +725,140 @@ export class Player {
     else void this.root.requestFullscreen?.().catch(() => undefined);
   }
 
+  // ─── Dragging the corner (page curl) ─────────────────────────────────────────
+
+  /**
+   * Whether a pointer going down here grabs a page corner: bottom-right turns forward,
+   * bottom-left back — only when that turn would use the curl. The target comes from the pure
+   * reducer, so the reader's state doesn't change until the turn completes.
+   */
+  private grabCorner(e: PointerEvent): CornerDrag | null {
+    if (this.reducedMotion || this.state.ended || this.menu?.isOpen) return null;
+    if (e.button !== 0 || this.turning || this.transitionAnims.length) return null;
+    const box = this.bookEl.getBoundingClientRect();
+    const zone = Math.max(44, Math.min(box.width, box.height) * 0.18);
+    const x = e.clientX - box.left;
+    const y = e.clientY - box.top;
+    if (y < box.height - zone || y > box.height) return null;
+    const forward = x > box.width - zone && x <= box.width;
+    if (!forward && !(x >= 0 && x < zone)) return null;
+    // Grabbing the corner means "turn": animations still playing are finished first.
+    const { effects } = reduce(
+      this.opts.project,
+      this.state,
+      forward ? { type: 'next', groupRunning: false } : { type: 'prev' },
+    );
+    const show = effects.find((f) => f.type === 'showPage');
+    const locked = forward && !show && effects.some((f) => f.type === 'hint');
+    if (!show && !locked) return null;
+    if (show && show.direction !== (forward ? 1 : -1)) return null;
+    const target = show ? show.page : null;
+    // The transition of the page being arrived at (forward) or left (back).
+    const transition = locked
+      ? this.pages[this.index + 1]?.transition
+      : this.pages[forward ? target! : this.index]?.transition;
+    if (transition?.preset !== 'curl' || (!locked && !(transition.duration > 0))) return null;
+    return {
+      pointerId: e.pointerId,
+      forward,
+      startX: e.clientX,
+      startY: e.clientY,
+      target,
+      duration: transition?.duration ?? 600,
+      curl: null,
+      mounted: null,
+      samples: [{ x: e.clientX, t: e.timeStamp }],
+    };
+  }
+
+  /** Starts drawing once the pointer really moves (a tap in the corner stays a tap). */
+  private beginCornerDrag(drag: CornerDrag): void {
+    const current = this.current;
+    if (!current) return;
+    if (this.groupRunning()) current.timeline?.finish(this.state.group);
+    if (drag.target === null) {
+      drag.curl = new Curl(this.bookEl, current.layer, null, 0);
+    } else {
+      const mounted = this.prepare(drag.target, drag.forward ? 1 : -1);
+      mounted.layer.setAttribute('aria-hidden', 'true');
+      mounted.layer.inert = true;
+      drag.mounted = mounted;
+      drag.curl = drag.forward
+        ? new Curl(this.bookEl, current.layer, mounted.layer, 0)
+        : new Curl(this.bookEl, mounted.layer, current.layer, 1);
+    }
+  }
+
+  private moveCornerDrag(drag: CornerDrag, e: PointerEvent): void {
+    const curl = drag.curl;
+    if (!curl) return;
+    const { width: W, height: H } = curl.size;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    drag.samples.push({ x: e.clientX, t: e.timeStamp });
+    if (drag.samples.length > 6) drag.samples.shift();
+    if (drag.target === null) {
+      // Locked: the corner lifts a little and resists, like a page held down.
+      const pull = (v: number) => Math.sign(v) * Math.min(W * 0.12, Math.sqrt(Math.abs(v)) * 4);
+      curl.draw({ x: W + pull(Math.min(0, dx)), y: H + pull(Math.min(0, dy)) });
+    } else if (drag.forward) {
+      curl.draw({ x: W + dx, y: H + dy });
+    } else {
+      // Coming back, the page's corner travels twice as far as the hand (from over the spine).
+      curl.draw({ x: -W + dx * 2, y: H + dy });
+    }
+  }
+
+  private releaseCornerDrag(drag: CornerDrag, e: PointerEvent | null): void {
+    this.cornerDrag = null;
+    const curl = drag.curl;
+    if (!curl) return;
+    const first = drag.samples[0]!;
+    const last = e ? { x: e.clientX, t: e.timeStamp } : first;
+    const speed = last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0;
+    const p = curl.progress;
+    const complete =
+      !!e &&
+      drag.target !== null &&
+      (drag.forward
+        ? p > TURN_THRESHOLD || (speed < -FLING_SPEED && p > 0.01)
+        : p < 1 - TURN_THRESHOLD || (speed > FLING_SPEED && p < 0.99));
+    const to: 0 | 1 = drag.forward === complete ? 1 : 0;
+    const remaining = Math.abs(to - p);
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (this.turning?.curl === curl) this.turning = null;
+      curl.destroy();
+      if (complete && drag.mounted && drag.target !== null) {
+        this.adopt = { index: drag.target, mounted: drag.mounted };
+        if (drag.forward) this.dispatch({ type: 'next', groupRunning: false });
+        else this.dispatch({ type: 'prev' });
+        // The reducer went somewhere else after all: drop the page mounted for the drag.
+        if (this.adopt) {
+          this.unmountPage(this.adopt.mounted);
+          this.adopt = null;
+        }
+      } else {
+        if (drag.mounted) this.unmountPage(drag.mounted);
+        // Letting go of a locked corner shows what to tap.
+        if (drag.target === null && e) this.dispatch({ type: 'next', groupRunning: false });
+      }
+    };
+    this.turning = { curl, complete: finish };
+    const ms = Math.max(140, drag.duration * remaining * (complete ? 1 : 0.7));
+    void curl.run(to, ms, 'out').then(finish);
+  }
+
+  private cancelCornerDrag(): void {
+    const drag = this.cornerDrag;
+    this.cornerDrag = null;
+    if (!drag) return;
+    drag.curl?.destroy();
+    if (drag.mounted) this.unmountPage(drag.mounted);
+  }
+
   private bindEvents(stage: HTMLElement): void {
     const on = <K extends keyof HTMLElementEventMap>(
       target: HTMLElement | Window | Document,
@@ -736,6 +934,42 @@ export class Player {
       }
     });
 
+    // Drag a page's corner to turn it (pages with the curl transition).
+    let cornerHandled = false;
+    on(stage, 'pointerdown', (e) => {
+      cornerHandled = false;
+      if (interactiveOf(e.target)) return;
+      this.cornerDrag = this.grabCorner(e);
+    });
+    on(stage, 'pointermove', (e) => {
+      const drag = this.cornerDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      if (!drag.curl) {
+        if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 6) return;
+        stage.setPointerCapture?.(e.pointerId);
+        this.beginCornerDrag(drag);
+      }
+      e.preventDefault();
+      this.moveCornerDrag(drag, e);
+    });
+    on(stage, 'pointerup', (e) => {
+      const drag = this.cornerDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      if (!drag.curl) {
+        // Just a tap in the corner: the usual tap handling below turns the page.
+        this.cornerDrag = null;
+        return;
+      }
+      cornerHandled = true;
+      this.releaseCornerDrag(drag, e);
+    });
+    on(stage, 'pointercancel', (e) => {
+      const drag = this.cornerDrag;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      cornerHandled = true;
+      this.releaseCornerDrag(drag, null);
+    });
+
     // Click / tap the page to advance; swipe to turn.
     let start: { x: number; y: number; t: number; interactive: boolean } | null = null;
     on(stage, 'pointerdown', (e) => {
@@ -748,6 +982,10 @@ export class Player {
     });
     on(stage, 'pointerup', (e) => {
       if (!start) return;
+      if (cornerHandled) {
+        start = null;
+        return;
+      }
       const dx = e.clientX - start.x;
       const dy = e.clientY - start.y;
       const { interactive } = start;

@@ -35,20 +35,6 @@ function placeCaret(root: HTMLElement) {
   selection.addRange(range);
 }
 
-/**
- * Puts the keyboard back in the text being edited (all of it selected), e.g. after a menu that
- * started the editing closes and would otherwise take focus with it.
- */
-export function refocusEditingText(): void {
-  const inner = document.querySelector<HTMLElement>('.fl-mode-editor .fl-text-inner.fl-editing');
-  if (!inner) return;
-  inner.focus({ preventScroll: true });
-  const range = document.createRange();
-  range.selectNodeContents(inner);
-  window.getSelection()?.removeAllRanges();
-  window.getSelection()?.addRange(range);
-}
-
 function sameContent(a: readonly Paragraph[], b: readonly Paragraph[]) {
   return JSON.stringify(a) === JSON.stringify(b);
 }

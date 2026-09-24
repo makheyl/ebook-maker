@@ -353,7 +353,7 @@ export const animationStepSchema = z.object({
   tracks: z.array(keyframeTrackSchema).max(8).optional(),
 });
 
-export const PAGE_TRANSITIONS = ['none', 'fade', 'slide', 'flip', 'zoom'] as const;
+export const PAGE_TRANSITIONS = ['none', 'fade', 'slide', 'flip', 'zoom', 'curl'] as const;
 
 export const pageTransitionSchema = z.object({
   preset: z.enum(PAGE_TRANSITIONS),

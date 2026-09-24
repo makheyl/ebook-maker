@@ -7,6 +7,8 @@ import type { TransitionPreset } from '../../schema/types';
 export type TransitionDef = {
   id: TransitionPreset;
   label: string;
+  /** Drawn by the player's page curl (geometry, not keyframes); keyframes are unused. */
+  curl?: boolean;
   build(direction: 1 | -1): {
     out: Keyframe[] | null;
     in: Keyframe[] | null;
@@ -60,6 +62,7 @@ export const TRANSITIONS: readonly TransitionDef[] = [
       ],
     }),
   },
+  { id: 'curl', label: 'Page curl', curl: true, build: () => ({ out: null, in: null }) },
 ];
 
 export function getTransition(id: string): TransitionDef {

@@ -24,7 +24,7 @@ import { BUBBLE_LOOKS, BUBBLE_SHAPES } from '@/core/schema';
 import { insertImages, insertShape, insertText } from '../actions';
 import { insertBubble } from '../bubbles/actions';
 import { BubbleShapeIcon } from '../bubbles/BubbleShapeIcon';
-import { refocusEditingText } from './TextEditing';
+import { refocusEditingText } from './caret';
 import { insertCharacter } from '../character/actions';
 import { BUTTON_PRESETS, insertButton, insertFlap, insertHotspot } from '../interaction/actions';
 import { getSelectedElements } from '../store/selectors';

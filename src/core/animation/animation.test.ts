@@ -124,7 +124,7 @@ describe('preset registry', () => {
   });
 
   it('has all page transitions', () => {
-    expect(TRANSITIONS.map((t) => t.id)).toEqual(['none', 'fade', 'slide', 'flip', 'zoom']);
+    expect(TRANSITIONS.map((t) => t.id)).toEqual(['none', 'fade', 'slide', 'flip', 'zoom', 'curl']);
   });
 
   it('unknown presets are rejected by the factory', () => {
