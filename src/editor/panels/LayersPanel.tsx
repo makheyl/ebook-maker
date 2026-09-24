@@ -1,3 +1,4 @@
+import { LayerContextMenu } from '../menus/EditorContextMenu';
 import {
   DndContext,
   KeyboardSensor,
@@ -66,85 +67,87 @@ function LayerRow({
   const [renaming, setRenaming] = useState(false);
 
   return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        'group flex h-9 items-center gap-1 rounded-md px-1 text-sm',
-        selected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
-        isDragging && 'z-10 bg-popover shadow-md',
-        el.hidden && 'opacity-60',
-      )}
-    >
-      <button
-        type="button"
-        className="cursor-grab rounded p-0.5 text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={`Reorder ${el.name}`}
-        {...attributes}
-        {...listeners}
+    <LayerContextMenu elementId={el.id}>
+      <li
+        ref={setNodeRef}
+        style={{ transform: CSS.Transform.toString(transform), transition }}
+        className={cn(
+          'group flex h-9 items-center gap-1 rounded-md px-1 text-sm',
+          selected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
+          isDragging && 'z-10 bg-popover shadow-md',
+          el.hidden && 'opacity-60',
+        )}
       >
-        <GripVertical className="size-3.5" />
-      </button>
-      <TypeIcon el={el} />
-      {renaming ? (
-        <input
-          autoFocus
-          defaultValue={el.name}
-          aria-label="Layer name"
-          className="h-7 min-w-0 flex-1 rounded border bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onBlur={(e) => {
-            const name = e.target.value.trim().slice(0, 120);
-            setRenaming(false);
-            if (name && name !== el.name) {
-              docStore.change((d) => patchElements(d, pageId, [{ id: el.id, patch: { name } }]), {
-                label: 'Rename layer',
-              });
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur();
-            if (e.key === 'Escape') setRenaming(false);
-          }}
-        />
-      ) : (
         <button
           type="button"
-          className="h-7 min-w-0 flex-1 truncate rounded px-1.5 text-left focus-visible:ring-2 focus-visible:ring-ring"
-          aria-pressed={selected}
-          onClick={(e) => {
-            if (e.shiftKey || e.metaKey || e.ctrlKey) useUiStore.getState().toggleSelect(el.id);
-            else useUiStore.getState().select([el.id]);
-          }}
-          onDoubleClick={() => setRenaming(true)}
+          className="cursor-grab rounded p-0.5 text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Reorder ${el.name}`}
+          {...attributes}
+          {...listeners}
         >
-          {el.name}
+          <GripVertical className="size-3.5" />
         </button>
-      )}
-      <button
-        type="button"
-        aria-label={el.locked ? `Unlock ${el.name}` : `Lock ${el.name}`}
-        aria-pressed={el.locked}
-        onClick={() => setElementsFlag([el.id], 'locked', !el.locked)}
-        className={cn(
-          'rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
-          !el.locked && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+        <TypeIcon el={el} />
+        {renaming ? (
+          <input
+            autoFocus
+            defaultValue={el.name}
+            aria-label="Layer name"
+            className="h-7 min-w-0 flex-1 rounded border bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onBlur={(e) => {
+              const name = e.target.value.trim().slice(0, 120);
+              setRenaming(false);
+              if (name && name !== el.name) {
+                docStore.change((d) => patchElements(d, pageId, [{ id: el.id, patch: { name } }]), {
+                  label: 'Rename layer',
+                });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              if (e.key === 'Escape') setRenaming(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="h-7 min-w-0 flex-1 truncate rounded px-1.5 text-left focus-visible:ring-2 focus-visible:ring-ring"
+            aria-pressed={selected}
+            onClick={(e) => {
+              if (e.shiftKey || e.metaKey || e.ctrlKey) useUiStore.getState().toggleSelect(el.id);
+              else useUiStore.getState().select([el.id]);
+            }}
+            onDoubleClick={() => setRenaming(true)}
+          >
+            {el.name}
+          </button>
         )}
-      >
-        {el.locked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
-      </button>
-      <button
-        type="button"
-        aria-label={el.hidden ? `Show ${el.name}` : `Hide ${el.name}`}
-        aria-pressed={el.hidden}
-        onClick={() => setElementsFlag([el.id], 'hidden', !el.hidden)}
-        className={cn(
-          'rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
-          !el.hidden && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
-        )}
-      >
-        {el.hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-      </button>
-    </li>
+        <button
+          type="button"
+          aria-label={el.locked ? `Unlock ${el.name}` : `Lock ${el.name}`}
+          aria-pressed={el.locked}
+          onClick={() => setElementsFlag([el.id], 'locked', !el.locked)}
+          className={cn(
+            'rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
+            !el.locked && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+          )}
+        >
+          {el.locked ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
+        </button>
+        <button
+          type="button"
+          aria-label={el.hidden ? `Show ${el.name}` : `Hide ${el.name}`}
+          aria-pressed={el.hidden}
+          onClick={() => setElementsFlag([el.id], 'hidden', !el.hidden)}
+          className={cn(
+            'rounded p-1 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring',
+            !el.hidden && 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+          )}
+        >
+          {el.hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+        </button>
+      </li>
+    </LayerContextMenu>
   );
 }
 

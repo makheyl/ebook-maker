@@ -1,5 +1,8 @@
 import type { ButtonElement, ImageElement, ShapeElement, TextElement } from '@/core/schema';
+import { Layers, MousePointerClick, Palette, PanelRightClose, Sparkles } from 'lucide-react';
+import { Button } from '@/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
+import { useLayoutStore } from '../layout/layout-store';
 import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 import { ArrangeSection } from './ArrangeSection';
@@ -36,30 +39,55 @@ function DesignPanel() {
   );
 }
 
+const TABS = [
+  { value: 'design', label: 'Design', icon: Palette },
+  { value: 'animate', label: 'Animate', icon: Sparkles },
+  { value: 'interact', label: 'Interact', icon: MousePointerClick },
+  { value: 'layers', label: 'Layers', icon: Layers },
+] as const;
+
 /** Context-sensitive right sidebar: Design (properties), Animate, Interact, Layers. */
 export function RightPanel({ animate }: { animate?: React.ReactNode }) {
   const tab = useUiStore((s) => s.rightTab);
+  const width = useLayoutStore((s) => s.sizes.right);
+  const compact = width < 300;
   return (
-    <aside aria-label="Properties" className="flex w-72 shrink-0 flex-col border-l bg-sidebar">
+    <aside
+      id="panel-properties"
+      aria-label="Properties"
+      className="flex shrink-0 flex-col border-l bg-sidebar"
+      style={{ width }}
+    >
       <Tabs
         value={tab}
         onValueChange={(v) => useUiStore.getState().setRightTab(v as RightTab)}
         className="flex min-h-0 flex-1 flex-col gap-0"
       >
-        <TabsList className="m-2 grid w-auto grid-cols-4">
-          <TabsTrigger value="design" className="px-1">
-            Design
-          </TabsTrigger>
-          <TabsTrigger value="animate" className="px-1">
-            Animate
-          </TabsTrigger>
-          <TabsTrigger value="interact" className="px-1">
-            Interact
-          </TabsTrigger>
-          <TabsTrigger value="layers" className="px-1">
-            Layers
-          </TabsTrigger>
-        </TabsList>
+        <div className="m-2 flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Hide properties panel"
+            title="Hide properties panel"
+            onClick={() => useLayoutStore.getState().toggle('right')}
+          >
+            <PanelRightClose />
+          </Button>
+          <TabsList className="grid w-auto flex-1 grid-cols-4">
+            {TABS.map(({ value, label, icon: Icon }) => (
+              <TabsTrigger key={value} value={value} className="px-1" title={label}>
+                {compact ? (
+                  <>
+                    <Icon aria-hidden="true" />
+                    <span className="sr-only">{label}</span>
+                  </>
+                ) : (
+                  label
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
         <TabsContent value="design" className="min-h-0 flex-1 overflow-y-auto">
           <DesignPanel />
         </TabsContent>

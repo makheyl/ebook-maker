@@ -1,3 +1,4 @@
+import { useLayoutStore } from './layout/layout-store';
 import { useEffect } from 'react';
 import {
   copySelection,
@@ -97,6 +98,12 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
       if (mod && e.key === 'Enter') {
         e.preventDefault();
         opts.onPreview();
+        return;
+      }
+      if (mod && e.key === '\\') {
+        // Focus mode: hide (or bring back) both side panels.
+        e.preventDefault();
+        useLayoutStore.getState().toggleFocus();
         return;
       }
       if (mod) return;

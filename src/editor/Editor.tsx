@@ -1,3 +1,7 @@
+import { StageContextMenu } from './menus/EditorContextMenu';
+import { CollapsedRail } from './layout/CollapsedRail';
+import { useLayoutStore } from './layout/layout-store';
+import { ResizeHandle } from './layout/ResizeHandle';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { insertImages } from './actions';
@@ -43,6 +47,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
   const closePreview = useCallback(() => navigate(`/p/${project.id}`), [navigate, project.id]);
   const [exportOpen, setExportOpen] = useState(false);
   const timelineOpen = useUiStore((s) => s.timelineOpen);
+  const collapsed = useLayoutStore((s) => s.collapsed);
   useEditorShortcuts(shortcutOpts);
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
@@ -57,40 +62,63 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
       <TopBar onPreview={shortcutOpts.onPreview} onExport={() => setExportOpen(true)} />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
       <div className="flex min-h-0 flex-1">
-        <PageList />
+        {collapsed.left ? (
+          <CollapsedRail side="left" />
+        ) : (
+          <>
+            <PageList />
+            <ResizeHandle panel="left" label="Pages panel divider" controls="panel-pages" />
+          </>
+        )}
         <main className="isolate flex min-w-0 flex-1 flex-col" aria-label="Page editor">
           <div className="relative flex min-h-0 flex-1">
-            <Stage
-              onDropFiles={(files, at) => void insertImages(files, at)}
-              onEditText={(id, point) => {
-                setPendingCaret(point);
-                useUiStore.getState().setEditingText(id);
-              }}
-              overlay={({ view, scale, viewportEl, contentEl }) => (
-                <>
-                  <SelectionLayer
-                    view={view}
-                    scale={scale}
-                    viewportEl={viewportEl}
-                    contentEl={contentEl}
-                  />
-                  <TextEditing view={view} />
-                  <PivotHandle scale={scale} />
-                  <MotionPathOverlay scale={scale} />
-                  <OverflowBadge scale={scale} />
-                </>
-              )}
-            />
+            <StageContextMenu>
+              <Stage
+                onDropFiles={(files, at) => void insertImages(files, at)}
+                onEditText={(id, point) => {
+                  setPendingCaret(point);
+                  useUiStore.getState().setEditingText(id);
+                }}
+                overlay={({ view, scale, viewportEl, contentEl }) => (
+                  <>
+                    <SelectionLayer
+                      view={view}
+                      scale={scale}
+                      viewportEl={viewportEl}
+                      contentEl={contentEl}
+                    />
+                    <TextEditing view={view} />
+                    <PivotHandle scale={scale} />
+                    <MotionPathOverlay scale={scale} />
+                    <OverflowBadge scale={scale} />
+                  </>
+                )}
+              />
+            </StageContextMenu>
             <InsertToolbar />
             <StageHints />
           </div>
           {timelineOpen && (
-            <Suspense fallback={<div className="h-60 shrink-0 border-t bg-sidebar" />}>
-              <TimelineDock />
-            </Suspense>
+            <>
+              <ResizeHandle panel="bottom" label="Timeline divider" controls="panel-timeline" />
+              <Suspense fallback={<div className="h-60 shrink-0 border-t bg-sidebar" />}>
+                <TimelineDock />
+              </Suspense>
+            </>
           )}
         </main>
-        <RightPanel animate={<AnimationPane />} />
+        {collapsed.right ? (
+          <CollapsedRail side="right" />
+        ) : (
+          <>
+            <ResizeHandle
+              panel="right"
+              label="Properties panel divider"
+              controls="panel-properties"
+            />
+            <RightPanel animate={<AnimationPane />} />
+          </>
+        )}
       </div>
       <p className="border-t bg-amber-500/10 px-3 py-1.5 text-center text-xs text-amber-800 md:hidden dark:text-amber-200">
         The editor works best on a larger screen. Your books still read beautifully on phones.

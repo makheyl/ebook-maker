@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDown, ArrowUp, Copy, MoreVertical, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, MoreVertical, PanelLeftClose, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { Page, Project } from '@/core/schema';
 import { Button } from '@/ui/button';
@@ -31,8 +31,10 @@ import { PageThumbnail } from '../stage/PageThumbnail';
 import { pageActions } from './page-actions';
 import { resolveActivePage, useProject } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
+import { useLayoutStore } from '../layout/layout-store';
 
-const THUMB_WIDTH = 132;
+/** Space around a thumbnail in the list (page number column, padding). */
+const THUMB_INSET = 52;
 const ITEM_CHROME = 18; // vertical padding + gap around each thumbnail
 
 function PageItem({
@@ -42,6 +44,7 @@ function PageItem({
   active,
   count,
   style,
+  thumbWidth,
 }: {
   page: Page;
   index: number;
@@ -49,6 +52,7 @@ function PageItem({
   active: boolean;
   count: number;
   style: React.CSSProperties;
+  thumbWidth: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: page.id,
@@ -88,7 +92,7 @@ function PageItem({
           pageSize={project.pageSize}
           assets={project.assets}
           characters={project.characters}
-          width={THUMB_WIDTH}
+          width={thumbWidth}
         />
       </button>
       <DropdownMenu>
@@ -134,11 +138,13 @@ function PageItem({
 /** Virtualized, drag-to-reorder page sidebar; stays fast with hundreds of pages. */
 export function PageList() {
   const project = useProject();
+  const width = useLayoutStore((s) => s.sizes.left);
+  const thumbWidth = width - THUMB_INSET;
   const activePageId = useUiStore((s) => s.activePageId);
   const active = resolveActivePage(project, activePageId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemHeight =
-    Math.round((THUMB_WIDTH * project.pageSize.height) / project.pageSize.width) + ITEM_CHROME;
+    Math.round((thumbWidth * project.pageSize.height) / project.pageSize.width) + ITEM_CHROME;
   const pages = project.pages;
 
   const virtualizer = useVirtualizer({
@@ -148,6 +154,9 @@ export function PageList() {
     overscan: 6,
     getItemKey: (i) => pages[i]!.id,
   });
+
+  // Thumbnails follow the panel's width: re-measure the rows when it changes.
+  useEffect(() => virtualizer.measure(), [itemHeight, virtualizer]);
 
   const activeIndex = pages.indexOf(active);
   useEffect(() => {
@@ -194,9 +203,14 @@ export function PageList() {
   };
 
   return (
-    <nav aria-label="Pages" className="flex w-[184px] shrink-0 flex-col border-r bg-sidebar">
-      <div className="flex h-10 items-center justify-between px-3">
-        <span className="text-xs font-medium text-muted-foreground">
+    <nav
+      id="panel-pages"
+      aria-label="Pages"
+      className="flex shrink-0 flex-col border-r bg-sidebar"
+      style={{ width }}
+    >
+      <div className="flex h-10 items-center justify-between gap-1 px-3">
+        <span className="flex-1 text-xs font-medium text-muted-foreground">
           {pages.length} {pages.length === 1 ? 'page' : 'pages'}
         </span>
         <Button
@@ -206,6 +220,15 @@ export function PageList() {
           onClick={() => pageActions.add(activeIndex)}
         >
           <Plus />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Hide pages panel"
+          title="Hide pages panel"
+          onClick={() => useLayoutStore.getState().toggle('left')}
+        >
+          <PanelLeftClose />
         </Button>
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto" onKeyDown={onKeyDown}>
@@ -228,6 +251,7 @@ export function PageList() {
                     active={page.id === active.id}
                     count={pages.length}
                     style={{ top: item.start, height: item.size }}
+                    thumbWidth={thumbWidth}
                   />
                 );
               })}

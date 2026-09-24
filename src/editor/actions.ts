@@ -313,9 +313,22 @@ const clipboardPayload = z.object({
 });
 type ClipboardPayload = z.infer<typeof clipboardPayload>;
 
-/** In-memory copy, used when the browser strips custom clipboard types. */
+/** In-memory copy, used when the browser strips custom clipboard types (and by menus). */
 let memoryClipboard: ClipboardPayload | null = null;
 let pasteCount = 0;
+const clipboardListeners = new Set<() => void>();
+
+function remember(payload: ClipboardPayload) {
+  memoryClipboard = payload;
+  pasteCount = 0;
+  clipboardListeners.forEach((l) => l());
+}
+
+/** For useSyncExternalStore: menus enable Paste as soon as something is copied. */
+export function subscribeAppClipboard(listener: () => void) {
+  clipboardListeners.add(listener);
+  return () => clipboardListeners.delete(listener);
+}
 
 function currentPayload(): ClipboardPayload | null {
   const p = project();
@@ -343,8 +356,7 @@ function currentPayload(): ClipboardPayload | null {
 export function copySelection(e: ClipboardEvent): boolean {
   const payload = currentPayload();
   if (!payload || !e.clipboardData) return false;
-  memoryClipboard = payload;
-  pasteCount = 0;
+  remember(payload);
   e.clipboardData.setData(CLIPBOARD_MIME, JSON.stringify(payload));
   const text = payload.elements
     .filter((el): el is TextElement => el.type === 'text')
@@ -357,6 +369,30 @@ export function copySelection(e: ClipboardEvent): boolean {
 
 export function cutSelection(e: ClipboardEvent) {
   if (copySelection(e)) deleteSelected();
+}
+
+/** Copy from a menu (no clipboard event): kept in the app, plain text best-effort to the system. */
+export function copyToAppClipboard(): boolean {
+  const payload = currentPayload();
+  if (!payload) return false;
+  remember(payload);
+  const text = payload.elements
+    .filter((el): el is TextElement => el.type === 'text')
+    .map((el) => plainText(el.content))
+    .join('\n\n');
+  if (text) void navigator.clipboard?.writeText(text).catch(() => undefined);
+  return true;
+}
+
+export function cutToAppClipboard(): void {
+  if (copyToAppClipboard()) deleteSelected();
+}
+
+export const hasAppClipboard = () => memoryClipboard !== null;
+
+/** Paste from a menu: whatever was last copied in this tab. */
+export function pasteFromAppClipboard(): void {
+  if (memoryClipboard) pastePayload(memoryClipboard);
 }
 
 export function pasteFromEvent(e: ClipboardEvent) {

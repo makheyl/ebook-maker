@@ -1,3 +1,4 @@
+import { useLayoutStore } from '../layout/layout-store';
 import {
   Maximize2,
   MousePointerClick,
@@ -46,7 +47,6 @@ import { endScrub, isPlaying, pause, playFrom, scrubTo } from './session';
 const LABEL_W = 176;
 const ROW_H = 32;
 const GROUP_GAP = 28;
-const HEIGHT_KEY = 'folio-timeline-height';
 const KIND_BAR: Record<AnimationKind, string> = {
   entrance: 'bg-emerald-500/85 border-emerald-700',
   emphasis: 'bg-amber-400/90 border-amber-600',
@@ -62,14 +62,6 @@ const PROPERTY_LABELS: Record<TrackProperty, string> = {
 };
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
-
-function readHeight() {
-  try {
-    return Number(localStorage.getItem(HEIGHT_KEY)) || 240;
-  } catch {
-    return 240;
-  }
-}
 
 type Drag =
   | { kind: 'bar'; bar: TimelineBar; mode: 'move' | 'start' | 'end'; x0: number }
@@ -96,7 +88,7 @@ export default function TimelineDock() {
   const selectedStepId = useUiStore((s) => s.selectedStepId);
   const previewing = useUiStore((s) => s.previewing);
   const model = useMemo(() => buildTimelineModel(page, project), [page, project]);
-  const [height, setHeight] = useState(readHeight);
+  const height = useLayoutStore((st) => st.sizes.bottom);
   const [pxPerMs, setPxPerMs] = useState(0.12);
   /** Page the ruler was last fitted for (null = fit again). */
   const [fittedFor, setFittedFor] = useState<string | null>(null);
@@ -393,34 +385,12 @@ export default function TimelineDock() {
 
   return (
     <section
+      id="panel-timeline"
       aria-label="Timeline"
       className="relative flex shrink-0 flex-col border-t bg-sidebar"
       style={{ height }}
       data-testid="timeline"
     >
-      <div
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="Resize timeline"
-        className="absolute -top-1 right-0 left-0 z-20 h-2 cursor-ns-resize"
-        onPointerDown={(e) => {
-          const y0 = e.clientY;
-          const h0 = height;
-          const move = (ev: PointerEvent) =>
-            setHeight(Math.min(480, Math.max(160, h0 - (ev.clientY - y0))));
-          const up = () => {
-            window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', up);
-            try {
-              localStorage.setItem(HEIGHT_KEY, String(Math.round(height)));
-            } catch {
-              // UI preference only.
-            }
-          };
-          window.addEventListener('pointermove', move);
-          window.addEventListener('pointerup', up);
-        }}
-      />
       <header className="flex h-10 shrink-0 items-center gap-1 border-b px-2 text-xs">
         <Button
           variant="ghost"
