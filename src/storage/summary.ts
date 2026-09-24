@@ -1,26 +1,8 @@
-import type { AssetRef, Character, Page, Project } from '@/core/schema';
+import { pageAssetIds, projectAssetIds } from '@/core/schema';
+import type { AssetRef, Character, Project } from '@/core/schema';
+
+export { pageAssetIds, projectAssetIds };
 import type { ProjectSummary } from './repository';
-
-/** Asset ids referenced by a page (image elements and image backgrounds). */
-export function pageAssetIds(page: Page): string[] {
-  const ids = new Set<string>();
-  if (page.background.type === 'image') ids.add(page.background.assetId);
-  for (const el of page.elements) if (el.type === 'image') ids.add(el.assetId);
-  return [...ids];
-}
-
-/** Every asset the book owns: page images plus each character's artwork and poses. */
-export function projectAssetIds(project: Project): string[] {
-  const ids = new Set<string>();
-  for (const page of project.pages) for (const id of pageAssetIds(page)) ids.add(id);
-  for (const character of Object.values(project.characters)) {
-    ids.add(character.assetId);
-    for (const pose of character.poses) ids.add(pose.assetId);
-  }
-  // Sound blobs live in the same store, so they must count as used too.
-  for (const id of Object.keys(project.sounds)) ids.add(id);
-  return [...ids];
-}
 
 export function summarize(project: Project): ProjectSummary {
   const cover = project.pages[0] ?? null;

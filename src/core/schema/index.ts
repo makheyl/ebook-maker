@@ -4,3 +4,4 @@ export * from './defaults';
 export * from './factories';
 export * from './page-sizes';
 export * from './text';
+export * from './asset-ids';

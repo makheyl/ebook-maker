@@ -8,7 +8,15 @@ export type BookData = {
   /** assetId → URL the player loads (data: URI in single-file exports, relative path in zips). */
   assets: Record<string, string>;
   options: { showBadge: boolean };
+  /**
+   * Who wrote the file (added with import support). Optional: files without it are still
+   * imported. `formatVersion` 2 = the export carries every file the book owns.
+   */
+  generator?: { app: string; formatVersion: number; exportedAt: string };
 };
+
+/** Bump when the exported file layout changes in a way the importer must know about. */
+export const BOOK_FORMAT_VERSION = 2;
 
 export const BOOK_DATA_ID = 'book-data';
 export const BOOK_ROOT_ID = 'book';

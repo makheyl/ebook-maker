@@ -11,7 +11,7 @@ import {
 import { buildSingleFile, buildZip, estimateSize, renderBookHtml, selectFontFaces } from './build';
 import { escapeHtml, escapeInlineCode, escapeJsonForHtml, slugify } from './escape';
 import { BOOK_DATA_ID, isBookData } from './format';
-import { usedAssetIds, usedFontFaces, usedSoundIds } from './usage';
+import { exportedAssetIds, usedFontFaces } from './usage';
 
 const EVIL = '</script><script>alert(1)</script><!-- &   "quotes"';
 
@@ -88,8 +88,16 @@ describe('escaping', () => {
 });
 
 describe('usage', () => {
-  it('exports only used assets', () => {
-    expect(usedAssetIds(evilProject())).toEqual(['img1']);
+  it('exports every asset the book owns, and nothing it no longer refers to', () => {
+    const project = evilProject();
+    expect(exportedAssetIds(project)).toEqual(['img1']);
+    // Hidden pictures are part of the book: they must survive an export → import round trip.
+    const hidden = { ...project.assets.img1!, id: 'img_hidden' };
+    project.assets.img_hidden = hidden;
+    project.pages[0]!.elements.push(
+      createImageElement(hidden, { x: 0, y: 0, width: 5, height: 5 }, { hidden: true }),
+    );
+    expect(exportedAssetIds(project)).toEqual(['img1', 'img_hidden']);
   });
 
   it('selects only used font faces and subsets', () => {
@@ -200,12 +208,9 @@ describe('sounds', () => {
         : undefined,
   });
 
-  it('exports only sounds a reader can hear', () => {
+  it('exports every sound in the book, played or not (every export is a backup)', () => {
     const project = soundBook();
-    expect(usedSoundIds(project).sort()).toEqual(['snd_ding', 'snd_whoosh']);
-    expect(usedAssetIds(project)).not.toContain('snd_spare');
-    project.pages[0]!.elements[0]!.hidden = true;
-    expect(usedSoundIds(project)).toEqual(['snd_whoosh']);
+    expect(exportedAssetIds(project).sort()).toEqual(['snd_ding', 'snd_spare', 'snd_whoosh']);
   });
 
   it('inlines audio in the single file and allows media only from data: URIs', async () => {

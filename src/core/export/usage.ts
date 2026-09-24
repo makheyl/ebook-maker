@@ -1,40 +1,24 @@
 import { getFont, type FontSubset } from '../fonts/catalog';
+import { projectAssetIds } from '../schema/asset-ids';
 import type { Project } from '../schema/types';
 
-/** Sounds the reader can actually hear: played by a visible element, or the page turn. */
-export function usedSoundIds(project: Project): string[] {
-  const ids = new Set<string>();
-  if (project.reader.pageTurnSound) ids.add(project.reader.pageTurnSound);
-  for (const page of project.pages) {
-    for (const el of page.elements) {
-      if (el.hidden) continue;
-      for (const it of el.interactions ?? []) {
-        for (const a of it.actions) if (a.type === 'playSound') ids.add(a.soundId);
-      }
-    }
-  }
-  return [...ids].filter((id) => project.sounds[id]);
+/** Image files the book owns (hidden elements, characters and poses included). */
+export function bookImageIds(project: Project): string[] {
+  return projectAssetIds(project).filter((id) => project.assets[id]);
 }
 
-/** Image asset ids actually shown in the book (unused uploads are not exported). */
-export function usedImageIds(project: Project): string[] {
-  const ids = new Set<string>();
-  for (const page of project.pages) {
-    if (page.background.type === 'image') ids.add(page.background.assetId);
-    for (const el of page.elements) {
-      if (el.type !== 'image' || el.hidden) continue;
-      ids.add(el.assetId);
-      // A character's other poses can be shown by its animations.
-      const character = el.characterId ? project.characters[el.characterId] : undefined;
-      character?.poses.forEach((p) => ids.add(p.assetId));
-    }
-  }
-  return [...ids].filter((id) => project.assets[id]);
+/** Every sound in the book's list, played or not. */
+export function bookSoundIds(project: Project): string[] {
+  return Object.keys(project.sounds);
 }
 
-/** Every stored blob the export needs: used images, then used sounds. */
-export function usedAssetIds(project: Project): string[] {
-  return [...usedImageIds(project), ...usedSoundIds(project)];
+/**
+ * The files an export carries: everything the book owns, not only what a reader sees on the
+ * first read, so every export is a complete backup that imports back as an editable book.
+ * (Files no page or character refers to any more are still left out.)
+ */
+export function exportedAssetIds(project: Project): string[] {
+  return [...bookImageIds(project), ...bookSoundIds(project)];
 }
 
 export type FontUsage = { fontId: string; style: 'normal' | 'italic'; subset: FontSubset };

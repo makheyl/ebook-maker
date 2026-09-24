@@ -5,8 +5,8 @@ import { SCHEMA_VERSION } from '../schema/project';
 import { plainText } from '../schema/text';
 import type { Project } from '../schema/types';
 import { escapeHtml, escapeInlineCode, escapeJsonForHtml, slugify } from './escape';
-import { BOOK_DATA_ID, BOOK_ROOT_ID, type BookData } from './format';
-import { usedAssetIds, usedFontFaces } from './usage';
+import { BOOK_DATA_ID, BOOK_FORMAT_VERSION, BOOK_ROOT_ID, type BookData } from './format';
+import { exportedAssetIds, usedFontFaces } from './usage';
 
 /**
  * Export packaging. Everything here is pure (inputs in, strings/blobs out) so it can be unit
@@ -93,6 +93,8 @@ export type HtmlParts = {
   showBadge: boolean;
   /** Content-Security-Policy that keeps the book fully offline. */
   csp: string;
+  /** Defaults to now. */
+  exportedAt?: string;
 };
 
 /** The exported page. All dynamic values are escaped for their context. */
@@ -104,6 +106,11 @@ export function renderBookHtml(parts: HtmlParts): string {
     project,
     assets: parts.assets,
     options: { showBadge: parts.showBadge },
+    generator: {
+      app: PRODUCT_NAME,
+      formatVersion: BOOK_FORMAT_VERSION,
+      exportedAt: parts.exportedAt ?? new Date().toISOString(),
+    },
   };
   const title = escapeHtml(project.title || 'Untitled book');
   const description = escapeHtml(bookDescription(project));
@@ -160,7 +167,7 @@ async function fontCssFor(inputs: ExportInputs): Promise<{ css: string; bytes: n
 /** One self-contained .html file: player, data, images and fonts inlined. Works offline by double-click. */
 export async function buildSingleFile(inputs: ExportInputs): Promise<ExportResult> {
   const assets: Record<string, string> = {};
-  for (const id of usedAssetIds(inputs.project)) {
+  for (const id of exportedAssetIds(inputs.project)) {
     const blob = await inputs.getAsset(id);
     if (blob) assets[id] = await blobToDataUri(blob);
   }
@@ -182,7 +189,7 @@ export async function buildSingleFile(inputs: ExportInputs): Promise<ExportResul
 export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
   const zip = new JSZip();
   const assets: Record<string, string> = {};
-  for (const id of usedAssetIds(inputs.project)) {
+  for (const id of exportedAssetIds(inputs.project)) {
     const blob = await inputs.getAsset(id);
     if (!blob) continue;
     const folder = inputs.project.sounds[id] ? 'audio' : 'images';

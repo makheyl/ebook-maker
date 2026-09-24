@@ -143,3 +143,22 @@ export async function processImage(
     bitmap.close();
   }
 }
+
+/**
+ * A thumbnail for an image that is already processed (e.g. restored from an exported book).
+ * The full image itself is never re-encoded, so round trips don't lose quality. Also proves the
+ * bytes really are a decodable image, and reports their size.
+ */
+export async function makeThumbnail(
+  blob: Blob,
+  thumbEdge = DEFAULT_PROCESS_OPTIONS.thumbEdge,
+): Promise<{ thumb: Blob; width: number; height: number }> {
+  const bitmap = await decode(blob);
+  try {
+    const size = fitWithin(bitmap.width, bitmap.height, thumbEdge);
+    const thumb = await encode(draw(bitmap, size.width, size.height), 0.8);
+    return { thumb, width: bitmap.width, height: bitmap.height };
+  } finally {
+    bitmap.close();
+  }
+}
