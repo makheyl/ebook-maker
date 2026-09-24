@@ -16,7 +16,10 @@ export const AUTO_LETTER_LIMIT = 600;
 const countChars = (text: string) => Array.from(text).length;
 const countWords = (text: string) => (text.match(/\S+/g) ?? []).length;
 
-export function splitModeFor(element: TextElement, by: RevealBy = 'auto'): TextSplit {
+export function splitModeFor(
+  element: Pick<TextElement, 'content'>,
+  by: RevealBy = 'auto',
+): TextSplit {
   const text = plainText(element.content);
   const words = countWords(text);
   const byWords: TextSplit = words <= MAX_REVEAL_UNITS ? 'words' : 'chunks';
@@ -27,7 +30,7 @@ export function splitModeFor(element: TextElement, by: RevealBy = 'auto'): TextS
 }
 
 /** Words per chunk so a text has at most MAX_REVEAL_UNITS chunks. */
-export function wordsPerChunk(element: TextElement): number {
+export function wordsPerChunk(element: Pick<TextElement, 'content'>): number {
   return Math.max(1, Math.ceil(countWords(plainText(element.content)) / MAX_REVEAL_UNITS));
 }
 

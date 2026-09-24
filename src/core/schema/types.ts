@@ -38,6 +38,8 @@ import type {
   textStyleSchema,
   themeSchema,
   GroupElementData,
+  bubbleElementSchema,
+  BUBBLE_SHAPES,
 } from './project';
 
 export type Project = z.infer<typeof projectSchema>;
@@ -63,6 +65,8 @@ export type ButtonStyle = z.infer<typeof buttonStyleSchema>;
 export type ButtonIcon = (typeof BUTTON_ICONS)[number];
 export type HotspotElement = z.infer<typeof hotspotElementSchema>;
 export type GroupElement = GroupElementData;
+export type BubbleElement = z.infer<typeof bubbleElementSchema>;
+export type BubbleShape = (typeof BUBBLE_SHAPES)[number];
 /** Elements that aren't groups. */
 export type LeafElement = Exclude<PageElement, GroupElement>;
 export type TextRun = z.infer<typeof textRunSchema>;

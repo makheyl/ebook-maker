@@ -8,7 +8,7 @@ export const typewriter: AnimationPreset = {
   id: 'typewriter',
   label: 'Typewriter',
   kind: 'entrance',
-  appliesTo: ['text'],
+  appliesTo: ['text', 'bubble'],
   splitText: 'chars',
   defaults: { duration: 1800, delay: 0, easing: 'linear', params: { by: 'auto' } },
   params: [

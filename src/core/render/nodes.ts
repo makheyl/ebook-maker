@@ -3,12 +3,14 @@ import { splitRun, wordsPerChunk, type TextSplit } from '../text/split';
 import { clampWeight, fontStack } from '../fonts/catalog';
 import type {
   AssetRef,
+  BubbleElement,
   ButtonElement,
   HotspotElement,
   ImageElement,
   ShapeElement,
   TextElement,
 } from '../schema/types';
+import { bubbleGeometry, type Pt } from './bubble-geometry';
 import { buildIcon } from './icons';
 import { imageLayout } from './image-geometry';
 import { filterCss, textShadowCss } from './styles';
@@ -39,7 +41,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
  * full text is then exposed to assistive tech through a visually hidden copy, and the unit
  * spans are hidden from it. Shrink-to-fit text is drawn at the size the editor measured.
  */
-export function buildText(element: TextElement, split: TextSplit | false = false): HTMLElement {
+export function buildText(
+  element: Pick<TextElement, 'content' | 'style'>,
+  split: TextSplit | false = false,
+): HTMLElement {
   const s = element.style;
   const box = el('div', 'fl-text');
   box.style.fontFamily = fontStack(s.fontFamily);
@@ -281,5 +286,60 @@ export function buildButton(element: ButtonElement, interactive: boolean): HTMLE
 export function buildHotspot(element: HotspotElement, showOutline: boolean): HTMLElement {
   const box = el('div', 'fl-hotspot');
   if (showOutline) box.textContent = element.a11yLabel?.trim() || element.name;
+  return box;
+}
+
+// ─── Speech bubble ─────────────────────────────────────────────────────────────
+
+/**
+ * A balloon (SVG body and tail, drawn past the box where the tail reaches) with the bubble's
+ * text inside. `tip` is where the tail points, in the bubble's own coordinates; `speaker` is
+ * announced first ("Pip says: …").
+ */
+export function buildBubble(
+  element: BubbleElement,
+  tip: Pt,
+  split: TextSplit | false = false,
+  speaker?: string,
+): HTMLElement {
+  const { width: w, height: h } = element;
+  const b = element.bubble;
+  const box = el('div', 'fl-bubble');
+  box.dataset.shape = b.shape;
+  const g = bubbleGeometry(b.shape, w, h, tip, element.tail.width, b.strokeWidth);
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'fl-bubble-shape');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('aria-hidden', 'true');
+  const stroked = !!b.stroke && b.strokeWidth > 0;
+  const path = (d: string, outline: boolean) => {
+    const node = document.createElementNS(SVG_NS, 'path');
+    node.setAttribute('d', d);
+    node.style.fill = b.fill;
+    if (outline && stroked) {
+      node.style.stroke = b.stroke!;
+      node.style.strokeWidth = String(b.strokeWidth);
+      node.style.strokeLinejoin = 'round';
+      if (b.shape === 'whisper') {
+        node.style.strokeDasharray = `${b.strokeWidth * 3} ${b.strokeWidth * 2}`;
+      }
+    }
+    svg.appendChild(node);
+  };
+  // Tail, then the body over its root, then a fill-only patch over the body's outline.
+  if (g.tail) path(g.tail, true);
+  path(g.body, true);
+  if (g.cover && stroked) path(g.cover, false);
+  box.appendChild(svg);
+
+  if (speaker) {
+    const sr = el('span', 'fl-sr-only');
+    sr.textContent = `${speaker} says:`;
+    box.appendChild(sr);
+  }
+  const text = buildText(element, split);
+  text.style.inset = `${g.inset.y}px ${g.inset.x}px`;
+  box.appendChild(text);
   return box;
 }

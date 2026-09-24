@@ -1,6 +1,7 @@
 import { pivotToLocal, visibleWidthLocal } from '../character/pivot';
 import { accessibleName } from '../interaction/names';
 import type { TextSplit } from '../text/split';
+import { hasText } from '../schema/text';
 import { isGroup } from '../schema/tree';
 import type {
   AssetRef,
@@ -10,7 +11,9 @@ import type {
   PageElement,
   PageSize,
 } from '../schema/types';
+import { tailTip, type Pt } from './bubble-geometry';
 import {
+  buildBubble,
   buildButton,
   buildHotspot,
   buildImage,
@@ -53,6 +56,10 @@ export type ElementNodes = {
   idle?: HTMLElement;
   /** Ground shadow (character images with a shadow only). */
   shadow?: HTMLElement;
+  /** Speech bubbles: the layer that copies their speaker's movement (outside .fl-anim). */
+  follow?: HTMLElement;
+  /** Speech bubbles: where the tail points, in the bubble's own coordinates. */
+  tailTip?: Pt;
   element: PageElement;
   character?: Character;
   /** The character's feet in element-local 0–1 coordinates (its transform origin). */
@@ -77,7 +84,14 @@ export type PageView = {
   destroy(): void;
 };
 
-type Entry = ElementNodes & { assetRef: AssetRef | undefined; split: TextSplit | false };
+/** What a bubble's drawing depends on besides its own data. */
+type BubbleInfo = { tip: Pt; speaker: string | undefined; key: string };
+
+type Entry = ElementNodes & {
+  assetRef: AssetRef | undefined;
+  split: TextSplit | false;
+  bubble?: BubbleInfo;
+};
 
 const NO_CHARACTERS: Readonly<Record<string, Character>> = {};
 const NO_SPLIT: ReadonlyMap<string, TextSplit> = new Map();
@@ -190,10 +204,13 @@ export function createPageView(options: PageViewOptions): PageView {
     split: TextSplit | false,
     asset: AssetRef | undefined,
     character?: Character,
+    bubble?: BubbleInfo,
   ): Element {
     switch (el.type) {
       case 'text':
         return buildText(el, split);
+      case 'bubble':
+        return buildBubble(el, bubble?.tip ?? el.tail.tip, split, bubble?.speaker);
       case 'image':
         return buildImage(el, asset, resolveAsset, {
           strips: character?.warp ? STRIP_COUNT : 0,
@@ -216,12 +233,18 @@ export function createPageView(options: PageViewOptions): PageView {
     split: TextSplit | false,
     asset: AssetRef | undefined,
     character: Character | undefined,
+    bubble: BubbleInfo | undefined,
   ): Entry {
     const frame = document.createElement('div');
     frame.className = 'fl-el';
     frame.dataset.elementId = el.id;
     const anim = document.createElement('div');
     anim.className = 'fl-anim';
+    let follow: HTMLElement | undefined;
+    if (el.type === 'bubble') {
+      follow = document.createElement('div');
+      follow.className = 'fl-follow';
+    }
     let idle: HTMLElement | undefined;
     let shadow: HTMLElement | undefined;
     if (character) {
@@ -236,18 +259,28 @@ export function createPageView(options: PageViewOptions): PageView {
       anim.appendChild(idle);
     }
     // A group's anim layer holds its children's frames (synced by update()).
-    if (!isGroup(el)) (idle ?? anim).appendChild(buildContent(el, split, asset, character));
-    frame.appendChild(anim);
+    if (!isGroup(el)) {
+      (idle ?? anim).appendChild(buildContent(el, split, asset, character, bubble));
+    }
+    if (follow) {
+      follow.appendChild(anim);
+      frame.appendChild(follow);
+    } else {
+      frame.appendChild(anim);
+    }
     applyFrame(frame, el, mode);
     const entry: Entry = {
       frame,
       anim,
       idle,
       shadow,
+      follow,
+      tailTip: bubble?.tip,
       element: el,
       character,
       assetRef: asset,
       split,
+      bubble,
     };
     applyCharacter(entry, asset);
     return entry;
@@ -273,29 +306,38 @@ export function createPageView(options: PageViewOptions): PageView {
         const asset = el.type === 'image' ? assets[el.assetId] : undefined;
         const character =
           el.type === 'image' && el.characterId ? characters[el.characterId] : undefined;
-        const wantSplit = (el.type === 'text' && split.get(el.id)) || false;
+        const wantSplit = (hasText(el) && split.get(el.id)) || false;
+        const bubble = el.type === 'bubble' ? bubbleInfo(el, page, characters) : undefined;
         let entry = entries.get(el.id);
         if (!entry || entry.element.type !== el.type || entry.character !== character) {
           // A character change alters the layer structure, so the element is rebuilt.
           entry?.frame.remove();
-          entry = createEntry(el, wantSplit, asset, character);
+          entry = createEntry(el, wantSplit, asset, character, bubble);
           entries.set(el.id, entry);
-        } else if (entry.element !== el || entry.assetRef !== asset || entry.split !== wantSplit) {
+        } else if (
+          entry.element !== el ||
+          entry.assetRef !== asset ||
+          entry.split !== wantSplit ||
+          entry.bubble?.key !== bubble?.key
+        ) {
           applyFrame(entry.frame, el, mode);
           if (!isGroup(el)) {
             const contentChanged =
               !sameContent(entry.element, el) ||
               entry.assetRef !== asset ||
-              entry.split !== wantSplit;
+              entry.split !== wantSplit ||
+              entry.bubble?.key !== bubble?.key;
             if (contentChanged && !patchImageInPlace(entry, el, asset)) {
               contentHost(entry).replaceChildren(
-                buildContent(el, wantSplit, asset, entry.character),
+                buildContent(el, wantSplit, asset, entry.character, bubble),
               );
             }
           }
           entry.element = el;
           entry.assetRef = asset;
           entry.split = wantSplit;
+          entry.bubble = bubble;
+          entry.tailTip = bubble?.tip;
           applyCharacter(entry, asset);
         }
         if (isGroup(el)) sync(el.children, entry.anim, null);
@@ -342,7 +384,7 @@ export function createPageView(options: PageViewOptions): PageView {
       if (!entry || isGroup(entry.element)) return;
       applyFrame(entry.frame, entry.element, mode);
       contentHost(entry).replaceChildren(
-        buildContent(entry.element, entry.split, entry.assetRef, entry.character),
+        buildContent(entry.element, entry.split, entry.assetRef, entry.character, entry.bubble),
       );
     },
     getNodes: (id) => entries.get(id),
@@ -360,6 +402,17 @@ export function createPageView(options: PageViewOptions): PageView {
       root.remove();
     },
   };
+}
+
+/** A bubble's tail tip (from where its target is on the page) and its speaker's name. */
+function bubbleInfo(
+  el: Extract<PageElement, { type: 'bubble' }>,
+  page: Page,
+  characters: Readonly<Record<string, Character>>,
+): BubbleInfo {
+  const tip = tailTip(page.elements, el);
+  const speaker = el.speakerId ? characters[el.speakerId]?.name : undefined;
+  return { tip, speaker, key: `${tip.x},${tip.y}|${speaker ?? ''}` };
 }
 
 /**
@@ -419,6 +472,15 @@ function sameContent(a: PageElement, b: PageElement): boolean {
       a.style === b.style &&
       a.a11yLabel === b.a11yLabel &&
       a.name === b.name
+    );
+  }
+  if (a.type === 'bubble' && b.type === 'bubble') {
+    return (
+      sizeSame &&
+      a.content === b.content &&
+      a.style === b.style &&
+      a.bubble === b.bubble &&
+      a.tail === b.tail
     );
   }
   if (a.type === 'hotspot' && b.type === 'hotspot') {

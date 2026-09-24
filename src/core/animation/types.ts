@@ -36,9 +36,19 @@ export type ParamDef =
  * - 'strips'  → each strip of a warped character (keyframes come from `perTarget`)
  * - 'poses'   → each pose image of a character (keyframes come from `perTarget`)
  * - 'base'    → a character's own artwork (hidden while a pose shows)
+ * - 'follow'  → a speech bubble's follow layer (copies of its speaker's movement)
  */
 export type KeyframeTarget =
-  'element' | 'chars' | 'media' | 'idle' | 'face' | 'shadow' | 'strips' | 'poses' | 'base';
+  | 'element'
+  | 'chars'
+  | 'media'
+  | 'idle'
+  | 'face'
+  | 'shadow'
+  | 'strips'
+  | 'poses'
+  | 'base'
+  | 'follow';
 
 export type KeyframeSpec = {
   target: KeyframeTarget;
@@ -64,6 +74,8 @@ export type BuildContext = {
   pivot?: { x: number; y: number };
   /** The step being built (custom keyframe tracks live on it). */
   step?: AnimationStep;
+  /** Speech bubbles: where the tail points, in the bubble's own px coordinates. */
+  tailTip?: { x: number; y: number };
 };
 
 /**

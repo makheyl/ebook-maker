@@ -10,6 +10,7 @@ import {
   Square,
   Type,
   ChevronDown,
+  MessageCircle,
   ChevronUp,
   ClipboardPaste,
   Copy,
@@ -171,6 +172,11 @@ export function SelectionMenuItems() {
               {only.type !== 'button' && (
                 <ContextMenuItem onSelect={() => replaceWith(only.id, { kind: 'button' })}>
                   <RectangleHorizontal /> Button
+                </ContextMenuItem>
+              )}
+              {only.type !== 'bubble' && (
+                <ContextMenuItem onSelect={() => replaceWith(only.id, { kind: 'bubble' })}>
+                  <MessageCircle /> Speech bubble
                 </ContextMenuItem>
               )}
             </ContextMenuSubContent>

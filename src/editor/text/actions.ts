@@ -5,9 +5,11 @@ import {
   createPage,
   plainText,
   splitParagraphsAt,
+  hasText,
   type PageSize,
   type TextElement,
 } from '@/core/schema';
+import { findElement } from '@/core/schema/tree';
 import type { Autofit } from '@/core/text/autofit';
 import { docStore } from '../store/doc-store';
 import { getActivePage, getSelectedElements } from '../store/selectors';
@@ -25,7 +27,7 @@ function noteShrunk(switched: boolean) {
 export function setAutofit(mode: Autofit): void {
   const page = getActivePage();
   const size = pageSize();
-  const texts = getSelectedElements().filter((e): e is TextElement => e.type === 'text');
+  const texts = getSelectedElements().filter(hasText);
   if (!page || !size || !texts.length) return;
   let switched = false;
   const fits = texts.map((t) => {
@@ -37,7 +39,7 @@ export function setAutofit(mode: Autofit): void {
     (d) =>
       fits.forEach(([id, fit]) =>
         updateElement(d, page.id, id, (el) => {
-          if (el.type !== 'text') return;
+          if (el.type !== 'text' && el.type !== 'bubble') return;
           el.style = fit.style;
           el.height = fit.height;
         }),
@@ -51,7 +53,8 @@ export function setAutofit(mode: Autofit): void {
 export function moveOntoPage(elementId: string): void {
   const page = getActivePage();
   const size = pageSize();
-  const el = page?.elements.find((e): e is TextElement => e.id === elementId && e.type === 'text');
+  const found = page ? findElement(page.elements, elementId) : undefined;
+  const el = found && hasText(found) ? found : undefined;
   if (!page || !size || !el) return;
   const width = Math.min(el.width, size.width);
   const height = Math.min(el.height, size.height);
@@ -65,7 +68,7 @@ export function moveOntoPage(elementId: string): void {
   docStore.change(
     (d) =>
       updateElement(d, page.id, el.id, (t) => {
-        if (t.type !== 'text') return;
+        if (t.type !== 'text' && t.type !== 'bubble') return;
         Object.assign(t, { x, y, width, height: fit.height });
         t.style = fit.style;
       }),

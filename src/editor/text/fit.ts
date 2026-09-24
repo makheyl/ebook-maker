@@ -6,7 +6,8 @@ import {
   MIN_TEXT_HEIGHT,
   offPage,
 } from '@/core/text/autofit';
-import type { PageSize, TextElement, TextStyle } from '@/core/schema';
+import { bubbleHeightForText, bubbleInset, bubbleTextBox } from '@/core/render/bubble-geometry';
+import type { BubbleElement, PageSize, TextElement, TextLike, TextStyle } from '@/core/schema';
 import { measureTextHeight } from './measure';
 
 export type FitResult = {
@@ -37,7 +38,21 @@ function withoutScale(style: TextStyle): TextStyle {
  * - shrink: the box keeps its size and the text scales down to fit
  * - none: nothing changes; `overflows` tells whether the text spills out
  */
-export function fitText(el: TextElement, pageSize: PageSize): FitResult {
+export function fitText(el: TextLike, pageSize: PageSize): FitResult {
+  return el.type === 'bubble' ? fitBubble(el, pageSize) : fitTextBox(el, pageSize);
+}
+
+/** A bubble fits the text box inside its shape; growing grows the whole bubble. */
+function fitBubble(el: BubbleElement, pageSize: PageSize): FitResult {
+  const box = bubbleTextBox(el);
+  const below = bubbleInset(el.bubble.shape, el.width, el.height).y;
+  const fit = fitTextBox(box, { ...pageSize, height: pageSize.height - below });
+  const height =
+    fit.height === box.height ? el.height : bubbleHeightForText(el.bubble.shape, fit.height);
+  return { ...fit, height };
+}
+
+function fitTextBox(el: TextElement, pageSize: PageSize): FitResult {
   const mode = autofitOf(el.style);
   if (mode === 'none') {
     const style = withoutScale(el.style);
@@ -75,16 +90,19 @@ export function fitText(el: TextElement, pageSize: PageSize): FitResult {
 
 export type TextProblems = { overflow: boolean; offPage: boolean };
 
-const problemCache = new WeakMap<TextElement, { key: string; value: TextProblems }>();
+const problemCache = new WeakMap<TextLike, { key: string; value: TextProblems }>();
 
 /** Whether a text box's content doesn't fit, or the box leaves the page (memoised per element). */
-export function textProblems(el: TextElement, pageSize: PageSize): TextProblems {
+export function textProblems(el: TextLike, pageSize: PageSize): TextProblems {
   const key = `${pageSize.width}x${pageSize.height}`;
   const hit = problemCache.get(el);
   if (hit?.key === key) return hit.value;
   const value = {
     // Measured at the size the text is drawn (shrunk text uses its fitted size).
-    overflow: measureTextHeight(el) > el.height + 1,
+    overflow: (() => {
+      const box = el.type === 'bubble' ? bubbleTextBox(el) : el;
+      return measureTextHeight(box) > box.height + 1;
+    })(),
     offPage: offPage(el, pageSize),
   };
   problemCache.set(el, { key, value });

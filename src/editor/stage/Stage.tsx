@@ -208,7 +208,8 @@ export function Stage({
             ui.enterGroup(frame.dataset.elementId!, [inner.dataset.elementId!]);
             return;
           }
-          if (frame.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {
+          const editable = frame.dataset.type === 'text' || frame.dataset.type === 'bubble';
+          if (editable && !frame.hasAttribute('data-locked')) {
             onEditText?.(frame.dataset.elementId!, { x: e.clientX, y: e.clientY });
           }
         }}

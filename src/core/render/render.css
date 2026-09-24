@@ -98,6 +98,17 @@
 .fl-char {
   display: inline;
 }
+.fl-bubble {
+  position: absolute;
+  inset: 0;
+}
+.fl-bubble-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
 .fl-sr-only {
   position: absolute;
   width: 1px;
@@ -111,7 +122,8 @@
 }
 
 /* ─── Characters ─── */
-.fl-idle {
+.fl-idle,
+.fl-follow {
   position: absolute;
   inset: 0;
 }

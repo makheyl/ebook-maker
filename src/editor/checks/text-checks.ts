@@ -1,6 +1,6 @@
 import { walkElements } from '@/core/schema/tree';
 import type { CheckIssue } from '@/core/interaction/validate';
-import type { Project, TextElement } from '@/core/schema';
+import { hasText, type Project } from '@/core/schema';
 import { textProblems } from '../text/fit';
 
 /**
@@ -12,8 +12,8 @@ export function textIssues(project: Project): CheckIssue[] {
   const issues: CheckIssue[] = [];
   project.pages.forEach((page, i) => {
     walkElements(page.elements, (el, parent) => {
-      if (el.type !== 'text' || el.hidden) return;
-      const problems = textProblems(el as TextElement, project.pageSize);
+      if (!hasText(el) || el.hidden) return;
+      const problems = textProblems(el, project.pageSize);
       const overflow = problems.overflow;
       // Page bounds only make sense for text directly on the page (not inside a group).
       const offPage = !parent && problems.offPage;

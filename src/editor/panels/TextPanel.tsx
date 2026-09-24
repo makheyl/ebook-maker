@@ -9,7 +9,7 @@ import {
   Italic,
 } from 'lucide-react';
 import { FONT_CATALOG, fontStack, getFont } from '@/core/fonts/catalog';
-import type { TextElement } from '@/core/schema';
+import type { TextElement, TextLike } from '@/core/schema';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { Switch } from '@/ui/switch';
 import { Toggle } from '@/ui/toggle';
@@ -33,7 +33,7 @@ const WEIGHTS = [
 
 const DEFAULT_SHADOW = { x: 0, y: 4, blur: 12, color: 'rgba(0, 0, 0, 0.35)' };
 
-export function TextPanel({ elements }: { elements: TextElement[] }) {
+export function TextPanel({ elements }: { elements: TextLike[] }) {
   const s = elements[0]!.style;
   const font = getFont(s.fontFamily);
   const key = elements.map((e) => e.id).join(',');

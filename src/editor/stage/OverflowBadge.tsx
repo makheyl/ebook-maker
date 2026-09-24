@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { rotatedBounds } from '@/core/geometry';
-import type { TextElement } from '@/core/schema';
+import { hasText, type TextLike } from '@/core/schema';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +24,7 @@ export function OverflowBadge({ scale }: { scale: number }) {
   const editingId = useUiStore((s) => s.editingTextId);
   if (previewing) return null;
   const texts = page.elements.filter(
-    (e): e is TextElement => e.type === 'text' && !e.hidden && e.id !== editingId,
+    (e): e is TextLike => hasText(e) && !e.hidden && e.id !== editingId,
   );
   const flagged = texts
     .map((el) => ({ el, problems: textProblems(el, project.pageSize) }))
@@ -94,7 +94,7 @@ export function OverflowBadge({ scale }: { scale: number }) {
                     Move it onto the page
                   </DropdownMenuItem>
                 )}
-                {problems.overflow && !problems.offPage && (
+                {problems.overflow && !problems.offPage && el.type === 'text' && (
                   <DropdownMenuItem onSelect={() => continueOnNewPage(el.id)}>
                     Continue on a new page
                   </DropdownMenuItem>

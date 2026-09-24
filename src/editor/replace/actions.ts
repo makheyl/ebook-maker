@@ -37,6 +37,7 @@ const typeName: Record<ReplaceSource['kind'], string> = {
   shape: 'shape',
   text: 'text box',
   button: 'button',
+  bubble: 'speech bubble',
 };
 
 /** Replaces one element with something else, keeping its animations where they still apply. */

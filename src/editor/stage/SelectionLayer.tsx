@@ -48,7 +48,9 @@ function applyLive(el: PageElement, patch: LivePatch): PageElement {
   }
   const next = { ...el, ...geometry } as PageElement;
   if (fontSize !== undefined && next.type === 'text') next.style = { ...next.style, fontSize };
-  if (fitScale !== undefined && next.type === 'text') next.style = { ...next.style, fitScale };
+  if (fitScale !== undefined && (next.type === 'text' || next.type === 'bubble')) {
+    next.style = { ...next.style, fitScale };
+  }
   return next;
 }
 
@@ -156,7 +158,7 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
             Object.assign(el, roundGeometry(geometry));
             if (fontSize !== undefined && el.type === 'text')
               el.style.fontSize = Math.round(fontSize * 10) / 10;
-            if (fitScale !== undefined && el.type === 'text') {
+            if (fitScale !== undefined && (el.type === 'text' || el.type === 'bubble')) {
               if (fitScale >= 1) delete el.style.fitScale;
               else el.style.fitScale = fitScale;
             }
@@ -194,6 +196,16 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     const orig = start.current.get(id);
     if (!orig) return;
     const corner = direction[0] !== 0 && direction[1] !== 0;
+    if (orig.type === 'bubble') {
+      // Bubbles resize freely (like a shape); shrink-to-fit text re-fits the new balloon.
+      const box = { x: left, y: top, width, height };
+      const fitScale =
+        autofitOf(orig.style) === 'shrink'
+          ? (fitText({ ...orig, ...box }, project.pageSize).style.fitScale ?? 1)
+          : undefined;
+      setLive(id, { ...box, ...(fitScale !== undefined ? { fitScale } : {}) });
+      return;
+    }
     if (orig.type === 'text' && !corner && autofitOf(orig.style) !== 'grow') {
       // Shrink / fixed boxes resize freely; shrink re-fits its text to the new box.
       const box = { x: left, y: top, width, height };

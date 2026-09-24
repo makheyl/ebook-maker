@@ -1,6 +1,14 @@
-import { findElement, flattenElements } from '../schema/tree';
+import { hasText } from '../schema/text';
+import { ancestorsOf, findElement, flattenElements, inheritedRotation } from '../schema/tree';
 import type { ElementNodes } from '../render/page-view';
-import type { AnimationKind, AnimationStep, Page, PageSize } from '../schema/types';
+import type {
+  AnimationKind,
+  AnimationStep,
+  BubbleElement,
+  Page,
+  PageElement,
+  PageSize,
+} from '../schema/types';
 import { getIdleMotion } from './idle';
 import { resolveEasing } from './easing';
 import { compileMotion } from './motion';
@@ -84,7 +92,7 @@ export function elementsNeedingCharSplit(page: Page): Map<string, TextSplit> {
   for (const step of page.animations) {
     if (getPreset(step.preset)?.splitText !== 'chars') continue;
     const el = findElement(page.elements, step.elementId);
-    if (el?.type !== 'text' || split.has(el.id)) continue;
+    if (!el || !hasText(el) || split.has(el.id)) continue;
     const by = step.params?.by;
     split.set(el.id, splitModeFor(el, by === 'letter' || by === 'word' ? by : 'auto'));
   }
@@ -120,7 +128,63 @@ function targetsFor(spec: KeyframeSpec, nodes: ElementNodes): Element[] {
       ];
     case 'chars':
       return [...nodes.anim.querySelectorAll('.fl-char')];
+    case 'follow':
+      return nodes.follow ? [nodes.follow] : [];
   }
+}
+
+const round = (n: number) => Math.round(n * 1000) / 1000;
+
+/**
+ * The translation part of a CSS transform: the translate functions before any rotate/scale
+ * (later ones act in the rotated/scaled space). Percentages are of the element's box.
+ */
+export function leadingTranslation(
+  transform: string,
+  size: { width: number; height: number },
+): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  const length = (v: string | undefined, of: number) =>
+    !v ? 0 : v.endsWith('%') ? (parseFloat(v) / 100) * of : parseFloat(v) || 0;
+  for (const [, name, args] of transform.matchAll(/([a-zA-Z0-9]+)\(([^)]*)\)/g)) {
+    const parts = args!.split(/[\s,]+/).filter(Boolean);
+    if (name === 'translate' || name === 'translate3d') {
+      x += length(parts[0], size.width);
+      y += length(parts[1], size.height);
+    } else if (name === 'translateX') {
+      x += length(parts[0], size.width);
+    } else if (name === 'translateY') {
+      y += length(parts[0], size.height);
+    } else {
+      break;
+    }
+  }
+  return { x, y };
+}
+
+/**
+ * A speaker's element keyframes reduced to their movement (never rotation, squash or fades,
+ * so a bubble's text stays readable), turned into the bubble's own rotated space.
+ */
+export function followKeyframes(
+  keyframes: readonly Keyframe[],
+  speaker: Pick<PageElement, 'width' | 'height'>,
+  angle: number,
+): Keyframe[] | null {
+  const r = (angle * Math.PI) / 180;
+  let moves = false;
+  const out = keyframes.map((kf) => {
+    const t = typeof kf.transform === 'string' ? leadingTranslation(kf.transform, speaker) : null;
+    const x = t ? t.x * Math.cos(r) - t.y * Math.sin(r) : 0;
+    const y = t ? t.x * Math.sin(r) + t.y * Math.cos(r) : 0;
+    if (x || y) moves = true;
+    const next: Keyframe = { transform: `translate(${round(x)}px, ${round(y)}px)` };
+    if (kf.offset !== undefined) next.offset = kf.offset;
+    if (kf.easing) next.easing = kf.easing;
+    return next;
+  });
+  return moves ? out : null;
 }
 
 const finished = (list: readonly Tracked[]) =>
@@ -149,6 +213,15 @@ export function createPageTimeline(
     : page.animations;
   const schedule = scheduleSteps(steps);
   const groups: Tracked[][] = schedule.groups.map(() => []);
+
+  // Bubbles that move with their speaker, by the speaker's id.
+  const followers = new Map<string, BubbleElement[]>();
+  for (const el of flattenElements(page.elements)) {
+    if (el.type !== 'bubble' || !el.moveWithSpeaker || !el.tail.targetId || el.hidden) continue;
+    followers.set(el.tail.targetId, [...(followers.get(el.tail.targetId) ?? []), el]);
+  }
+  const totalRotation = (el: PageElement) =>
+    el.rotation + inheritedRotation(ancestorsOf(page.elements, el.id));
   const interactions = new Map<string, Tracked[]>();
   const idle: Tracked[] = [];
 
@@ -193,6 +266,7 @@ export function createPageTimeline(
       character: nodes.character,
       pivot: nodes.pivot,
       step,
+      tailTip: nodes.tailTip,
     });
     let duration = step.duration;
     let delay = start;
@@ -210,12 +284,30 @@ export function createPageTimeline(
           ? 'forwards'
           : 'none');
 
-    applySpecs(
-      specs,
-      nodes,
-      { duration, delay, easing: resolveEasing(step.easing), fill, loop },
-      into,
-    );
+    const timing = { duration, delay, easing: resolveEasing(step.easing), fill, loop };
+    applySpecs(specs, nodes, timing, into);
+
+    // Attached bubbles copy the speaker's movement on their follow layer (same timing), so
+    // bubble and tail travel together, seekable like everything else.
+    for (const bubble of followers.get(element.id) ?? []) {
+      const bubbleNodes = lookup(bubble.id);
+      if (!bubbleNodes?.follow) continue;
+      const angle = totalRotation(element) - totalRotation(bubble);
+      const copies: KeyframeSpec[] = [];
+      for (const spec of specs) {
+        if (spec.target !== 'element' || spec.perTarget) continue;
+        const keyframes = followKeyframes(spec.keyframes, element, angle);
+        if (!keyframes) continue;
+        copies.push({
+          target: 'follow',
+          keyframes,
+          ...(spec.iterations ? { iterations: spec.iterations } : {}),
+          ...(spec.composite ? { composite: spec.composite } : {}),
+          ...(spec.easing ? { easing: spec.easing } : {}),
+        });
+      }
+      applySpecs(copies, bubbleNodes, timing, into);
+    }
   }
 
   type Timing = { duration: number; delay: number; easing: string; fill: FillMode; loop: boolean };

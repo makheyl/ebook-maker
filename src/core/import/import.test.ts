@@ -6,6 +6,7 @@ import { BOOK_DATA_ID, type BookData } from '../export/format';
 import { validateInteractivity } from '../interaction/validate';
 import v1Book from '../migrations/__fixtures__/v1-book.json';
 import {
+  createBubbleElement,
   createButtonElement,
   createImageElement,
   createPage,
@@ -136,8 +137,22 @@ function richBook(): Project {
       ],
     },
   );
-  p1.elements.push(text, visible, hidden, pip, choice);
-  p1.animations.push(createAnimationStep(text.id, 'typewriter'), reaction, custom);
+  const bubble = createBubbleElement(
+    `Pip says ${EVIL}`,
+    { x: 520, y: 180, width: 220, height: 120 },
+    'thought',
+    {
+      tail: { targetId: pip.id, anchor: { x: 0.5, y: 0.1 }, tip: { x: 40, y: 200 }, width: 30 },
+      speakerId: 'ch_pip',
+    },
+  );
+  p1.elements.push(text, visible, hidden, pip, choice, bubble);
+  p1.animations.push(
+    createAnimationStep(text.id, 'typewriter'),
+    reaction,
+    custom,
+    createAnimationStep(bubble.id, 'popFromTail'),
+  );
   p1.flow = { lockNext: true };
   p2.goal = { count: 1, label: 'Find it' };
   p2.flow = { next: 'end', lockNext: true };

@@ -1,4 +1,10 @@
-import type { Paragraph, TextRun } from './types';
+import type { BubbleElement, PageElement, Paragraph, TextElement, TextRun } from './types';
+
+/** Elements holding styled paragraphs: text boxes and speech bubbles. */
+export type TextLike = TextElement | BubbleElement;
+
+export const hasText = (el: PageElement): el is TextLike =>
+  el.type === 'text' || el.type === 'bubble';
 
 type Marks = Omit<TextRun, 'text'>;
 

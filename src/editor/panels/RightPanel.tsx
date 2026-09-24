@@ -1,4 +1,10 @@
-import type { ButtonElement, ImageElement, ShapeElement, TextElement } from '@/core/schema';
+import {
+  hasText,
+  type BubbleElement,
+  type ButtonElement,
+  type ImageElement,
+  type ShapeElement,
+} from '@/core/schema';
 import { Layers, MousePointerClick, Palette, PanelRightClose, Sparkles } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
@@ -6,6 +12,7 @@ import { useLayoutStore } from '../layout/layout-store';
 import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 import { ArrangeSection } from './ArrangeSection';
+import { BubblePanel } from './BubblePanel';
 import { ButtonPanel } from './ButtonPanel';
 import { GroupPanel } from './GroupPanel';
 import { CharacterPanel } from './CharacterPanel';
@@ -19,7 +26,8 @@ import { TextPanel } from './TextPanel';
 function DesignPanel() {
   const selected = useSelectedElements();
   if (!selected.length) return <PagePanel />;
-  const texts = selected.filter((e): e is TextElement => e.type === 'text');
+  const texts = selected.filter(hasText);
+  const bubbles = selected.filter((e): e is BubbleElement => e.type === 'bubble');
   const images = selected.filter((e): e is ImageElement => e.type === 'image');
   const shapes = selected.filter((e): e is ShapeElement => e.type === 'shape');
   const buttons = selected.filter((e): e is ButtonElement => e.type === 'button');
@@ -30,6 +38,7 @@ function DesignPanel() {
     buttons.length === selected.length;
   return (
     <div>
+      {uniform && bubbles.length > 0 && <BubblePanel elements={bubbles} />}
       {uniform && texts.length > 0 && <TextPanel elements={texts} />}
       {images.length === 1 && selected.length === 1 && <CharacterPanel element={images[0]!} />}
       {uniform && images.length > 0 && <ImagePanel elements={images} />}

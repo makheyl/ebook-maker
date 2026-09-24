@@ -26,6 +26,7 @@ import {
   GripVertical,
   Image,
   Lock,
+  MessageCircle,
   Minus,
   Pointer,
   RectangleHorizontal,
@@ -51,6 +52,7 @@ function TypeIcon({ el }: { el: PageElement }) {
   if (el.type === 'button') return <RectangleHorizontal className={cls} />;
   if (el.type === 'hotspot') return <Pointer className={cls} />;
   if (el.type === 'group') return <Boxes className={cls} />;
+  if (el.type === 'bubble') return <MessageCircle className={cls} />;
   if (el.shape === 'ellipse') return <Circle className={cls} />;
   if (el.shape === 'line') return <Minus className={cls} />;
   return <Square className={cls} />;

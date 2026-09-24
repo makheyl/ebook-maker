@@ -154,7 +154,12 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
             );
             return;
           }
-          if (only && !rest.length && only.type === 'text' && !only.locked) {
+          if (
+            only &&
+            !rest.length &&
+            (only.type === 'text' || only.type === 'bubble') &&
+            !only.locked
+          ) {
             e.preventDefault();
             ui.setEditingText(only.id);
           }

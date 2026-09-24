@@ -20,6 +20,7 @@ import { PageList } from './sidebar/PageList';
 import { InsertToolbar } from './stage/InsertToolbar';
 import { OverflowBadge } from './stage/OverflowBadge';
 import { MotionPathOverlay } from './stage/MotionPathOverlay';
+import { BubbleTailHandle } from './stage/BubbleTailHandle';
 import { PivotHandle } from './stage/PivotHandle';
 import { SelectionLayer } from './stage/SelectionLayer';
 import { StageHints } from './stage/StageHints';
@@ -94,6 +95,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
                     <PivotHandle scale={scale} />
                     <MotionPathOverlay scale={scale} />
                     <OverflowBadge scale={scale} />
+                    <BubbleTailHandle view={view} scale={scale} />
                   </>
                 )}
               />

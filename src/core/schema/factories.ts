@@ -14,6 +14,8 @@ import { SCHEMA_VERSION } from './project';
 import { paragraphsFromPlainText } from './text';
 import type {
   AssetRef,
+  BubbleElement,
+  BubbleShape,
   ButtonElement,
   ButtonStyle,
   HotspotElement,
@@ -186,5 +188,77 @@ export function createHotspotElement(
     interactions: [],
     ...box,
     ...overrides,
+  };
+}
+
+/** Starting looks for each bubble shape (the Insert gallery and the shape picker use these). */
+export const BUBBLE_LOOKS: Record<
+  BubbleShape,
+  { label: string; bubble: BubbleElement['bubble']; style: Partial<TextStyle> }
+> = {
+  speech: {
+    label: 'Speech',
+    bubble: { shape: 'speech', fill: '#ffffff', stroke: '#1f1d2b', strokeWidth: 4 },
+    style: {},
+  },
+  thought: {
+    label: 'Thought',
+    bubble: { shape: 'thought', fill: '#ffffff', stroke: '#1f1d2b', strokeWidth: 4 },
+    style: { italic: true },
+  },
+  shout: {
+    label: 'Shout',
+    bubble: { shape: 'shout', fill: '#fff3a6', stroke: '#1f1d2b', strokeWidth: 5 },
+    style: { fontWeight: 800 },
+  },
+  whisper: {
+    label: 'Whisper',
+    bubble: { shape: 'whisper', fill: '#ffffff', stroke: '#6b6880', strokeWidth: 3 },
+    style: { italic: true, color: '#4b4860' },
+  },
+  caption: {
+    label: 'Caption',
+    bubble: { shape: 'caption', fill: '#fff8e1', stroke: '#1f1d2b', strokeWidth: 3 },
+    style: { align: 'left' },
+  },
+};
+
+/** A speech bubble; its tail points down-left of it until it's attached to a speaker. */
+export function createBubbleElement(
+  text: string,
+  box: Box,
+  shape: BubbleShape = 'speech',
+  overrides: Partial<Omit<BubbleElement, 'type' | 'style'>> & { style?: Partial<TextStyle> } = {},
+): BubbleElement {
+  const look = BUBBLE_LOOKS[shape];
+  return {
+    id: newId('el'),
+    type: 'bubble',
+    name: text.trim().slice(0, 32) || `${look.label} bubble`,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    hidden: false,
+    content: paragraphsFromPlainText(text),
+    bubble: { ...look.bubble },
+    tail: {
+      anchor: { x: 0.5, y: 0 },
+      tip: { x: Math.round(box.width * 0.3), y: Math.round(box.height * 1.5) },
+      width: Math.round(Math.max(20, Math.min(48, box.width * 0.1))),
+    },
+    moveWithSpeaker: true,
+    ...box,
+    ...overrides,
+    style: {
+      ...DEFAULT_TEXT_STYLE,
+      fontSize: 40,
+      align: 'center',
+      verticalAlign: 'middle',
+      padding: 24,
+      lineHeight: 1.2,
+      autofit: 'shrink',
+      ...look.style,
+      ...overrides.style,
+    },
   };
 }

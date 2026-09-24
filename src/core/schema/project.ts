@@ -249,6 +249,37 @@ export const hotspotElementSchema = z.object({
   type: z.literal('hotspot'),
 });
 
+export const BUBBLE_SHAPES = ['speech', 'thought', 'shout', 'whisper', 'caption'] as const;
+
+/**
+ * A speech bubble: text in a balloon whose tail points at its speaker. Attached to an element
+ * (usually a character), the tail follows it and — with moveWithSpeaker — so does the bubble.
+ */
+export const bubbleElementSchema = z.object({
+  ...baseElementShape,
+  type: z.literal('bubble'),
+  content: z.array(paragraphSchema),
+  style: textStyleSchema,
+  bubble: z.object({
+    shape: z.enum(BUBBLE_SHAPES),
+    fill: cssColor,
+    stroke: cssColor.optional(),
+    strokeWidth: z.number().min(0).max(40),
+  }),
+  tail: z.object({
+    /** The element the tail points at (a character instance, usually). */
+    targetId: id.optional(),
+    /** Where on the target (0–1 of its box; default: the top of a character's artwork). */
+    anchor: z.object({ x: unit, y: unit }),
+    /** Tail tip in the bubble's own coordinates, used when the tail isn't attached. */
+    tip: z.object({ x: z.number(), y: z.number() }),
+    width: z.number().min(4).max(200),
+  }),
+  /** The character speaking (for "Pip says: …"). */
+  speakerId: id.optional(),
+  moveWithSpeaker: z.boolean(),
+});
+
 /** Every element that isn't a group. */
 export const leafElementSchema = z.discriminatedUnion('type', [
   textElementSchema,
@@ -256,6 +287,7 @@ export const leafElementSchema = z.discriminatedUnion('type', [
   shapeElementSchema,
   buttonElementSchema,
   hotspotElementSchema,
+  bubbleElementSchema,
 ]);
 
 /** Deepest allowed nesting of groups (a group inside a group inside a group). */

@@ -2,6 +2,7 @@ import type { Draft } from 'immer';
 import { newId } from '../ids';
 import { findElement, flattenElements, isGroup, locate, walkElements } from '../schema/tree';
 import type { AssetRef, Character, PageElement, Project } from '../schema/types';
+import { freeTailsPointingAt } from './bubbles';
 import { fitGroupsToChildren, scaleGroupChildren } from './groups';
 import { getPage } from './pages';
 import { cleanReferences } from './references';
@@ -77,6 +78,7 @@ export function deleteElements(
     const el = findElement(page.elements, id);
     if (el) for (const e of flattenElements([el as PageElement])) doomed.add(e.id);
   }
+  freeTailsPointingAt(page, doomed);
   const prune = (list: DraftElement[]): DraftElement[] =>
     list
       .filter((e) => !doomed.has(e.id))

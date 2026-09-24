@@ -30,6 +30,7 @@ import {
   createImageElement,
   createShapeElement,
   createTextElement,
+  hasText,
   pageElementSchema,
   plainText,
   type AssetRef,
@@ -37,7 +38,6 @@ import {
   type PageElement,
   type Project,
   type ShapeElement,
-  type TextElement,
   type TextStyle,
 } from '@/core/schema';
 import { imageFilesFrom, importImageFiles } from './assets/upload';
@@ -285,7 +285,7 @@ export function updateSelected(
 export function updateTextStyle(patch: Partial<TextStyle>, opts: { coalesceKey?: string } = {}) {
   const page = getActivePage();
   const p = project();
-  const texts = getSelectedElements().filter((e): e is TextElement => e.type === 'text');
+  const texts = getSelectedElements().filter(hasText);
   if (!page || !p || !texts.length) return;
   let shrunk = false;
   const fits = new Map(
@@ -299,7 +299,7 @@ export function updateTextStyle(patch: Partial<TextStyle>, opts: { coalesceKey?:
     (d) =>
       texts.forEach((t) =>
         updateElement(d, page.id, t.id, (el) => {
-          if (el.type !== 'text') return;
+          if (el.type !== 'text' && el.type !== 'bubble') return;
           const fit = fits.get(t.id)!;
           el.style = fit.style;
           el.height = fit.height;
@@ -409,7 +409,7 @@ export function copySelection(e: ClipboardEvent): boolean {
   remember(payload);
   e.clipboardData.setData(CLIPBOARD_MIME, JSON.stringify(payload));
   const text = payload.elements
-    .filter((el): el is TextElement => el.type === 'text')
+    .filter(hasText)
     .map((el) => plainText(el.content))
     .join('\n\n');
   e.clipboardData.setData('text/plain', text || ' ');
@@ -427,7 +427,7 @@ export function copyToAppClipboard(): boolean {
   if (!payload) return false;
   remember(payload);
   const text = payload.elements
-    .filter((el): el is TextElement => el.type === 'text')
+    .filter(hasText)
     .map((el) => plainText(el.content))
     .join('\n\n');
   if (text) void navigator.clipboard?.writeText(text).catch(() => undefined);
@@ -457,7 +457,7 @@ export function pasteFromEvent(e: ClipboardEvent) {
   } else if (!files.length && memoryClipboard) {
     const text = data.getData('text/plain');
     const memText = memoryClipboard.elements
-      .filter((el): el is TextElement => el.type === 'text')
+      .filter(hasText)
       .map((el) => plainText(el.content))
       .join('\n\n');
     if (text === (memText || ' ')) payload = memoryClipboard;

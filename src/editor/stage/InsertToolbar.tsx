@@ -3,6 +3,7 @@ import {
   GalleryVerticalEnd,
   Image as ImageIcon,
   Minus,
+  MessageCircle,
   MousePointerClick,
   Shapes,
   Smile,
@@ -19,7 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu';
+import { BUBBLE_LOOKS, BUBBLE_SHAPES } from '@/core/schema';
 import { insertImages, insertShape, insertText } from '../actions';
+import { insertBubble } from '../bubbles/actions';
+import { BubbleShapeIcon } from '../bubbles/BubbleShapeIcon';
+import { refocusEditingText } from './TextEditing';
 import { insertCharacter } from '../character/actions';
 import { BUTTON_PRESETS, insertButton, insertFlap, insertHotspot } from '../interaction/actions';
 import { getSelectedElements } from '../store/selectors';
@@ -85,6 +90,32 @@ export function InsertToolbar() {
           <DropdownMenuItem onSelect={() => insertShape('line')}>
             <Minus /> Line
           </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <MessageCircle /> Bubble
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="center"
+          className="w-56"
+          // The new bubble opens for typing: the keyboard goes to it, not back to the toolbar.
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            refocusEditingText();
+          }}
+        >
+          {BUBBLE_SHAPES.map((shape) => (
+            <DropdownMenuItem key={shape} onSelect={() => insertBubble(shape)}>
+              <BubbleShapeIcon shape={shape} />
+              {BUBBLE_LOOKS[shape].label}
+            </DropdownMenuItem>
+          ))}
+          <p className="px-2 pt-1 pb-1.5 text-[11px] text-muted-foreground">
+            Select a character first to give it the line.
+          </p>
         </DropdownMenuContent>
       </DropdownMenu>
       <input

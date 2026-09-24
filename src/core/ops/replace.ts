@@ -1,16 +1,19 @@
 import type { Draft } from 'immer';
 import { getPreset } from '../animation/presets';
 import {
+  createBubbleElement,
   createButtonElement,
   createImageElement,
   createShapeElement,
   createTextElement,
 } from '../schema/factories';
 import { FULL_CROP } from '../schema/defaults';
+import { hasText, plainText } from '../schema/text';
 import { locate } from '../schema/tree';
 import type {
   AnimationStep,
   AssetRef,
+  BubbleShape,
   ElementType,
   PageElement,
   Project,
@@ -25,7 +28,8 @@ export type ReplaceSource =
   | { kind: 'image'; asset: AssetRef }
   | { kind: 'shape'; shape: ShapeElement['shape'] }
   | { kind: 'text'; text?: string }
-  | { kind: 'button'; label?: string };
+  | { kind: 'button'; label?: string }
+  | { kind: 'bubble'; shape?: BubbleShape };
 
 /** Whether an animation step still makes sense on an element of this type. */
 export function stepFits(
@@ -37,7 +41,7 @@ export function stepFits(
   if (!preset) return false;
   if (preset.appliesTo && !preset.appliesTo.includes(type)) return false;
   if (preset.requiresCharacter && !isCharacter) return false;
-  if (preset.splitText === 'chars' && type !== 'text') return false;
+  if (preset.splitText === 'chars' && type !== 'text' && type !== 'bubble') return false;
   return true;
 }
 
@@ -49,7 +53,7 @@ function freshElement(source: ReplaceSource, box: PageElement, theme: Theme): Pa
     case 'shape':
       return createShapeElement(source.shape, at, { fill: theme.accent });
     case 'text':
-      return createTextElement(source.text ?? 'Your text', at, {
+      return createTextElement(source.text ?? wordsOf(box) ?? 'Your text', at, {
         style: {
           fontFamily: theme.fontFamily,
           color: theme.textColor,
@@ -63,8 +67,15 @@ function freshElement(source: ReplaceSource, box: PageElement, theme: Theme): Pa
       return createButtonElement(source.label ?? 'Tap me', at, {
         style: { fontFamily: theme.fontFamily, fill: theme.accent, radius: box.height / 2 },
       });
+    case 'bubble':
+      return createBubbleElement(wordsOf(box) ?? 'Hello!', at, source.shape, {
+        style: { fontFamily: theme.fontFamily },
+      });
   }
 }
+
+/** Words carried over when a text box becomes a bubble or back. */
+const wordsOf = (el: PageElement) => (hasText(el) ? plainText(el.content) : undefined);
 
 /**
  * Replaces an element in place, like "Change picture" / "Replace" in presentation and design

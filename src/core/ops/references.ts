@@ -5,7 +5,8 @@ import type { PageElement, Project, StoryAction } from '../schema/types';
 /**
  * Removes references that no longer point anywhere: animation steps of deleted elements,
  * actions that jump to deleted pages or play deleted steps, page "next" overrides to deleted
- * pages, character links to deleted characters, and sounds that were removed. Only writes when something changes, so
+ * pages, character links to deleted characters, bubble tails and speakers that are gone,
+ * and sounds that were removed. Only writes when something changes, so
  * Immer keeps untouched pages structurally shared.
  */
 export function cleanReferences(draft: Draft<Project>): void {
@@ -34,6 +35,12 @@ export function cleanReferences(draft: Draft<Project>): void {
       }
       if (el.type === 'image' && el.characterId && !draft.characters[el.characterId]) {
         delete el.characterId;
+      }
+      if (el.type === 'bubble') {
+        // A tail whose speaker is gone stays where it pointed last (set by the op that removed
+        // it, when it knew); a speaker that no longer exists is forgotten.
+        if (el.tail.targetId && !elementIds.has(el.tail.targetId)) delete el.tail.targetId;
+        if (el.speakerId && !draft.characters[el.speakerId]) delete el.speakerId;
       }
     });
     const next = page.flow?.next;

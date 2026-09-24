@@ -1,6 +1,7 @@
 import type { AnimationKind, ElementType } from '../../schema/types';
 import { CHARACTER_MOTIONS } from '../motions';
 import type { AnimationPreset } from '../types';
+import { popFromTail, popToTail, wobble } from './bubble';
 import { fadeIn } from './fade-in';
 import { fadeOut } from './fade-out';
 import { kenBurns } from './ken-burns';
@@ -21,12 +22,15 @@ export const ANIMATION_PRESETS: readonly AnimationPreset[] = [
   slideLeft,
   zoomIn,
   popIn,
+  popFromTail,
   typewriter,
   kenBurns,
   pulse,
+  wobble,
   fadeOut,
   slideOutDown,
   liftUp,
+  popToTail,
   keyframesPreset,
   ...CHARACTER_MOTIONS,
 ];

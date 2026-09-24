@@ -1,7 +1,8 @@
 import { useLayoutEffect } from 'react';
 import { deleteElements, updateElement } from '@/core/ops';
 import type { PageView } from '@/core/render';
-import { isTextEmpty, type Paragraph, type TextElement } from '@/core/schema';
+import { bubbleInset } from '@/core/render/bubble-geometry';
+import { hasText, isTextEmpty, type Paragraph, type TextLike } from '@/core/schema';
 import { docStore } from '../store/doc-store';
 import { getActivePage } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
@@ -34,6 +35,20 @@ function placeCaret(root: HTMLElement) {
   selection.addRange(range);
 }
 
+/**
+ * Puts the keyboard back in the text being edited (all of it selected), e.g. after a menu that
+ * started the editing closes and would otherwise take focus with it.
+ */
+export function refocusEditingText(): void {
+  const inner = document.querySelector<HTMLElement>('.fl-mode-editor .fl-text-inner.fl-editing');
+  if (!inner) return;
+  inner.focus({ preventScroll: true });
+  const range = document.createRange();
+  range.selectNodeContents(inner);
+  window.getSelection()?.removeAllRanges();
+  window.getSelection()?.addRange(range);
+}
+
 function sameContent(a: readonly Paragraph[], b: readonly Paragraph[]) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -51,7 +66,7 @@ export function TextEditing({ view }: { view: PageView | null }) {
     const nodes = view.getNodes(editingId);
     const original = nodes?.element;
     const inner = nodes?.anim.querySelector<HTMLElement>('.fl-text-inner');
-    if (!nodes || !original || original.type !== 'text' || !inner) {
+    if (!nodes || !original || !hasText(original) || !inner) {
       useUiStore.getState().setEditingText(null);
       return;
     }
@@ -61,7 +76,7 @@ export function TextEditing({ view }: { view: PageView | null }) {
     inner.spellcheck = true;
     inner.setAttribute('role', 'textbox');
     inner.setAttribute('aria-multiline', 'true');
-    inner.setAttribute('aria-label', 'Text');
+    inner.setAttribute('aria-label', original.type === 'bubble' ? 'Bubble text' : 'Text');
     inner.classList.add('fl-editing');
     nodes.frame.classList.add('fl-editing-frame');
     inner.focus({ preventScroll: true });
@@ -70,20 +85,27 @@ export function TextEditing({ view }: { view: PageView | null }) {
     // Live fit while typing, following the box's auto-fit rule: grow (but never past the page
     // bottom — then shrink), shrink within the box, or stay fixed. The exact result is measured
     // again and stored when editing ends.
+    // A bubble fits its text inside the balloon (less the shape's inset) and grows only when
+    // editing ends, so live typing just shrinks the text to the balloon.
     const pageHeight = docStore.project()?.pageSize.height ?? Infinity;
-    const mode = autofitOf(original.style);
+    const bubble = original.type === 'bubble';
+    const mode =
+      bubble && autofitOf(original.style) === 'grow' ? 'shrink' : autofitOf(original.style);
     const baseSize = original.style.fontSize;
+    const insetY = bubble
+      ? bubbleInset(original.bubble.shape, original.width, original.height).y * 2
+      : 0;
     const room = Math.max(MIN_TEXT_HEIGHT * 2, pageHeight - Math.max(0, original.y));
     const needed = () => inner.scrollHeight + original.style.padding * 2;
     const growFrame = () => {
       if (mode === 'none') return;
-      const maxHeight = mode === 'grow' ? room : original.height;
+      const maxHeight = mode === 'grow' ? room : original.height - insetY;
       textBox.style.fontSize = `${baseSize}px`;
       if (mode === 'grow' && needed() <= maxHeight) {
         nodes.frame.style.height = `${Math.max(original.height, needed())}px`;
         return;
       }
-      nodes.frame.style.height = `${maxHeight}px`;
+      if (!bubble) nodes.frame.style.height = `${maxHeight}px`;
       let lo = MIN_FIT_SCALE;
       let hi = 1;
       for (let i = 0; i < 8; i++) {
@@ -107,16 +129,17 @@ export function TextEditing({ view }: { view: PageView | null }) {
       inner.classList.remove('fl-editing');
       nodes.frame.classList.remove('fl-editing-frame');
       const content = parseEditable(inner);
-      if (isTextEmpty(content)) {
+      if (isTextEmpty(content) && !bubble) {
         docStore.change((d) => deleteElements(d, pageId, [original.id]), { label: 'Delete text' });
         useUiStore.getState().clearSelection();
       } else if (!sameContent(content, original.content)) {
         const size = docStore.project()!.pageSize;
-        const fit = fitText({ ...original, content } as TextElement, size);
+        const fit = fitText({ ...original, content } as TextLike, size);
+        const fallbackName = bubble ? original.name : 'Text';
         docStore.change(
           (d) =>
             updateElement(d, pageId, original.id, (el) => {
-              if (el.type !== 'text') return;
+              if (el.type !== 'text' && el.type !== 'bubble') return;
               el.content = content;
               el.height = fit.height;
               el.style = fit.style;
@@ -129,10 +152,10 @@ export function TextEditing({ view }: { view: PageView | null }) {
                     .map((r) => r.text)
                     .join('')
                     .trim()
-                    .slice(0, 32) || 'Text';
+                    .slice(0, 32) || fallbackName;
               }
             }),
-          { label: 'Edit text' },
+          { label: bubble ? 'Edit bubble' : 'Edit text' },
         );
         if (fit.switchedToShrink) toast.info('Text shrunk to fit the page', { duration: 4000 });
       } else {

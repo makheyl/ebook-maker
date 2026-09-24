@@ -59,7 +59,7 @@ export function usedFontFaces(project: Project): FontUsage[] {
         if (needsLatinExt(el.label)) add(el.style.fontFamily, 'normal', 'latin-ext');
         continue;
       }
-      if (el.type !== 'text' || el.hidden) continue;
+      if ((el.type !== 'text' && el.type !== 'bubble') || el.hidden) continue;
       const text = el.content.map((p) => p.runs.map((r) => r.text).join('')).join('\n');
       const ext = needsLatinExt(text);
       const styles = new Set<'normal' | 'italic'>();
