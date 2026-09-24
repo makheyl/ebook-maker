@@ -1,3 +1,4 @@
+import { flattenElements } from '../schema/tree';
 import type { Page, Project } from '../schema/types';
 import { accessibleName } from './names';
 
@@ -21,12 +22,12 @@ const pageLabel = (project: Project, pageId: string) =>
 /** Whether tapping something on the page can let the reader leave it. */
 function hasWayOut(page: Page): boolean {
   if (page.goal && page.goal.count > 0) {
-    const collectibles = page.elements.filter((e) =>
+    const collectibles = flattenElements(page.elements).filter((e) =>
       e.interactions?.some((i) => i.actions.some((a) => a.type === 'collect')),
     ).length;
     if (collectibles >= page.goal.count) return true;
   }
-  return page.elements.some(
+  return flattenElements(page.elements).some(
     (e) =>
       !e.hidden &&
       e.interactions?.some((i) =>
@@ -48,7 +49,7 @@ export function reachablePages(project: Project): Set<string> {
     const next = page.flow?.next;
     if (next === undefined) queue.push(i + 1);
     else if (next !== 'end' && index.has(next)) queue.push(index.get(next)!);
-    for (const e of page.elements) {
+    for (const e of flattenElements(page.elements)) {
       for (const it of e.interactions ?? []) {
         for (const a of it.actions) {
           if (a.type === 'goToPage' && index.has(a.pageId)) queue.push(index.get(a.pageId)!);
@@ -94,7 +95,7 @@ export function validateInteractivity(project: Project): CheckIssue[] {
       });
     }
     if (page.goal && page.goal.count > 0) {
-      const collectibles = page.elements.filter((e) =>
+      const collectibles = flattenElements(page.elements).filter((e) =>
         e.interactions?.some((i) => i.actions.some((a) => a.type === 'collect')),
       ).length;
       if (collectibles < page.goal.count) {
@@ -106,7 +107,7 @@ export function validateInteractivity(project: Project): CheckIssue[] {
         });
       }
     }
-    for (const element of page.elements) {
+    for (const element of flattenElements(page.elements)) {
       const interactions = element.interactions ?? [];
       const interactive =
         element.type === 'button' || element.type === 'hotspot' || interactions.length > 0;

@@ -1,3 +1,4 @@
+import { findElement, flattenElements } from '@/core/schema/tree';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -256,7 +257,7 @@ function ActionRow({
   const set = (next: StoryAction) =>
     updateInteraction(element.id, interaction.id, (it) => void (it.actions[index] = next));
   const reactions = page.animations.filter((s) => s.trigger === 'onInteraction');
-  const nameOf = (id: string) => page.elements.find((e) => e.id === id)?.name ?? 'Deleted item';
+  const nameOf = (id: string) => findElement(page.elements, id)?.name ?? 'Deleted item';
 
   return (
     <div className="grid gap-1.5">
@@ -572,7 +573,7 @@ function ReaderSection() {
 
 function GoalSection({ page }: { page: Page }) {
   const labelId = useId();
-  const collectibles = page.elements.filter((e) =>
+  const collectibles = flattenElements(page.elements).filter((e) =>
     e.interactions?.some((i) => i.actions.some((a) => a.type === 'collect')),
   ).length;
   return (

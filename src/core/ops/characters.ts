@@ -1,5 +1,6 @@
+import { findElement, walkElements } from '../schema/tree';
 import type { Draft } from 'immer';
-import type { AssetRef, Character, Project } from '../schema/types';
+import type { AssetRef, Character, PageElement, Project } from '../schema/types';
 import { getPage } from './pages';
 import { cleanReferences } from './references';
 
@@ -25,7 +26,7 @@ export function linkCharacter(
   elementId: string,
   characterId: string | undefined,
 ): void {
-  const el = getPage(draft, pageId).elements.find((e) => e.id === elementId);
+  const el = findElement(getPage(draft, pageId).elements, elementId);
   if (el?.type !== 'image') return;
   if (characterId) el.characterId = characterId;
   else {
@@ -38,9 +39,9 @@ export function linkCharacter(
 export function removeCharacter(draft: Draft<Project>, characterId: string): void {
   delete draft.characters[characterId];
   for (const page of draft.pages) {
-    for (const el of page.elements) {
+    walkElements(page.elements as PageElement[], (el) => {
       if (el.type === 'image' && el.characterId === characterId) delete el.idleOverride;
-    }
+    });
   }
   cleanReferences(draft);
 }

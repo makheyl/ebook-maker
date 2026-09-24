@@ -17,6 +17,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
+  Boxes,
+  ChevronDown,
+  ChevronRight,
   Circle,
   Eye,
   EyeOff,
@@ -32,8 +35,8 @@ import {
   Unlock,
 } from 'lucide-react';
 import { useState } from 'react';
-import { moveElementToIndex, patchElements } from '@/core/ops';
-import type { PageElement } from '@/core/schema';
+import { moveElementToIndex, moveToParent, patchElements } from '@/core/ops';
+import { isGroup, locate, type PageElement } from '@/core/schema';
 import { cn } from '@/ui/utils';
 import { setElementsFlag } from '../actions';
 import { docStore } from '../store/doc-store';
@@ -47,30 +50,43 @@ function TypeIcon({ el }: { el: PageElement }) {
     return el.characterId ? <Smile className={cls} /> : <Image className={cls} />;
   if (el.type === 'button') return <RectangleHorizontal className={cls} />;
   if (el.type === 'hotspot') return <Pointer className={cls} />;
+  if (el.type === 'group') return <Boxes className={cls} />;
   if (el.shape === 'ellipse') return <Circle className={cls} />;
   if (el.shape === 'line') return <Minus className={cls} />;
   return <Square className={cls} />;
 }
 
+type Row = { el: PageElement; depth: number; parentId: string | null };
+
 function LayerRow({
-  el,
+  row,
   pageId,
   selected,
+  collapsed,
+  onToggle,
 }: {
-  el: PageElement;
+  row: Row;
   pageId: string;
   selected: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
+  const { el, depth, parentId } = row;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: el.id,
   });
   const [renaming, setRenaming] = useState(false);
 
   return (
-    <LayerContextMenu elementId={el.id}>
+    <LayerContextMenu elementId={el.id} parentId={parentId}>
       <li
         ref={setNodeRef}
-        style={{ transform: CSS.Transform.toString(transform), transition }}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+          paddingLeft: 4 + depth * 14,
+        }}
+        data-depth={depth}
         className={cn(
           'group flex h-9 items-center gap-1 rounded-md px-1 text-sm',
           selected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
@@ -87,6 +103,23 @@ function LayerRow({
         >
           <GripVertical className="size-3.5" />
         </button>
+        {isGroup(el) ? (
+          <button
+            type="button"
+            aria-label={collapsed ? `Expand ${el.name}` : `Collapse ${el.name}`}
+            aria-expanded={!collapsed}
+            onClick={onToggle}
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {collapsed ? (
+              <ChevronRight className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
+        ) : (
+          depth > 0 && <span className="w-[18px] shrink-0" aria-hidden="true" />
+        )}
         <TypeIcon el={el} />
         {renaming ? (
           <input
@@ -114,8 +147,10 @@ function LayerRow({
             className="h-7 min-w-0 flex-1 truncate rounded px-1.5 text-left focus-visible:ring-2 focus-visible:ring-ring"
             aria-pressed={selected}
             onClick={(e) => {
-              if (e.shiftKey || e.metaKey || e.ctrlKey) useUiStore.getState().toggleSelect(el.id);
-              else useUiStore.getState().select([el.id]);
+              const ui = useUiStore.getState();
+              if (e.shiftKey || e.metaKey || e.ctrlKey) ui.toggleSelect(el.id);
+              // Picking an item inside a group edits that group on the stage.
+              else ui.enterGroup(parentId, [el.id]);
             }}
             onDoubleClick={() => setRenaming(true)}
           >
@@ -151,22 +186,59 @@ function LayerRow({
   );
 }
 
-/** Stack of elements on the active page, top-most first (like Figma/Canva). */
+/** The rows shown: top-most first, groups followed by their items unless collapsed. */
+function visibleRows(elements: readonly PageElement[], collapsed: ReadonlySet<string>): Row[] {
+  const rows: Row[] = [];
+  const add = (list: readonly PageElement[], depth: number, parentId: string | null) => {
+    for (const el of [...list].reverse()) {
+      rows.push({ el, depth, parentId });
+      if (isGroup(el) && !collapsed.has(el.id)) add(el.children, depth + 1, el.id);
+    }
+  };
+  add(elements, 0, null);
+  return rows;
+}
+
+/** Stack of elements on the active page, top-most first, groups as a tree (like Figma/Canva). */
 export function LayersPanel() {
   const page = useActivePage();
   const selectedIds = useUiStore((s) => s.selectedIds);
-  const topFirst = [...page.elements].reverse();
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const rows = visibleRows(page.elements, collapsed);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const toggle = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const toIndex = page.elements.findIndex((e) => e.id === over.id);
-    docStore.change((d) => moveElementToIndex(d, page.id, String(active.id), toIndex), {
-      label: 'Reorder layers',
-    });
+    const from = rows.find((r) => r.el.id === active.id);
+    const to = rows.find((r) => r.el.id === over.id);
+    if (!from || !to) return;
+    const overPlace = locate(page.elements as PageElement[], to.el.id);
+    if (!overPlace) return;
+    docStore.change(
+      (d) => {
+        if (from.parentId === to.parentId) {
+          // Same stack: just restack.
+          moveElementToIndex(d, page.id, from.el.id, overPlace.index);
+        } else if (isGroup(to.el) && !collapsed.has(to.el.id)) {
+          // Dropped onto an open group: put it on top inside that group.
+          moveToParent(d, page.id, from.el.id, to.el.id, to.el.children.length);
+        } else {
+          // Dropped next to an item in another stack: move it there (keeping its place on the page).
+          moveToParent(d, page.id, from.el.id, to.parentId, overPlace.index + 1);
+        }
+      },
+      { label: 'Reorder layers' },
+    );
   };
 
   if (!page.elements.length) {
@@ -185,21 +257,23 @@ export function LayersPanel() {
         onDragEnd={onDragEnd}
         modifiers={[restrictToVerticalAxis]}
       >
-        <SortableContext items={topFirst.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={rows.map((r) => r.el.id)} strategy={verticalListSortingStrategy}>
           <ul aria-label="Layers" className="grid gap-0.5">
-            {topFirst.map((el) => (
+            {rows.map((row) => (
               <LayerRow
-                key={el.id}
-                el={el}
+                key={row.el.id}
+                row={row}
                 pageId={page.id}
-                selected={selectedIds.includes(el.id)}
+                selected={selectedIds.includes(row.el.id)}
+                collapsed={collapsed.has(row.el.id)}
+                onToggle={() => toggle(row.el.id)}
               />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
       <p className="px-2 pt-3 text-[11px] text-muted-foreground">
-        Double-click a name to rename. Drag to reorder.
+        Double-click a name to rename. Drag to reorder, or onto a group to move into it.
       </p>
     </div>
   );

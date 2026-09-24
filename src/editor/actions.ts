@@ -1,3 +1,4 @@
+import { findElement, isGroup } from '@/core/schema/tree';
 import type { Draft } from 'immer';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -11,6 +12,9 @@ import {
 import {
   addAsset,
   addElements,
+  canGroup,
+  groupElements,
+  ungroupElements,
   deleteElements,
   duplicateElements,
   patchElements,
@@ -136,7 +140,53 @@ export async function insertImages(files: readonly File[], at?: { x: number; y: 
 
 export function selectAll() {
   const page = getActivePage();
-  if (page) selectIds(page.elements.filter((e) => !e.hidden && !e.locked).map((e) => e.id));
+  if (!page) return;
+  // Inside a group being edited, "all" means that group's items.
+  const entered = ui().enteredGroupId;
+  const group = entered ? findElement(page.elements, entered) : undefined;
+  const pool = group && isGroup(group) ? group.children : page.elements;
+  selectIds(pool.filter((e) => !e.hidden && !e.locked).map((e) => e.id));
+}
+
+/** Groups the selected items (Mod+G). They must sit at the same level. */
+export function groupSelected() {
+  const page = getActivePage();
+  const ids = ui().selectedIds;
+  if (!page || ids.length < 2) return;
+  if (!canGroup(page, ids)) {
+    toast.error(
+      'These items can’t be grouped together (they’re in different groups, or it would nest more than 3 levels).',
+    );
+    return;
+  }
+  const id = docStore.change((d) => groupElements(d, page.id, ids), { label: 'Group' });
+  if (id) ui().enterGroup(ui().enteredGroupId, [id]);
+}
+
+/** Ungroups the selected groups (Mod+Shift+G); their items stay where they are. */
+export function ungroupSelected() {
+  const page = getActivePage();
+  const groups = getSelectedElements().filter(isGroup);
+  if (!page || !groups.length) return;
+  const ids: string[] = [];
+  let removed = 0;
+  docStore.change(
+    (d) => {
+      for (const g of groups) {
+        const result = ungroupElements(d, page.id, g.id);
+        ids.push(...result.ids);
+        removed += result.removedSteps;
+      }
+    },
+    { label: 'Ungroup' },
+  );
+  ui().enterGroup(ui().enteredGroupId, ids);
+  if (removed) {
+    toast.info(
+      `The group’s ${removed === 1 ? 'animation was' : `${removed} animations were`} removed with it. Undo to bring ${removed === 1 ? 'it' : 'them'} back.`,
+      { duration: 6000 },
+    );
+  }
 }
 
 export function deleteSelected() {

@@ -1,3 +1,4 @@
+import { flattenElements } from '../schema/tree';
 import { plainText } from '../schema/text';
 import type { Project } from '../schema/types';
 import type { StoryPlanRow } from './apply';
@@ -5,7 +6,8 @@ import { keywordSuggester, type MotionSuggester } from './suggest-motions';
 
 /** All visible text on a page, as one line. */
 export function pageText(project: Project, index: number): string {
-  return project.pages[index]!.elements.filter((e) => e.type === 'text' && !e.hidden)
+  return flattenElements(project.pages[index]!.elements)
+    .filter((e) => e.type === 'text' && !e.hidden)
     .map((e) => (e.type === 'text' ? plainText(e.content) : ''))
     .join(' ')
     .replace(/\s+/g, ' ')

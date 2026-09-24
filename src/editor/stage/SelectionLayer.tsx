@@ -9,9 +9,17 @@ import Moveable, {
   type OnRotateGroup,
 } from 'react-moveable';
 import Selecto, { type OnDragStart as OnSelectoDragStart, type OnSelectEnd } from 'react-selecto';
-import { updateElement } from '@/core/ops';
+import { fitGroupsToChildren, getPage, scaleGroupChildren, updateElement } from '@/core/ops';
 import type { PageView } from '@/core/render';
-import type { Page, PageElement, TextElement } from '@/core/schema';
+import {
+  flattenElements,
+  isGroup,
+  mapElements,
+  type GroupElement,
+  type Page,
+  type PageElement,
+  type TextElement,
+} from '@/core/schema';
 import { docStore } from '../store/doc-store';
 import { useActivePage, useProject } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
@@ -32,6 +40,12 @@ const ALL_DIRS = { top: true, left: true, bottom: true, right: true, center: tru
 
 function applyLive(el: PageElement, patch: LivePatch): PageElement {
   const { fontSize, fitScale, ...geometry } = patch;
+  if (isGroup(el) && (geometry.width !== undefined || geometry.height !== undefined)) {
+    // Resizing a group scales what's inside it.
+    const g = structuredClone(el) as GroupElement;
+    scaleGroupChildren(g, geometry.width ?? g.width, geometry.height ?? g.height);
+    return { ...g, ...geometry };
+  }
   const next = { ...el, ...geometry } as PageElement;
   if (fontSize !== undefined && next.type === 'text') next.style = { ...next.style, fontSize };
   if (fitScale !== undefined && next.type === 'text') next.style = { ...next.style, fitScale };
@@ -62,9 +76,11 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
   const live = useRef(new Map<string, LivePatch>());
   const start = useRef(new Map<string, PageElement>());
 
+  const enteredGroupId = useUiStore((s) => s.enteredGroupId);
+  const all = useMemo(() => flattenElements(page.elements), [page]);
   const selected = useMemo(
-    () => page.elements.filter((e) => selectedIds.includes(e.id) && !e.hidden),
-    [page, selectedIds],
+    () => all.filter((e) => selectedIds.includes(e.id) && !e.hidden),
+    [all, selectedIds],
   );
   const active = editingTextId || previewing || playerOpen || editingPivot ? [] : selected;
   const locked = active.some((e) => e.locked);
@@ -76,6 +92,14 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
         .map((e) => frameSelector(e.id)),
     [page, selectedIds],
   );
+  // What a click selects: top-level elements, or the children of the group being edited
+  // (plus everything else at the top level, so clicking outside leaves the group).
+  const selectable = enteredGroupId
+    ? [
+        `${frameSelector(enteredGroupId)} > .fl-anim > .fl-el`,
+        `.fl-page${EDITOR_SCOPE} > .fl-el:not([data-element-id="${CSS.escape(enteredGroupId)}"])`,
+      ]
+    : [`.fl-page${EDITOR_SCOPE} > .fl-el`];
   const single = active.length === 1 ? active[0]! : null;
   const { width: W, height: H } = project.pageSize;
 
@@ -86,15 +110,18 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
 
   // Drop selection of elements that no longer exist (e.g. after undo).
   useEffect(() => {
-    const existing = selectedIds.filter((id) => page.elements.some((e) => e.id === id));
+    const existing = selectedIds.filter((id) => all.some((e) => e.id === id));
     if (existing.length !== selectedIds.length) useUiStore.getState().select(existing);
-  }, [page, selectedIds]);
+    if (enteredGroupId && !all.some((e) => e.id === enteredGroupId)) {
+      useUiStore.getState().enterGroup(null);
+    }
+  }, [all, selectedIds, enteredGroupId]);
 
   const renderLive = () => {
     if (!view) return;
     const patched: Page = {
       ...page,
-      elements: page.elements.map((el) => {
+      elements: mapElements(page.elements, (el) => {
         const p = live.current.get(el.id);
         return p ? applyLive(el, p) : el;
       }),
@@ -116,10 +143,16 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     live.current.clear();
     if (!entries.length) return;
     docStore.change(
-      (d) =>
+      (d) => {
         entries.forEach(([id, patch]) =>
           updateElement(d, page.id, id, (el) => {
             const { fontSize, fitScale, ...geometry } = patch;
+            if (
+              el.type === 'group' &&
+              (geometry.width !== undefined || geometry.height !== undefined)
+            ) {
+              scaleGroupChildren(el, geometry.width ?? el.width, geometry.height ?? el.height);
+            }
             Object.assign(el, roundGeometry(geometry));
             if (fontSize !== undefined && el.type === 'text')
               el.style.fontSize = Math.round(fontSize * 10) / 10;
@@ -128,7 +161,10 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
               else el.style.fitScale = fitScale;
             }
           }),
-        ),
+        );
+        // Editing inside a group changes the group's box.
+        fitGroupsToChildren(getPage(d, page.id));
+      },
       { label },
     );
   };
@@ -214,13 +250,20 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
   };
 
   const onSelectEnd = (e: OnSelectEnd) => {
-    const byId = new Map(page.elements.map((el) => [el.id, el]));
+    const byId = new Map(all.map((el) => [el.id, el]));
+    const order = new Map(all.map((el, i) => [el.id, i]));
     let ids = e.selected
       .map((el) => (el as HTMLElement).dataset.elementId!)
       .filter((id) => byId.has(id));
     if (!e.isClick) ids = ids.filter((id) => !byId.get(id)!.locked);
     // Keep stacking order stable (bottom → top) for predictable group behaviour.
-    ids.sort((a, b) => page.elements.indexOf(byId.get(a)!) - page.elements.indexOf(byId.get(b)!));
+    ids.sort((a, b) => order.get(a)! - order.get(b)!);
+    // Picking something outside the group being edited leaves the group.
+    if (enteredGroupId) {
+      const group = byId.get(enteredGroupId);
+      const inside = group && isGroup(group) ? new Set(group.children.map((c) => c.id)) : null;
+      if (!inside || ids.some((id) => !inside.has(id))) useUiStore.getState().enterGroup(null);
+    }
     useUiStore.getState().select(ids);
     if (e.isDragStart && ids.length && !ids.some((id) => byId.get(id)!.locked)) {
       e.inputEvent.preventDefault();
@@ -240,7 +283,7 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
         <Selecto
           container={contentEl}
           dragContainer={viewportEl}
-          selectableTargets={[`${EDITOR_SCOPE} .fl-el`]}
+          selectableTargets={selectable}
           selectByClick
           selectFromInside={false}
           toggleContinueSelect={['shift']}

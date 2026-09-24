@@ -1,3 +1,4 @@
+import { walkElements } from '../schema/tree';
 import type { Draft } from 'immer';
 import { newId } from '../ids';
 import { createPage } from '../schema/factories';
@@ -35,11 +36,11 @@ export function clonePage(page: Page): Page {
   const copy = structuredClone(page) as Page;
   const idMap = new Map<string, string>();
   copy.id = newId('pg');
-  for (const el of copy.elements) {
+  walkElements(copy.elements, (el) => {
     const nextId = newId('el');
     idMap.set(el.id, nextId);
     el.id = nextId;
-  }
+  });
   const stepMap = new Map<string, string>();
   copy.animations = copy.animations
     .filter((a) => idMap.has(a.elementId))
@@ -48,8 +49,8 @@ export function clonePage(page: Page): Page {
       stepMap.set(a.id, nextId);
       return { ...a, id: nextId, elementId: idMap.get(a.elementId)! };
     });
-  for (const el of copy.elements) {
-    if (!el.interactions) continue;
+  walkElements(copy.elements, (el) => {
+    if (!el.interactions) return;
     el.interactions = el.interactions.map((i) => ({
       ...i,
       id: newId('ia'),
@@ -59,7 +60,7 @@ export function clonePage(page: Page): Page {
           : a,
       ),
     }));
-  }
+  });
   return copy;
 }
 

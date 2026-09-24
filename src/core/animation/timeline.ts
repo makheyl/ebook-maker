@@ -1,3 +1,4 @@
+import { findElement, flattenElements } from '../schema/tree';
 import type { ElementNodes } from '../render/page-view';
 import type { AnimationKind, AnimationStep, Page, PageSize } from '../schema/types';
 import { getIdleMotion } from './idle';
@@ -82,7 +83,7 @@ export function elementsNeedingCharSplit(page: Page): Map<string, TextSplit> {
   const split = new Map<string, TextSplit>();
   for (const step of page.animations) {
     if (getPreset(step.preset)?.splitText !== 'chars') continue;
-    const el = page.elements.find((e) => e.id === step.elementId);
+    const el = findElement(page.elements, step.elementId);
     if (el?.type !== 'text' || split.has(el.id)) continue;
     const by = step.params?.by;
     split.set(el.id, splitModeFor(el, by === 'letter' || by === 'word' ? by : 'auto'));
@@ -274,7 +275,7 @@ export function createPageTimeline(
 
   // Character idle loops, on their own layer.
   if (!reduced) {
-    for (const element of page.elements) {
+    for (const element of flattenElements(page.elements)) {
       const nodes = lookup(element.id);
       if (!nodes?.character || !nodes.idle || element.hidden || element.type !== 'image') continue;
       const id = element.idleOverride ?? nodes.character.idle?.preset;

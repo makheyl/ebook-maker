@@ -1,3 +1,4 @@
+import { walkElements } from '@/core/schema/tree';
 import type { CheckIssue } from '@/core/interaction/validate';
 import type { Project, TextElement } from '@/core/schema';
 import { textProblems } from '../text/fit';
@@ -10,9 +11,12 @@ import { textProblems } from '../text/fit';
 export function textIssues(project: Project): CheckIssue[] {
   const issues: CheckIssue[] = [];
   project.pages.forEach((page, i) => {
-    for (const el of page.elements) {
-      if (el.type !== 'text' || el.hidden) continue;
-      const { overflow, offPage } = textProblems(el as TextElement, project.pageSize);
+    walkElements(page.elements, (el, parent) => {
+      if (el.type !== 'text' || el.hidden) return;
+      const problems = textProblems(el as TextElement, project.pageSize);
+      const overflow = problems.overflow;
+      // Page bounds only make sense for text directly on the page (not inside a group).
+      const offPage = !parent && problems.offPage;
       if (overflow) {
         issues.push({
           id: `text-fit:${el.id}`,
@@ -31,7 +35,7 @@ export function textIssues(project: Project): CheckIssue[] {
           message: `“${el.name}” on Page ${i + 1} runs off the page.`,
         });
       }
-    }
+    });
   });
   return issues;
 }

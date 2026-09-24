@@ -10,6 +10,7 @@ import {
   createImageElement,
   createPage,
   createProject,
+  createShapeElement,
   createTextElement,
   projectAssetIds,
   type AssetRef,
@@ -151,6 +152,39 @@ function richBook(): Project {
   );
   p2.elements.push(star);
   p3.transition = { preset: 'flip', duration: 900 };
+  // A group (with a nested group) survives the round trip too.
+  const inner = createShapeElement('ellipse', { x: 10, y: 10, width: 40, height: 40 });
+  p3.elements.push({
+    id: 'el_group',
+    type: 'group',
+    name: 'Group',
+    x: 100,
+    y: 100,
+    width: 300,
+    height: 200,
+    rotation: 15,
+    opacity: 1,
+    locked: false,
+    hidden: false,
+    children: [
+      createTextElement('In a group', { x: 0, y: 0, width: 300, height: 80 }),
+      {
+        id: 'el_inner',
+        type: 'group',
+        name: 'Inner',
+        x: 0,
+        y: 100,
+        width: 60,
+        height: 100,
+        rotation: 0,
+        opacity: 1,
+        locked: false,
+        hidden: false,
+        children: [inner],
+      },
+    ],
+  });
+  p3.animations.push(createAnimationStep('el_group', 'slideUp'));
   return project;
 }
 

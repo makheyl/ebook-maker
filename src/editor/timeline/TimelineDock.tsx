@@ -1,3 +1,4 @@
+import { findElement, parentOf } from '@/core/schema/tree';
 import { useLayoutStore } from '../layout/layout-store';
 import {
   Maximize2,
@@ -597,9 +598,14 @@ export default function TimelineDock() {
                   <button
                     type="button"
                     className="w-full truncate px-2 text-left text-xs font-medium hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => useUiStore.getState().select([lane.element.id])}
+                    style={{ paddingLeft: 8 + lane.depth * 12 }}
+                    onClick={() => {
+                      const parent = parentOf(page.elements, lane.element.id);
+                      useUiStore.getState().enterGroup(parent?.id ?? null, [lane.element.id]);
+                    }}
                     title="Select on the page"
                   >
+                    {lane.depth > 0 && <span aria-hidden="true">↳ </span>}
                     {lane.element.name}
                   </button>
                 }
@@ -688,7 +694,7 @@ export default function TimelineDock() {
                 Plays when tapped
               </div>
               {model.interaction.map((bar) => {
-                const name = page.elements.find((e) => e.id === bar.step.elementId)?.name ?? '';
+                const name = findElement(page.elements, bar.step.elementId)?.name ?? '';
                 return (
                   <Row
                     key={bar.step.id}

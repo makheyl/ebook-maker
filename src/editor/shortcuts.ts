@@ -1,3 +1,4 @@
+import { parentOf } from '@/core/schema/tree';
 import { useLayoutStore } from './layout/layout-store';
 import { useEffect } from 'react';
 import {
@@ -5,6 +6,8 @@ import {
   cutSelection,
   deleteSelected,
   duplicateSelected,
+  groupSelected,
+  ungroupSelected,
   history,
   nudgeSelected,
   pasteFromEvent,
@@ -14,7 +17,7 @@ import {
 import { stopPreview } from './animation/preview';
 import { endScrub } from './timeline/session';
 import { stepZoom } from './stage/zoom';
-import { getSelectedElements } from './store/selectors';
+import { getActivePage, getSelectedElements } from './store/selectors';
 import { useUiStore } from './store/ui-store';
 
 /** True when the key event belongs to a text field, editable text or an open dialog/menu. */
@@ -80,6 +83,12 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
         selectAll();
         return;
       }
+      if (mod && key === 'g') {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupSelected();
+        return;
+      }
       if (mod && key === 'd') {
         e.preventDefault();
         duplicateSelected();
@@ -123,13 +132,28 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
           }
           return;
         case 'Escape':
-          if (ui.selectedIds.length) {
+          // Inside a group: go up a level (select the group). Otherwise clear the selection.
+          if (ui.enteredGroupId) {
+            e.preventDefault();
+            const page = getActivePage();
+            const parent = page ? parentOf(page.elements, ui.enteredGroupId) : null;
+            ui.enterGroup(parent?.id ?? null, [ui.enteredGroupId]);
+          } else if (ui.selectedIds.length) {
             e.preventDefault();
             ui.clearSelection();
           }
           return;
         case 'Enter': {
           const [only, ...rest] = getSelectedElements();
+          if (only && !rest.length && only.type === 'group') {
+            // Enter a group: select its items.
+            e.preventDefault();
+            ui.enterGroup(
+              only.id,
+              only.children.filter((c) => !c.hidden).map((c) => c.id),
+            );
+            return;
+          }
           if (only && !rest.length && only.type === 'text' && !only.locked) {
             e.preventDefault();
             ui.setEditingText(only.id);

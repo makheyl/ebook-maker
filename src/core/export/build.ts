@@ -1,3 +1,4 @@
+import { flattenElements } from '../schema/tree';
 import JSZip from 'jszip';
 import { PRODUCT_NAME } from '../brand';
 import { buildFontFaceCss, type FontFace } from '../fonts/catalog';
@@ -64,7 +65,7 @@ export async function blobToDataUri(blob: Blob): Promise<string> {
 function bookDescription(project: Project): string {
   if (project.description) return project.description;
   for (const page of project.pages) {
-    for (const el of page.elements) {
+    for (const el of flattenElements(page.elements)) {
       if (el.type === 'text' && !el.hidden) {
         const text = plainText(el.content).replace(/\s+/g, ' ').trim();
         if (text) return text.slice(0, 160);

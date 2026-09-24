@@ -27,6 +27,8 @@ type UiState = {
   playhead: { group: number; ms: number };
   /** Step selected on the timeline / Animation Pane. */
   selectedStepId: string | null;
+  /** The group being edited (double-clicked into): its children are what clicks select. */
+  enteredGroupId: string | null;
 };
 
 type UiActions = {
@@ -46,6 +48,7 @@ type UiActions = {
   setTimelineOpen: (open: boolean) => void;
   setPlayhead: (playhead: { group: number; ms: number }) => void;
   setSelectedStep: (id: string | null) => void;
+  enterGroup: (groupId: string | null, select?: string[]) => void;
 };
 
 export const useUiStore = create<UiState & UiActions>()((set) => ({
@@ -63,7 +66,15 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   timelineOpen: false,
   playhead: { group: 0, ms: 0 },
   selectedStepId: null,
+  enteredGroupId: null,
 
+  enterGroup: (enteredGroupId, select) =>
+    set((s) => ({
+      enteredGroupId,
+      selectedIds: select ?? s.selectedIds,
+      editingTextId: null,
+      editingPivot: false,
+    })),
   setTimelineOpen: (timelineOpen) => set({ timelineOpen }),
   setPlayhead: (playhead) => set({ playhead }),
   setSelectedStep: (selectedStepId) => set({ selectedStepId }),
@@ -82,6 +93,7 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
       editingPivot: false,
       playhead: { group: 0, ms: 0 },
       selectedStepId: null,
+      enteredGroupId: null,
     }),
   setActivePage: (activePageId) =>
     set({
@@ -91,6 +103,7 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
       editingPivot: false,
       playhead: { group: 0, ms: 0 },
       selectedStepId: null,
+      enteredGroupId: null,
     }),
   select: (selectedIds) => set({ selectedIds, editingTextId: null, editingPivot: false }),
   toggleSelect: (id) =>
@@ -100,7 +113,8 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
         : [...s.selectedIds, id],
       editingTextId: null,
     })),
-  clearSelection: () => set({ selectedIds: [], editingTextId: null, editingPivot: false }),
+  clearSelection: () =>
+    set({ selectedIds: [], editingTextId: null, editingPivot: false, enteredGroupId: null }),
   setEditingText: (editingTextId) =>
     set((s) => ({ editingTextId, selectedIds: editingTextId ? [editingTextId] : s.selectedIds })),
   setZoom: (zoom) => set({ zoom }),

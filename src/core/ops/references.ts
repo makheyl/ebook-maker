@@ -1,5 +1,6 @@
 import type { Draft } from 'immer';
-import type { Project, StoryAction } from '../schema/types';
+import { flattenElements, walkElements } from '../schema/tree';
+import type { PageElement, Project, StoryAction } from '../schema/types';
 
 /**
  * Removes references that no longer point anywhere: animation steps of deleted elements,
@@ -10,7 +11,8 @@ import type { Project, StoryAction } from '../schema/types';
 export function cleanReferences(draft: Draft<Project>): void {
   const pageIds = new Set(draft.pages.map((p) => p.id));
   for (const page of draft.pages) {
-    const elementIds = new Set(page.elements.map((e) => e.id));
+    const all = flattenElements(page.elements as PageElement[]);
+    const elementIds = new Set(all.map((e) => e.id));
     if (page.animations.some((a) => !elementIds.has(a.elementId))) {
       page.animations = page.animations.filter((a) => elementIds.has(a.elementId));
     }
@@ -24,7 +26,7 @@ export function cleanReferences(draft: Draft<Project>): void {
             ? !!draft.sounds[a.soundId]
             : true;
 
-    for (const el of page.elements) {
+    walkElements(page.elements as PageElement[], (el) => {
       if (el.interactions?.some((i) => i.actions.some((a) => !valid(a)))) {
         el.interactions = el.interactions
           .map((i) => ({ ...i, actions: i.actions.filter(valid) }))
@@ -33,7 +35,7 @@ export function cleanReferences(draft: Draft<Project>): void {
       if (el.type === 'image' && el.characterId && !draft.characters[el.characterId]) {
         delete el.characterId;
       }
-    }
+    });
     const next = page.flow?.next;
     if (page.flow && next && next !== 'end' && !pageIds.has(next)) delete page.flow.next;
   }

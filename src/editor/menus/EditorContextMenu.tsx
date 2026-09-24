@@ -1,5 +1,7 @@
+import { canGroup } from '@/core/ops';
 import {
   ArrowDownToLine,
+  Boxes,
   ArrowUpToLine,
   ChevronDown,
   ChevronUp,
@@ -17,6 +19,7 @@ import {
   Sparkles,
   SquareDashedMousePointer,
   Trash2,
+  Ungroup,
 } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import {
@@ -32,18 +35,20 @@ import {
   cutToAppClipboard,
   deleteSelected,
   duplicateSelected,
+  groupSelected,
   hasAppClipboard,
   pasteFromAppClipboard,
   reorderSelected,
   selectAll,
   setElementsFlag,
   subscribeAppClipboard,
+  ungroupSelected,
 } from '../actions';
 import { MOD } from '../keys';
 import { useLayoutStore } from '../layout/layout-store';
 import { pageActions } from '../sidebar/page-actions';
 import { docStore } from '../store/doc-store';
-import { getActivePage, useSelectedElements } from '../store/selectors';
+import { getActivePage, useActivePage, useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 
 const SHIFT = MOD === '⌘' ? '⇧' : 'Shift+';
@@ -62,6 +67,8 @@ export function SelectionMenuItems() {
   const ids = selected.map((e) => e.id);
   const allLocked = selected.length > 0 && selected.every((e) => e.locked);
   const canPaste = useHasClipboard();
+  const page = useActivePage();
+  const groupable = canGroup(page, ids);
   return (
     <>
       <ContextMenuItem onSelect={() => cutToAppClipboard()}>
@@ -79,6 +86,19 @@ export function SelectionMenuItems() {
       <ContextMenuItem variant="destructive" onSelect={() => deleteSelected()}>
         <Trash2 /> Delete <ContextMenuShortcut>Del</ContextMenuShortcut>
       </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem disabled={!groupable} onSelect={() => groupSelected()}>
+        <Boxes /> Group <ContextMenuShortcut>{MOD}G</ContextMenuShortcut>
+      </ContextMenuItem>
+      {selected.some((e) => e.type === 'group') && (
+        <ContextMenuItem onSelect={() => ungroupSelected()}>
+          <Ungroup /> Ungroup
+          <ContextMenuShortcut>
+            {MOD}
+            {SHIFT}G
+          </ContextMenuShortcut>
+        </ContextMenuItem>
+      )}
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => reorderSelected('front')}>
         <ArrowUpToLine /> Bring to front
@@ -193,9 +213,11 @@ export function StageContextMenu({ children }: { children: React.ReactNode }) {
 /** The same selection menu on a layer row (the row is selected first). */
 export function LayerContextMenu({
   elementId,
+  parentId = null,
   children,
 }: {
   elementId: string;
+  parentId?: string | null;
   children: React.ReactElement;
 }) {
   return (
@@ -204,7 +226,7 @@ export function LayerContextMenu({
         asChild
         onContextMenu={() => {
           const ui = useUiStore.getState();
-          if (!ui.selectedIds.includes(elementId)) ui.select([elementId]);
+          if (!ui.selectedIds.includes(elementId)) ui.enterGroup(parentId, [elementId]);
         }}
       >
         {children}

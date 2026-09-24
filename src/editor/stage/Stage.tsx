@@ -177,8 +177,26 @@ export function Stage({
           if (isScrubbing()) endScrub();
         }}
         onDoubleClick={(e) => {
-          const frame = (e.target as HTMLElement).closest<HTMLElement>('.fl-mode-editor .fl-el');
-          if (frame?.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {
+          // Frames from the page down to what was clicked (groups contain their children's).
+          const chain: HTMLElement[] = [];
+          let node = (e.target as HTMLElement).closest<HTMLElement>('.fl-mode-editor .fl-el');
+          while (node) {
+            chain.unshift(node);
+            node = node.parentElement?.closest<HTMLElement>('.fl-mode-editor .fl-el') ?? null;
+          }
+          const ui = useUiStore.getState();
+          const level = ui.enteredGroupId
+            ? chain.findIndex((f) => f.dataset.elementId === ui.enteredGroupId) + 1
+            : 0;
+          const frame = chain[level];
+          if (!frame) return;
+          // Double-clicking a group edits what's inside it (and picks the item under the pointer).
+          const inner = chain[level + 1];
+          if (frame.dataset.type === 'group' && inner) {
+            ui.enterGroup(frame.dataset.elementId!, [inner.dataset.elementId!]);
+            return;
+          }
+          if (frame.dataset.type === 'text' && !frame.hasAttribute('data-locked')) {
             onEditText?.(frame.dataset.elementId!, { x: e.clientX, y: e.clientY });
           }
         }}

@@ -1,3 +1,4 @@
+import { flattenElements } from '../core/schema/tree';
 import type { Project } from '../core/schema';
 
 const MUTE_KEY = 'folio:muted';
@@ -6,7 +7,7 @@ const MUTE_KEY = 'folio:muted';
 export function bookHasSound(project: Project): boolean {
   if (project.reader.pageTurnSound && project.sounds?.[project.reader.pageTurnSound]) return true;
   return project.pages.some((page) =>
-    page.elements.some(
+    flattenElements(page.elements).some(
       (el) =>
         !el.hidden && el.interactions?.some((i) => i.actions.some((a) => a.type === 'playSound')),
     ),

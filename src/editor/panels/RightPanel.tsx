@@ -7,6 +7,7 @@ import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 import { ArrangeSection } from './ArrangeSection';
 import { ButtonPanel } from './ButtonPanel';
+import { GroupPanel } from './GroupPanel';
 import { CharacterPanel } from './CharacterPanel';
 import { ImagePanel } from './ImagePanel';
 import { InteractPanel } from './InteractPanel';
@@ -34,6 +35,9 @@ function DesignPanel() {
       {uniform && images.length > 0 && <ImagePanel elements={images} />}
       {uniform && shapes.length > 0 && <ShapePanel elements={shapes} />}
       {uniform && buttons.length > 0 && <ButtonPanel elements={buttons} />}
+      {selected.length === 1 && selected[0]!.type === 'group' && (
+        <GroupPanel group={selected[0]!} />
+      )}
       <ArrangeSection elements={selected} />
     </div>
   );

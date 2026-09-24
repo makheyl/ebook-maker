@@ -37,6 +37,7 @@ import type {
   textShadowSchema,
   textStyleSchema,
   themeSchema,
+  GroupElementData,
 } from './project';
 
 export type Project = z.infer<typeof projectSchema>;
@@ -61,6 +62,9 @@ export type ButtonElement = z.infer<typeof buttonElementSchema>;
 export type ButtonStyle = z.infer<typeof buttonStyleSchema>;
 export type ButtonIcon = (typeof BUTTON_ICONS)[number];
 export type HotspotElement = z.infer<typeof hotspotElementSchema>;
+export type GroupElement = GroupElementData;
+/** Elements that aren't groups. */
+export type LeafElement = Exclude<PageElement, GroupElement>;
 export type TextRun = z.infer<typeof textRunSchema>;
 export type Paragraph = z.infer<typeof paragraphSchema>;
 export type TextStyle = z.infer<typeof textStyleSchema>;

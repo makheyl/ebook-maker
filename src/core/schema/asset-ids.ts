@@ -1,10 +1,11 @@
+import { flattenElements } from './tree';
 import type { Page, Project } from './types';
 
 /** Asset ids referenced by a page (image elements and image backgrounds, hidden ones too). */
 export function pageAssetIds(page: Page): string[] {
   const ids = new Set<string>();
   if (page.background.type === 'image') ids.add(page.background.assetId);
-  for (const el of page.elements) if (el.type === 'image') ids.add(el.assetId);
+  for (const el of flattenElements(page.elements)) if (el.type === 'image') ids.add(el.assetId);
   return [...ids];
 }
 

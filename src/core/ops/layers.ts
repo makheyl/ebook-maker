@@ -1,5 +1,6 @@
 import type { Draft } from 'immer';
-import type { Project } from '../schema/types';
+import { locate } from '../schema/tree';
+import type { PageElement, Project } from '../schema/types';
 import { getPage } from './pages';
 import { arrayMove } from './util';
 
@@ -17,11 +18,18 @@ export function reorderElements(
 ): void {
   const page = getPage(draft, pageId);
   const selected = new Set(ids);
-  const els = page.elements;
+  // Each element moves within its own stack (the page's, or its group's).
+  const lists = new Set(
+    ids.map((id) => locate(page.elements, id)?.list).filter((l): l is PageElement[] => !!l),
+  );
+  for (const els of lists) restack(els as { id: string }[], selected, move);
+}
+
+function restack(els: { id: string }[], selected: Set<string>, move: LayerMove): void {
   if (move === 'front' || move === 'back') {
     const picked = els.filter((e) => selected.has(e.id));
     const rest = els.filter((e) => !selected.has(e.id));
-    page.elements = move === 'front' ? [...rest, ...picked] : [...picked, ...rest];
+    els.splice(0, els.length, ...(move === 'front' ? [...rest, ...picked] : [...picked, ...rest]));
     return;
   }
   if (move === 'forward') {
@@ -47,6 +55,6 @@ export function moveElementToIndex(
   toIndex: number,
 ): void {
   const page = getPage(draft, pageId);
-  const from = page.elements.findIndex((e) => e.id === elementId);
-  arrayMove(page.elements, from, toIndex);
+  const where = locate(page.elements, elementId);
+  if (where) arrayMove(where.list, where.index, toIndex);
 }

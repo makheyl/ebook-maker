@@ -1,3 +1,4 @@
+import { flattenElements } from '@/core/schema/tree';
 import { toast } from 'sonner';
 import { getIdleMotion } from '@/core/animation';
 import { addTapReactionTo, createCharacter } from '@/core/character';
@@ -28,7 +29,7 @@ export const OPAQUE_WARNING =
 export async function makeCharacter(elementId: string): Promise<string | undefined> {
   const project = docStore.project();
   const page = getActivePage();
-  const el = page?.elements.find(
+  const el = flattenElements(page?.elements ?? []).find(
     (e): e is ImageElement => e.id === elementId && e.type === 'image',
   );
   if (!project || !page || !el) return;

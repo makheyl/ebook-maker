@@ -1,3 +1,4 @@
+import { flattenElements } from '../core/schema/tree';
 import {
   createPageTimeline,
   elementsNeedingCharSplit,
@@ -587,7 +588,9 @@ export class Player {
   /** Warms the next pages' images (decoded) so turning feels instant. */
   private preloadAround(i: number): void {
     for (const page of this.pages.slice(i + 1, i + 3)) {
-      const ids = page.elements.flatMap((e) => (e.type === 'image' ? [e.assetId] : []));
+      const ids = flattenElements(page.elements).flatMap((e) =>
+        e.type === 'image' ? [e.assetId] : [],
+      );
       if (page.background.type === 'image') ids.push(page.background.assetId);
       for (const id of ids) {
         const src = this.opts.resolveAsset(id);

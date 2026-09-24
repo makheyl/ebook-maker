@@ -249,13 +249,35 @@ export const hotspotElementSchema = z.object({
   type: z.literal('hotspot'),
 });
 
-export const pageElementSchema = z.discriminatedUnion('type', [
+/** Every element that isn't a group. */
+export const leafElementSchema = z.discriminatedUnion('type', [
   textElementSchema,
   imageElementSchema,
   shapeElementSchema,
   buttonElementSchema,
   hotspotElementSchema,
 ]);
+
+/** Deepest allowed nesting of groups (a group inside a group inside a group). */
+export const MAX_GROUP_DEPTH = 3;
+
+const groupBaseSchema = z.object({ ...baseElementShape, type: z.literal('group') });
+
+/**
+ * A group: its children move, resize, rotate and animate as one. Children are positioned in
+ * the group's own coordinates (0,0 = the group's top-left, before its rotation), and the
+ * group's box is always the bounds of its children.
+ */
+export type GroupElementData = z.infer<typeof groupBaseSchema> & { children: PageElementData[] };
+export type PageElementData = z.infer<typeof leafElementSchema> | GroupElementData;
+
+export const groupElementSchema: z.ZodType<GroupElementData> = groupBaseSchema.extend({
+  children: z.lazy(() => z.array(pageElementSchema).min(1).max(200)),
+});
+
+export const pageElementSchema: z.ZodType<PageElementData> = z.lazy(() =>
+  z.union([leafElementSchema, groupElementSchema]),
+);
 
 // ─── Animation ─────────────────────────────────────────────────────────────────
 

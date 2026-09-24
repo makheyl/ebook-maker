@@ -1,3 +1,4 @@
+import { isGroup } from '@/core/schema/tree';
 import { getIdleMotion, isInteractionStep, scheduleSteps, stepSpan } from '@/core/animation';
 import type { AnimationStep, Page, PageElement, Project } from '@/core/schema';
 
@@ -15,6 +16,8 @@ export type TimelineBar = {
 
 export type TimelineLane = {
   element: PageElement;
+  /** Nesting inside groups (0 = on the page). */
+  depth: number;
   bars: TimelineBar[];
   /** Idle loop shown under a character's lane. */
   idle?: { id: string; label: string };
@@ -67,7 +70,16 @@ export function buildTimelineModel(page: Page, project: Project): TimelineModel 
   );
 
   const lanes: TimelineLane[] = [];
-  for (const element of [...page.elements].reverse()) {
+  // Top-most first; a group's items follow it, indented.
+  const ordered: { element: PageElement; depth: number }[] = [];
+  const walk = (list: readonly PageElement[], depth: number) => {
+    for (const el of [...list].reverse()) {
+      ordered.push({ element: el, depth });
+      if (isGroup(el)) walk(el.children, depth + 1);
+    }
+  };
+  walk(page.elements, 0);
+  for (const { element, depth } of ordered) {
     const character =
       element.type === 'image' && element.characterId
         ? project.characters[element.characterId]
@@ -79,6 +91,7 @@ export function buildTimelineModel(page: Page, project: Project): TimelineModel 
     if (!laneBars.length && !idleMotion) continue;
     lanes.push({
       element,
+      depth,
       bars: laneBars,
       ...(idleMotion ? { idle: { id: idleMotion.id, label: idleMotion.label } } : {}),
     });

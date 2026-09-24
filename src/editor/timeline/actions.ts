@@ -1,3 +1,4 @@
+import { findElement } from '@/core/schema/tree';
 import { current, isDraft } from 'immer';
 import {
   bakeStep,
@@ -163,7 +164,7 @@ export function convertToKeyframes(stepId: string): boolean {
   const project = docStore.project();
   const page = getActivePage();
   const step = page?.animations.find((s) => s.id === stepId);
-  const element = page?.elements.find((e) => e.id === step?.elementId);
+  const element = page && step ? findElement(page.elements, step.elementId) : undefined;
   if (!project || !page || !step || element?.type !== 'image') return false;
   const character = element.characterId ? project.characters[element.characterId] : undefined;
   const asset = project.assets[element.assetId];

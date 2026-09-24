@@ -1,3 +1,4 @@
+import { flattenElements } from '@/core/schema/tree';
 import { useDocStore } from './doc-store';
 import { useUiStore } from './ui-store';
 import type { Page, PageElement, Project } from '@/core/schema';
@@ -20,11 +21,11 @@ export function useActivePage(): Page {
   return resolveActivePage(project, activePageId);
 }
 
-/** Selected elements that still exist on the active page (selection can go stale after undo). */
+/** Selected elements (anywhere, inside groups too) that still exist on the active page. */
 export function useSelectedElements(): PageElement[] {
   const page = useActivePage();
   const selectedIds = useUiStore((s) => s.selectedIds);
-  return page.elements.filter((e) => selectedIds.includes(e.id));
+  return flattenElements(page.elements).filter((e) => selectedIds.includes(e.id));
 }
 
 /** Imperative helpers for event handlers. */
@@ -38,5 +39,5 @@ export function getSelectedElements(): PageElement[] {
   const page = getActivePage();
   if (!page) return [];
   const ids = useUiStore.getState().selectedIds;
-  return page.elements.filter((e) => ids.includes(e.id));
+  return flattenElements(page.elements).filter((e) => ids.includes(e.id));
 }

@@ -1,7 +1,15 @@
 import { pivotToLocal, visibleWidthLocal } from '../character/pivot';
 import { accessibleName } from '../interaction/names';
 import type { TextSplit } from '../text/split';
-import type { AssetRef, Character, Page, PageElement, PageSize } from '../schema/types';
+import { isGroup } from '../schema/tree';
+import type {
+  AssetRef,
+  Character,
+  LeafElement,
+  Page,
+  PageElement,
+  PageSize,
+} from '../schema/types';
 import {
   buildButton,
   buildHotspot,
@@ -178,7 +186,7 @@ export function createPageView(options: PageViewOptions): PageView {
   }
 
   function buildContent(
-    el: PageElement,
+    el: LeafElement,
     split: TextSplit | false,
     asset: AssetRef | undefined,
     character?: Character,
@@ -227,7 +235,8 @@ export function createPageView(options: PageViewOptions): PageView {
       idle.className = 'fl-idle';
       anim.appendChild(idle);
     }
-    (idle ?? anim).appendChild(buildContent(el, split, asset, character));
+    // A group's anim layer holds its children's frames (synced by update()).
+    if (!isGroup(el)) (idle ?? anim).appendChild(buildContent(el, split, asset, character));
     frame.appendChild(anim);
     applyFrame(frame, el, mode);
     const entry: Entry = {
@@ -255,37 +264,51 @@ export function createPageView(options: PageViewOptions): PageView {
 
     const split = options.splitTextFor?.(page) ?? NO_SPLIT;
     const seen = new Set<string>();
-    let prevNode: Node = bgImageHost;
 
-    for (const el of page.elements) {
-      seen.add(el.id);
-      const asset = el.type === 'image' ? assets[el.assetId] : undefined;
-      const character =
-        el.type === 'image' && el.characterId ? characters[el.characterId] : undefined;
-      const wantSplit = (el.type === 'text' && split.get(el.id)) || false;
-      let entry = entries.get(el.id);
-      if (!entry || entry.element.type !== el.type || entry.character !== character) {
-        // A character change alters the layer structure, so the element is rebuilt.
-        entry?.frame.remove();
-        entry = createEntry(el, wantSplit, asset, character);
-        entries.set(el.id, entry);
-      } else if (entry.element !== el || entry.assetRef !== asset || entry.split !== wantSplit) {
-        const contentChanged =
-          !sameContent(entry.element, el) || entry.assetRef !== asset || entry.split !== wantSplit;
-        applyFrame(entry.frame, el, mode);
-        if (contentChanged && !patchImageInPlace(entry, el, asset)) {
-          contentHost(entry).replaceChildren(buildContent(el, wantSplit, asset, entry.character));
+    /** Keeps `container`'s element frames equal to `elements` (in z-order), recursing into groups. */
+    const sync = (elements: readonly PageElement[], container: Element, first: Node | null) => {
+      let prevNode: Node | null = first;
+      for (const el of elements) {
+        seen.add(el.id);
+        const asset = el.type === 'image' ? assets[el.assetId] : undefined;
+        const character =
+          el.type === 'image' && el.characterId ? characters[el.characterId] : undefined;
+        const wantSplit = (el.type === 'text' && split.get(el.id)) || false;
+        let entry = entries.get(el.id);
+        if (!entry || entry.element.type !== el.type || entry.character !== character) {
+          // A character change alters the layer structure, so the element is rebuilt.
+          entry?.frame.remove();
+          entry = createEntry(el, wantSplit, asset, character);
+          entries.set(el.id, entry);
+        } else if (entry.element !== el || entry.assetRef !== asset || entry.split !== wantSplit) {
+          applyFrame(entry.frame, el, mode);
+          if (!isGroup(el)) {
+            const contentChanged =
+              !sameContent(entry.element, el) ||
+              entry.assetRef !== asset ||
+              entry.split !== wantSplit;
+            if (contentChanged && !patchImageInPlace(entry, el, asset)) {
+              contentHost(entry).replaceChildren(
+                buildContent(el, wantSplit, asset, entry.character),
+              );
+            }
+          }
+          entry.element = el;
+          entry.assetRef = asset;
+          entry.split = wantSplit;
+          applyCharacter(entry, asset);
         }
-        entry.element = el;
-        entry.assetRef = asset;
-        entry.split = wantSplit;
-        applyCharacter(entry, asset);
+        if (isGroup(el)) sync(el.children, entry.anim, null);
+        // Keep DOM order == array order (z-order) with minimal moves; this also moves a frame
+        // into (or out of) a group when elements are grouped or ungrouped.
+        const want = prevNode ? prevNode.nextSibling : container.firstChild;
+        if (want !== entry.frame || entry.frame.parentNode !== container) {
+          container.insertBefore(entry.frame, want);
+        }
+        prevNode = entry.frame;
       }
-      // Keep DOM order == array order (z-order) with minimal moves.
-      if (prevNode.nextSibling !== entry.frame)
-        root.insertBefore(entry.frame, prevNode.nextSibling);
-      prevNode = entry.frame;
-    }
+    };
+    sync(page.elements, root, bgImageHost);
 
     for (const [id, entry] of entries) {
       if (!seen.has(id)) {
@@ -316,7 +339,7 @@ export function createPageView(options: PageViewOptions): PageView {
     },
     rerender(elementId) {
       const entry = entries.get(elementId);
-      if (!entry) return;
+      if (!entry || isGroup(entry.element)) return;
       applyFrame(entry.frame, entry.element, mode);
       contentHost(entry).replaceChildren(
         buildContent(entry.element, entry.split, entry.assetRef, entry.character),

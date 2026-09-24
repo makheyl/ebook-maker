@@ -1,3 +1,4 @@
+import { findElement, flattenElements } from '@/core/schema/tree';
 import {
   DndContext,
   KeyboardSensor,
@@ -259,7 +260,7 @@ function PoseParamField({
 }) {
   const project = useProject();
   const page = useActivePage();
-  const element = page.elements.find((e) => e.id === step.elementId);
+  const element = findElement(page.elements, step.elementId);
   const character =
     element?.type === 'image' && element.characterId
       ? project.characters[element.characterId]
@@ -598,7 +599,7 @@ export function AnimationPane() {
     return map;
   }, [page.animations]);
 
-  const elementsById = new Map(page.elements.map((e) => [e.id, e]));
+  const elementsById = new Map(flattenElements(page.elements).map((e) => [e.id, e]));
   const single = selected.length === 1 ? selected[0] : undefined;
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {

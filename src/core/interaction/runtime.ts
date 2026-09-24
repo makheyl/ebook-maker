@@ -1,3 +1,4 @@
+import { findElement } from '../schema/tree';
 import { groupCount } from '../animation/schedule';
 import type { BurstEffect, Page, Project, StoryAction } from '../schema/types';
 
@@ -141,7 +142,8 @@ function tap(
   groupRunning: boolean,
 ): ReduceResult {
   const page = project.pages[state.page]!;
-  const element = page.elements.find((e) => e.id === elementId && !e.hidden);
+  const found = findElement(page.elements, elementId);
+  const element = found && !found.hidden ? found : undefined;
   const interactions = (element?.interactions ?? []).filter((i) => !state.consumed.includes(i.id));
   let current: ReduceResult = { state, effects: [] };
   const run = (action: StoryAction): boolean => {

@@ -1,3 +1,4 @@
+import { flattenElements } from '../schema/tree';
 import { getFont, type FontSubset } from '../fonts/catalog';
 import { projectAssetIds } from '../schema/asset-ids';
 import type { Project } from '../schema/types';
@@ -52,7 +53,7 @@ export function usedFontFaces(project: Project): FontUsage[] {
     faces.set(`${font.id}|${s}|${subset}`, { fontId: font.id, style: s, subset });
   };
   for (const page of project.pages) {
-    for (const el of page.elements) {
+    for (const el of flattenElements(page.elements)) {
       if (el.type === 'button' && !el.hidden && el.iconPosition !== 'only') {
         add(el.style.fontFamily, 'normal', 'latin');
         if (needsLatinExt(el.label)) add(el.style.fontFamily, 'normal', 'latin-ext');
