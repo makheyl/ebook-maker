@@ -12,8 +12,8 @@ install or account, and looks and behaves exactly like the editor's preview.
 | ![Quick create](docs/screenshots/quick-create.png)             | ![Exported book](docs/screenshots/exported-book.png)   |
 | **A character and the page timeline**                          | **Interact tab: choices, flow and checks**             |
 | ![Character timeline](docs/screenshots/character-timeline.png) | ![Interact tab](docs/screenshots/interact.png)         |
-| **Reading: a treasure hunt that unlocks the page**             |                                                        |
-| ![Storybook reader](docs/screenshots/storybook-reader.png)     |                                                        |
+| **Reading: a treasure hunt that unlocks the page**             | **Import: every export is a backup**                   |
+| ![Storybook reader](docs/screenshots/storybook-reader.png)     | ![Import](docs/screenshots/import.png)                 |
 
 ## Features
 
@@ -79,6 +79,10 @@ install or account, and looks and behaves exactly like the editor's preview.
     "continue where you left off", keyboard-only reading.
 - **Sound:** MP3/OGG/WAV/M4A (≤ 2 MB each) on taps and page turns. Nothing plays before the
   reader's first tap or key press, and mute is remembered.
+- **Backups (import):** every export is also a backup. **Import** on the dashboard (or drop the
+  file onto it) turns an exported `.html` or `.zip` back into a fully editable book — pictures,
+  characters, poses, sounds, animations and interactions included. See
+  [Backups: export and import](#backups-export-and-import).
 - **Dashboard:** live covers, create, rename, duplicate and delete, plus a generated sample book
   ("Pip's Big Day": a mascot, a choice, a flap, a star hunt and two endings). Light and dark
   themes.
@@ -117,6 +121,25 @@ Open http://localhost:5173. Everything is stored locally in your browser (Indexe
 | `node scripts/screenshots.mjs`           | Regenerates the v2 README screenshots from the sample book (with `pnpm dev` running)              |
 
 The first E2E run needs a browser: `pnpm exec playwright install chromium`.
+
+## Backups: export and import
+
+Books live in the browser they were made in. To keep a copy, move to another computer, or share
+a book for someone else to edit, **export it** (either format) and **import** the file later:
+
+- **Import** on the dashboard, or drop the file anywhere on the dashboard. `.html` and `.zip`
+  exports work, and so does the `.json` from "Download raw data" (its pictures must still be in
+  that browser).
+- A preview shows the cover and what's inside before anything is saved. If the same book is
+  already there you choose **Keep both** (default: adds "… (imported)") or **Replace my copy**
+  (with a warning if your copy has newer changes).
+- Exports carry **everything the book owns** — hidden pictures, characters not placed yet, poses
+  and the whole sound list — and pictures are never re-compressed, so a book can go export →
+  import → export forever without changing.
+- Books exported by older versions are upgraded as they import. Files they didn't include are
+  listed, and those spots show a placeholder you can replace.
+- The file is treated as untrusted: nothing in it runs, the book is validated like any saved
+  book, and only files embedded in it (never links) are accepted.
 
 ## Architecture
 
@@ -321,6 +344,8 @@ target is deleted, and again when a book loads.
   - the seekable timeline (a fake `animate`), loops, waiting animations
   - the reader state machine (branching, back, locks, once-only, collectibles, The End) and the
     interactivity checks
+  - import: byte-exact export → import round trips (HTML and ZIP), repeated round trips, older
+    schemas, partial files, and rejection of untrusted input (links, `../` paths, wrong types)
 - **E2E (Playwright, Chromium):**
   - dashboard CRUD
   - editing with autosave and reload persistence
@@ -335,6 +360,8 @@ target is deleted, and again when a book loads.
   - tap reactions, locked pages, collectibles, hints, bursts, page menu, resume
   - sounds (a generated WAV and a `play()` spy): silent until a gesture, mute remembered
   - the sample book, both paths, and offline
+  - import: an exported book comes back editable (hidden picture, poses, sounds, checks clean),
+    Keep both / Replace, drag-and-drop, clear errors, and no network requests
   - performance: a 100-page book in the editor, and a 30-page mascot book in the reader (page
     turns well under 100 ms, no long tasks while idle)
   - **the export round trip**: export, open via `file://` in a fresh context, then check that

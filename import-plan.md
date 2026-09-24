@@ -1,6 +1,7 @@
 # Import plan: open an exported book and keep editing it
 
-> Status: **plan only**. Nothing in the app has been changed yet.
+> Status: **built** (milestones I1–I3). Decisions D1 (always include everything), D3 (Keep
+> both by default) and "no separate backup shortcut" were confirmed.
 > Goal: a **Import** button that takes a book exported by Folio (the single `.html` file or the
 > `.zip` folder) and turns it back into a normal, fully editable book in the dashboard. Any
 > export then doubles as a **backup**.

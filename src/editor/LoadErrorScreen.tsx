@@ -41,6 +41,12 @@ export function LoadErrorScreen({ projectId, state }: { projectId: string; state
         </span>
         <h1 className="text-xl font-semibold">{title}</h1>
         <p className="text-sm text-muted-foreground">{detail}</p>
+        {state.status === 'corrupt' && (
+          <p className="text-xs text-muted-foreground">
+            Keep the raw data as a backup: after it’s fixed, it can be brought back with Import on
+            the dashboard.
+          </p>
+        )}
         {state.status === 'corrupt' && state.error.issues.length > 0 && (
           <details className="w-full rounded-lg border bg-muted/40 p-3 text-left text-xs">
             <summary className="cursor-pointer font-medium">Technical details</summary>

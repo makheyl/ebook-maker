@@ -1,5 +1,5 @@
-import { BookHeart, BookOpen, Plus, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { BookHeart, BookOpen, FileUp, Plus, Sparkles } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useLocation } from 'wouter';
 import { Button } from '@/ui/button';
@@ -7,6 +7,9 @@ import { Logo } from '@/ui/Logo';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 import { NewBookDialog } from './NewBookDialog';
 import { ProjectCard } from './ProjectCard';
+import { IMPORT_ACCEPT } from './import/import-book';
+import { ImportDialog } from './import/ImportDialog';
+import { useImport } from './import/useImport';
 import { createSampleBook } from './sample-book';
 import { useProjects } from './useProjects';
 
@@ -15,6 +18,15 @@ export function Dashboard() {
   const [newOpen, setNewOpen] = useState(false);
   const [sampleBusy, setSampleBusy] = useState(false);
   const [, navigate] = useLocation();
+  const importer = useImport();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
+  const importButton = (
+    <Button variant="outline" onClick={() => fileRef.current?.click()}>
+      <FileUp /> Import
+    </Button>
+  );
 
   const openSample = async () => {
     setSampleBusy(true);
@@ -29,7 +41,48 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-full">
+    <div
+      className="relative min-h-full"
+      onDragOver={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setDragging(false);
+      }}
+      onDrop={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) importer.start(file);
+      }}
+    >
+      <input
+        ref={fileRef}
+        type="file"
+        accept={IMPORT_ACCEPT}
+        hidden
+        data-testid="import-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) importer.start(file);
+        }}
+      />
+      {dragging && (
+        <div
+          className="pointer-events-none fixed inset-3 z-50 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-background/80 backdrop-blur-sm"
+          aria-hidden="true"
+        >
+          <p className="flex items-center gap-2 text-lg font-medium">
+            <FileUp className="size-6" /> Drop a book exported by Folio to import it
+          </p>
+        </div>
+      )}
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Logo />
@@ -43,9 +96,11 @@ export function Dashboard() {
           <div className="flex-1">
             <h1 className="text-2xl font-semibold tracking-tight">Your books</h1>
             <p className="text-sm text-muted-foreground">
-              Everything is saved in this browser automatically.
+              Everything is saved in this browser automatically. Every export is also a backup you
+              can import.
             </p>
           </div>
+          {importButton}
           <Button variant="outline" onClick={() => setNewOpen(true)}>
             <Plus /> Blank book
           </Button>
@@ -100,6 +155,7 @@ export function Dashboard() {
               <Button variant="ghost" onClick={openSample} disabled={sampleBusy}>
                 <BookHeart /> {sampleBusy ? 'Preparing…' : 'Try a sample book'}
               </Button>
+              {importButton}
             </div>
           </div>
         )}
@@ -114,6 +170,11 @@ export function Dashboard() {
       </main>
 
       <NewBookDialog open={newOpen} onOpenChange={setNewOpen} />
+      <ImportDialog
+        state={importer.state}
+        onCancel={importer.cancel}
+        onConfirm={importer.confirm}
+      />
     </div>
   );
 }

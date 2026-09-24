@@ -1,4 +1,4 @@
-// Regenerates the v2 README screenshots from the sample book.
+// Regenerates the v2 README screenshots (and the import one) from the sample book.
 // Usage: pnpm dev (in another terminal), then: node scripts/screenshots.mjs [baseURL]
 import { chromium } from '@playwright/test';
 
@@ -51,5 +51,20 @@ await page.keyboard.press('Enter');
 await page.waitForTimeout(250);
 await page.screenshot({ path: out('storybook-reader.png') });
 
+// 4. Importing an export back (the book is already here, so "Keep both" is offered).
+await page.keyboard.press('Escape');
+await page.getByRole('button', { name: 'Export' }).click();
+await page.getByTestId('export-estimate').filter({ hasText: 'Estimated size' }).waitFor();
+const [download] = await Promise.all([
+  page.waitForEvent('download'),
+  page.getByRole('button', { name: 'Download HTML' }).click(),
+]);
+const exported = await download.path();
+await page.goto(base);
+await page.getByTestId('import-input').setInputFiles(exported);
+await page.getByTestId('import-cover').locator('.fl-page').waitFor();
+await page.waitForTimeout(400);
+await page.screenshot({ path: out('import.png') });
+
 await browser.close();
-console.log('Saved character-timeline.png, interact.png, storybook-reader.png');
+console.log('Saved character-timeline.png, interact.png, storybook-reader.png, import.png');
