@@ -1,5 +1,6 @@
 import { pivotToLocal, visibleWidthLocal } from '../character/pivot';
 import { accessibleName } from '../interaction/names';
+import type { TextSplit } from '../text/split';
 import type { AssetRef, Character, Page, PageElement, PageSize } from '../schema/types';
 import {
   buildButton,
@@ -33,8 +34,8 @@ export type PageViewOptions = {
   pageSize: PageSize;
   mode: RenderMode;
   resolveAsset: AssetResolver;
-  /** Element ids whose text should be split into per-character spans (typewriter). */
-  splitTextFor?: (page: Page) => ReadonlySet<string>;
+  /** Texts to split into reveal units for typewriter-style animations, and how. */
+  splitTextFor?: (page: Page) => ReadonlyMap<string, TextSplit>;
 };
 
 export type ElementNodes = {
@@ -68,9 +69,10 @@ export type PageView = {
   destroy(): void;
 };
 
-type Entry = ElementNodes & { assetRef: AssetRef | undefined; split: boolean };
+type Entry = ElementNodes & { assetRef: AssetRef | undefined; split: TextSplit | false };
 
 const NO_CHARACTERS: Readonly<Record<string, Character>> = {};
+const NO_SPLIT: ReadonlyMap<string, TextSplit> = new Map();
 
 /** Buttons and elements with tap interactions are interactive in the reader. */
 export function isInteractive(el: PageElement): boolean {
@@ -139,6 +141,11 @@ export function createPageView(options: PageViewOptions): PageView {
   const { pageSize, mode, resolveAsset } = options;
   const root = document.createElement('div');
   root.className = `fl-page fl-mode-${mode}`;
+  // A page is never scrollable (browsers without `overflow: clip` could still be scrolled by
+  // code or a caret); snap back so what's shown always matches the page's real layout.
+  root.addEventListener('scroll', () => {
+    if (root.scrollTop || root.scrollLeft) root.scrollTo(0, 0);
+  });
   root.style.width = `${pageSize.width}px`;
   root.style.height = `${pageSize.height}px`;
 
@@ -172,7 +179,7 @@ export function createPageView(options: PageViewOptions): PageView {
 
   function buildContent(
     el: PageElement,
-    split: boolean,
+    split: TextSplit | false,
     asset: AssetRef | undefined,
     character?: Character,
   ): Element {
@@ -198,7 +205,7 @@ export function createPageView(options: PageViewOptions): PageView {
 
   function createEntry(
     el: PageElement,
-    split: boolean,
+    split: TextSplit | false,
     asset: AssetRef | undefined,
     character: Character | undefined,
   ): Entry {
@@ -246,7 +253,7 @@ export function createPageView(options: PageViewOptions): PageView {
     if (pageChanged || current?.background !== page.background) renderBackground(page);
     root.dataset.pageId = page.id;
 
-    const split = options.splitTextFor?.(page) ?? new Set<string>();
+    const split = options.splitTextFor?.(page) ?? NO_SPLIT;
     const seen = new Set<string>();
     let prevNode: Node = bgImageHost;
 
@@ -255,7 +262,7 @@ export function createPageView(options: PageViewOptions): PageView {
       const asset = el.type === 'image' ? assets[el.assetId] : undefined;
       const character =
         el.type === 'image' && el.characterId ? characters[el.characterId] : undefined;
-      const wantSplit = el.type === 'text' && split.has(el.id);
+      const wantSplit = (el.type === 'text' && split.get(el.id)) || false;
       let entry = entries.get(el.id);
       if (!entry || entry.element.type !== el.type || entry.character !== character) {
         // A character change alters the layer structure, so the element is rebuilt.

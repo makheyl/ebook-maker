@@ -1,3 +1,4 @@
+import type { TextSplit } from '@/core/text/split';
 import { useLayoutEffect, useRef } from 'react';
 import { createPageView, type PageView, type RenderMode } from '@/core/render';
 import type { AssetRef, Character, Page, PageSize } from '@/core/schema';
@@ -10,7 +11,7 @@ type Props = {
   characters?: Readonly<Record<string, Character>>;
   mode: RenderMode;
   variant?: AssetVariant;
-  splitTextFor?: (page: Page) => ReadonlySet<string>;
+  splitTextFor?: (page: Page) => ReadonlyMap<string, TextSplit>;
   /** Receives the live PageView (for selection handles, animation preview…). */
   onView?: (view: PageView | null) => void;
   className?: string;

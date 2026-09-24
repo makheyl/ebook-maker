@@ -14,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/ui/switch';
 import { Toggle } from '@/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group';
+import { autofitOf, type Autofit } from '@/core/text/autofit';
 import { updateTextStyle } from '../actions';
+import { setAutofit } from '../text/actions';
 import { ColorField, Field, NumberField, Section, SliderField } from './controls';
 
 const WEIGHTS = [
@@ -143,6 +145,44 @@ export function TextPanel({ elements }: { elements: TextElement[] }) {
             <AlignVerticalJustifyEnd />
           </ToggleGroupItem>
         </ToggleGroup>
+      </Field>
+      <Field label="When the text is long">
+        <ToggleGroup
+          type="single"
+          size="sm"
+          variant="outline"
+          value={autofitOf(s)}
+          onValueChange={(v) => v && setAutofit(v as Autofit)}
+          className="w-full"
+          aria-label="When the text is long"
+        >
+          <ToggleGroupItem
+            value="grow"
+            className="flex-1"
+            title="The box grows with the text (up to the page bottom)"
+          >
+            Grow box
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="shrink"
+            className="flex-1"
+            title="The box keeps its size; the text gets smaller to fit"
+          >
+            Shrink text
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="none"
+            className="flex-1"
+            title="Nothing changes; text that doesn't fit is flagged"
+          >
+            Fixed
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {autofitOf(s) === 'shrink' && s.fitScale !== undefined && (
+          <p className="text-[11px] text-muted-foreground">
+            Shown at {Math.round(s.fontSize * s.fitScale)} px to fit the box.
+          </p>
+        )}
       </Field>
       <ColorField
         label="Color"

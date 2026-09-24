@@ -15,11 +15,15 @@ import type { Page, PageElement, TextElement } from '@/core/schema';
 import { docStore } from '../store/doc-store';
 import { useActivePage, useProject } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
+import { autofitOf } from '@/core/text/autofit';
+import { fitText } from '../text/fit';
 import { measureTextHeight } from '../text/measure';
 
 /** A pending change to one element while a gesture is in progress. */
 type LivePatch = Partial<Pick<PageElement, 'x' | 'y' | 'width' | 'height' | 'rotation'>> & {
   fontSize?: number;
+  /** Shrink-to-fit text re-measured for its new box (1 = full size). */
+  fitScale?: number;
 };
 
 const EDITOR_SCOPE = '.fl-mode-editor';
@@ -27,9 +31,10 @@ const frameSelector = (id: string) => `${EDITOR_SCOPE} .fl-el[data-element-id="$
 const ALL_DIRS = { top: true, left: true, bottom: true, right: true, center: true, middle: true };
 
 function applyLive(el: PageElement, patch: LivePatch): PageElement {
-  const { fontSize, ...geometry } = patch;
+  const { fontSize, fitScale, ...geometry } = patch;
   const next = { ...el, ...geometry } as PageElement;
   if (fontSize !== undefined && next.type === 'text') next.style = { ...next.style, fontSize };
+  if (fitScale !== undefined && next.type === 'text') next.style = { ...next.style, fitScale };
   return next;
 }
 
@@ -114,10 +119,14 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
       (d) =>
         entries.forEach(([id, patch]) =>
           updateElement(d, page.id, id, (el) => {
-            const { fontSize, ...geometry } = patch;
+            const { fontSize, fitScale, ...geometry } = patch;
             Object.assign(el, roundGeometry(geometry));
             if (fontSize !== undefined && el.type === 'text')
               el.style.fontSize = Math.round(fontSize * 10) / 10;
+            if (fitScale !== undefined && el.type === 'text') {
+              if (fitScale >= 1) delete el.style.fitScale;
+              else el.style.fitScale = fitScale;
+            }
           }),
         ),
       { label },
@@ -149,6 +158,16 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     const orig = start.current.get(id);
     if (!orig) return;
     const corner = direction[0] !== 0 && direction[1] !== 0;
+    if (orig.type === 'text' && !corner && autofitOf(orig.style) !== 'grow') {
+      // Shrink / fixed boxes resize freely; shrink re-fits its text to the new box.
+      const box = { x: left, y: top, width, height };
+      const fitScale =
+        autofitOf(orig.style) === 'shrink'
+          ? (fitText({ ...orig, ...box }, project.pageSize).style.fitScale ?? 1)
+          : undefined;
+      setLive(id, { ...box, ...(fitScale !== undefined ? { fitScale } : {}) });
+      return;
+    }
     if (orig.type === 'text' && !corner) {
       const h = Math.max(20, measureTextHeight({ ...orig, width } as TextElement));
       setLive(id, {
@@ -211,7 +230,9 @@ export function SelectionLayer({ view, scale, viewportEl, contentEl }: Props) {
     }
   };
 
-  const isTextOnly = active.length > 0 && active.every((e) => e.type === 'text');
+  // Growing text boxes get their height from their text: only width and corner handles.
+  const isTextOnly =
+    active.length > 0 && active.every((e) => e.type === 'text' && autofitOf(e.style) === 'grow');
 
   return (
     <>

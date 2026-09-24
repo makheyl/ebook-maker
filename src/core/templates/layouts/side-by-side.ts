@@ -26,6 +26,8 @@ export const sideBySide: LayoutTemplate = {
     });
     const caption = createTextElement(text, textBox, {
       style: {
+        // Captions keep their layout box; long text shrinks to fit it.
+        autofit: 'shrink',
         fontFamily: fontId,
         fontSize,
         color: palette.text,

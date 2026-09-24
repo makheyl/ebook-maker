@@ -51,3 +51,47 @@ function stripFalsyMarks(run: TextRun): TextRun {
 export function isTextEmpty(paragraphs: readonly Paragraph[]): boolean {
   return plainText(paragraphs).trim() === '';
 }
+
+/**
+ * Splits rich text at a plain-text offset (paragraph breaks count as one character, like
+ * `plainText`). Formatting is kept on both sides.
+ */
+export function splitParagraphsAt(
+  paragraphs: readonly Paragraph[],
+  offset: number,
+): [Paragraph[], Paragraph[]] {
+  const before: Paragraph[] = [];
+  const after: Paragraph[] = [];
+  let pos = 0;
+  paragraphs.forEach((p, pi) => {
+    const length = p.runs.reduce((n, r) => n + r.text.length, 0);
+    const start = pos;
+    const end = pos + length;
+    pos = end + (pi < paragraphs.length - 1 ? 1 : 0);
+    if (end <= offset) {
+      before.push(p);
+      return;
+    }
+    if (start >= offset) {
+      after.push(p);
+      return;
+    }
+    const head: TextRun[] = [];
+    const tail: TextRun[] = [];
+    let at = start;
+    for (const run of p.runs) {
+      const runEnd = at + run.text.length;
+      if (runEnd <= offset) head.push(run);
+      else if (at >= offset) tail.push(run);
+      else {
+        const cut = offset - at;
+        head.push({ ...run, text: run.text.slice(0, cut) });
+        tail.push({ ...run, text: run.text.slice(cut) });
+      }
+      at = runEnd;
+    }
+    before.push({ runs: head });
+    after.push({ runs: tail });
+  });
+  return [before, after];
+}

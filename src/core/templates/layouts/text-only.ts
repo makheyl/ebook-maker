@@ -18,6 +18,8 @@ export const textOnly: LayoutTemplate = {
     });
     const caption = createTextElement(text, box, {
       style: {
+        // Captions keep their layout box; long text shrinks to fit it.
+        autofit: 'shrink',
         fontFamily: fontId,
         fontSize,
         color: palette.text,

@@ -20,6 +20,7 @@ import {
 import { applyStoryPlan, type StoryPlanRow } from '@/core/story/apply';
 import { importSoundFiles } from '@/editor/assets/upload-sound';
 import { importImageFiles } from '@/editor/assets/upload';
+import { fitGeneratedText } from '@/editor/text/fit-pages';
 import { projectRepo } from '@/storage';
 import { makeChime, paintOwl, paintPip, paintScene, paintStar, SCENES } from './sample-art';
 
@@ -55,6 +56,7 @@ function scenePage(background: AssetRef, text: string, size: Size, title = false
         : {
             fontFamily: 'lora',
             fontSize: Math.round(H * 0.048),
+            autofit: 'shrink',
             color: '#ffffff',
             align: 'center',
             verticalAlign: 'middle',
@@ -304,6 +306,8 @@ export async function createSampleBook(): Promise<string> {
     p4!.flow = { lockNext: true };
   });
 
-  await projectRepo.save(project);
-  return project.id;
+  // Measure every caption with the real fonts so none of them overflows its box.
+  const fitted = { ...project, pages: await fitGeneratedText(project.pages, project.pageSize) };
+  await projectRepo.save(fitted);
+  return fitted.id;
 }

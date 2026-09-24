@@ -12,6 +12,7 @@ import { RightPanel } from './panels/RightPanel';
 import { useEditorShortcuts } from './shortcuts';
 import { PageList } from './sidebar/PageList';
 import { InsertToolbar } from './stage/InsertToolbar';
+import { OverflowBadge } from './stage/OverflowBadge';
 import { MotionPathOverlay } from './stage/MotionPathOverlay';
 import { PivotHandle } from './stage/PivotHandle';
 import { SelectionLayer } from './stage/SelectionLayer';
@@ -76,6 +77,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
                   <TextEditing view={view} />
                   <PivotHandle scale={scale} />
                   <MotionPathOverlay scale={scale} />
+                  <OverflowBadge scale={scale} />
                 </>
               )}
             />

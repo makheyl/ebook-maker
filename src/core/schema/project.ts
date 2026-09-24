@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -147,6 +147,13 @@ export const textStyleSchema = z.object({
   background: cssColor.optional(),
   padding: z.number().min(0).max(500),
   shadow: textShadowSchema.optional(),
+  /**
+   * How the box treats text that doesn't fit: 'grow' the box (default when missing), 'shrink'
+   * the text to fit the box, or keep the box fixed ('none'; flagged in the editor).
+   */
+  autofit: z.enum(['grow', 'shrink', 'none']).optional(),
+  /** Font-size factor the editor measured for 'shrink' (the reader never measures). */
+  fitScale: z.number().min(0.1).max(1).optional(),
 });
 
 export const textElementSchema = z.object({

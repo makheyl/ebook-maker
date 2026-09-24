@@ -128,7 +128,7 @@ describe('PageView', () => {
       pageSize: { width: 100, height: 100 },
       mode: 'player',
       resolveAsset: () => undefined,
-      splitTextFor: () => new Set([t.id]),
+      splitTextFor: () => new Map([[t.id, 'chars' as const]]),
     });
     v.update(pageWith(t), {});
     expect(v.root.querySelectorAll('.fl-char')).toHaveLength(3);

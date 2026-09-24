@@ -11,6 +11,7 @@ import {
 import { produce } from 'immer';
 import { createCharacter } from '@/core/character';
 import { applyStoryPlan, suggestPlan, type StoryPlanRow } from '@/core/story';
+import { fitGeneratedText } from '@/editor/text/fit-pages';
 import { generatePages, PALETTES } from '@/core/templates';
 import { projectRepo } from '@/storage';
 import { Button } from '@/ui/button';
@@ -94,9 +95,12 @@ export function QuickCreateWizard() {
     setBusy(true);
     try {
       const palette = PALETTES.find((p) => p.id === choice.paletteId) ?? PALETTES[0]!;
-      const pages = generatePages(
-        rows.map((r) => ({ text: r.text.trim(), asset: r.image?.asset })),
-        { ...choice, pageSize, palette },
+      const pages = await fitGeneratedText(
+        generatePages(
+          rows.map((r) => ({ text: r.text.trim(), asset: r.image?.asset })),
+          { ...choice, pageSize, palette },
+        ),
+        pageSize,
       );
       const project = createProject({
         title,

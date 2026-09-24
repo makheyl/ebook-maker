@@ -40,7 +40,8 @@ import { imageFilesFrom, importImageFiles } from './assets/upload';
 import { docStore, useDocStore } from './store/doc-store';
 import { getActivePage, getSelectedElements } from './store/selectors';
 import { useUiStore } from './store/ui-store';
-import { fittedTextHeight, measureTextHeight } from './text/measure';
+import { fitText } from './text/fit';
+import { measureTextHeight } from './text/measure';
 
 /**
  * Editor commands. Toolbar buttons, panels, context menus and keyboard shortcuts all call
@@ -230,25 +231,33 @@ export function updateSelected(
   });
 }
 
-/** Updates text style on selected text elements, growing boxes so the text still fits. */
+/** Updates text style on selected text elements, re-fitting each box (its auto-fit rule). */
 export function updateTextStyle(patch: Partial<TextStyle>, opts: { coalesceKey?: string } = {}) {
   const page = getActivePage();
+  const p = project();
   const texts = getSelectedElements().filter((e): e is TextElement => e.type === 'text');
-  if (!page || !texts.length) return;
-  const heights = new Map(
-    texts.map((t) => [t.id, fittedTextHeight({ ...t, style: { ...t.style, ...patch } })]),
+  if (!page || !p || !texts.length) return;
+  let shrunk = false;
+  const fits = new Map(
+    texts.map((t) => {
+      const fit = fitText({ ...t, style: { ...t.style, ...patch } }, p.pageSize);
+      shrunk ||= fit.switchedToShrink;
+      return [t.id, fit];
+    }),
   );
   docStore.change(
     (d) =>
       texts.forEach((t) =>
         updateElement(d, page.id, t.id, (el) => {
           if (el.type !== 'text') return;
-          Object.assign(el.style, patch);
-          el.height = heights.get(t.id)!;
+          const fit = fits.get(t.id)!;
+          el.style = fit.style;
+          el.height = fit.height;
         }),
       ),
     { label: 'Text style', coalesceKey: opts.coalesceKey },
   );
+  if (shrunk) toast.info('Text shrunk to fit the page', { duration: 4000 });
 }
 
 export function alignSelected(edge: AlignEdge) {

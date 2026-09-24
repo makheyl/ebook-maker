@@ -44,6 +44,7 @@ import {
   type ActionType,
 } from '../interaction/actions';
 import { assetUrls } from '../assets/asset-urls';
+import { textIssues } from '../checks/text-checks';
 import { deleteSound, setPageTurnSound, setSoundName, uploadSound } from '../sound/actions';
 import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
@@ -612,7 +613,10 @@ function GoalSection({ page }: { page: Page }) {
 
 function ChecksSection() {
   const project = useProject();
-  const issues = useMemo(() => validateInteractivity(project), [project]);
+  const issues = useMemo(
+    () => [...textIssues(project), ...validateInteractivity(project)],
+    [project],
+  );
   const go = (issue: CheckIssue) => {
     const ui = useUiStore.getState();
     ui.setActivePage(issue.pageId);

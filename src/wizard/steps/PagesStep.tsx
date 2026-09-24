@@ -148,6 +148,14 @@ function Row({
         maxLength={1000}
         className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
+      {row.text.length > LONG_LINE && (
+        <span
+          className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-800 dark:text-amber-200"
+          title="This line is long: its text will be made smaller to fit the page's layout. You can also split it into two pages."
+        >
+          Long: shrinks to fit
+        </span>
+      )}
       <Button
         variant="ghost"
         size="icon-sm"
@@ -159,6 +167,9 @@ function Row({
     </li>
   );
 }
+
+/** Lines longer than this get a hint that they'll be shrunk to fit. */
+const LONG_LINE = 280;
 
 /** Step 2: pages as rows of text + image — one at a time or in bulk, paired by order. */
 export function PagesStep({

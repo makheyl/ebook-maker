@@ -4,6 +4,7 @@ import { getIdleMotion } from './idle';
 import { resolveEasing } from './easing';
 import { compileMotion } from './motion';
 import { getPreset } from './presets';
+import { splitModeFor, type TextSplit } from '../text/split';
 import { isInteractionStep, scheduleSteps } from './schedule';
 import type { KeyframeSpec } from './types';
 
@@ -77,12 +78,16 @@ const defaultAnimate: AnimateFn = (target, keyframes, options) =>
   target.animate(keyframes, options);
 
 /** Element ids whose text must be split into character spans for their animations. */
-export function elementsNeedingCharSplit(page: Page): Set<string> {
-  const ids = new Set<string>();
+export function elementsNeedingCharSplit(page: Page): Map<string, TextSplit> {
+  const split = new Map<string, TextSplit>();
   for (const step of page.animations) {
-    if (getPreset(step.preset)?.splitText === 'chars') ids.add(step.elementId);
+    if (getPreset(step.preset)?.splitText !== 'chars') continue;
+    const el = page.elements.find((e) => e.id === step.elementId);
+    if (el?.type !== 'text' || split.has(el.id)) continue;
+    const by = step.params?.by;
+    split.set(el.id, splitModeFor(el, by === 'letter' || by === 'word' ? by : 'auto'));
   }
-  return ids;
+  return split;
 }
 
 function reducedSpecs(kind: AnimationKind): KeyframeSpec[] {
@@ -220,14 +225,16 @@ export function createPageTimeline(
       const specEasing = spec.easing ? resolveEasing(spec.easing) : easing;
       const targets = targetsFor(spec, nodes);
       if (spec.target === 'chars') {
-        const each = Math.max(16, duration * (spec.durationFraction ?? 0.1));
+        // Whole milliseconds: fractional start times let floating-point error stop a unit a
+        // hair before its end, which step easings turned into "never shown" on long texts.
+        const each = Math.max(16, Math.round(duration * (spec.durationFraction ?? 0.1)));
         const spread = Math.max(0, duration - each);
         targets.forEach((char, i) => {
-          const offset = targets.length > 1 ? (spread * i) / (targets.length - 1) : 0;
+          const offset = targets.length > 1 ? Math.round((spread * i) / (targets.length - 1)) : 0;
           make(
             char,
             spec.keyframes,
-            { duration: each, delay: delay + offset, easing: specEasing, fill },
+            { duration: each, delay: Math.round(delay) + offset, easing: specEasing, fill },
             into,
           );
         });

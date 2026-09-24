@@ -5,7 +5,9 @@ import { isTextEmpty, type Paragraph, type TextElement } from '@/core/schema';
 import { docStore } from '../store/doc-store';
 import { getActivePage } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
-import { measureTextHeight } from '../text/measure';
+import { toast } from 'sonner';
+import { autofitOf, MIN_FIT_SCALE, MIN_TEXT_HEIGHT } from '@/core/text/autofit';
+import { fitText } from '../text/fit';
 import { parseEditable } from '../text/parse-editable';
 import { takePendingCaret } from './caret';
 
@@ -65,10 +67,32 @@ export function TextEditing({ view }: { view: PageView | null }) {
     inner.focus({ preventScroll: true });
     placeCaret(inner);
 
+    // Live fit while typing, following the box's auto-fit rule: grow (but never past the page
+    // bottom — then shrink), shrink within the box, or stay fixed. The exact result is measured
+    // again and stored when editing ends.
+    const pageHeight = docStore.project()?.pageSize.height ?? Infinity;
+    const mode = autofitOf(original.style);
+    const baseSize = original.style.fontSize;
+    const room = Math.max(MIN_TEXT_HEIGHT * 2, pageHeight - Math.max(0, original.y));
+    const needed = () => inner.scrollHeight + original.style.padding * 2;
     const growFrame = () => {
-      const needed = inner.scrollHeight + original.style.padding * 2;
-      nodes.frame.style.height = `${Math.max(original.height, needed)}px`;
-      textBox.style.height = '';
+      if (mode === 'none') return;
+      const maxHeight = mode === 'grow' ? room : original.height;
+      textBox.style.fontSize = `${baseSize}px`;
+      if (mode === 'grow' && needed() <= maxHeight) {
+        nodes.frame.style.height = `${Math.max(original.height, needed())}px`;
+        return;
+      }
+      nodes.frame.style.height = `${maxHeight}px`;
+      let lo = MIN_FIT_SCALE;
+      let hi = 1;
+      for (let i = 0; i < 8; i++) {
+        const mid = (lo + hi) / 2;
+        textBox.style.fontSize = `${baseSize * mid}px`;
+        if (needed() <= maxHeight) lo = mid;
+        else hi = mid;
+      }
+      textBox.style.fontSize = `${baseSize * lo}px`;
     };
 
     let finished = false;
@@ -87,13 +111,15 @@ export function TextEditing({ view }: { view: PageView | null }) {
         docStore.change((d) => deleteElements(d, pageId, [original.id]), { label: 'Delete text' });
         useUiStore.getState().clearSelection();
       } else if (!sameContent(content, original.content)) {
-        const height = Math.max(20, measureTextHeight({ ...original, content } as TextElement));
+        const size = docStore.project()!.pageSize;
+        const fit = fitText({ ...original, content } as TextElement, size);
         docStore.change(
           (d) =>
             updateElement(d, pageId, original.id, (el) => {
               if (el.type !== 'text') return;
               el.content = content;
-              el.height = height;
+              el.height = fit.height;
+              el.style = fit.style;
               if (
                 el.name === 'Text' ||
                 el.name === original.content[0]?.runs[0]?.text.slice(0, 32)
@@ -108,6 +134,7 @@ export function TextEditing({ view }: { view: PageView | null }) {
             }),
           { label: 'Edit text' },
         );
+        if (fit.switchedToShrink) toast.info('Text shrunk to fit the page', { duration: 4000 });
       } else {
         view.rerender(original.id);
       }

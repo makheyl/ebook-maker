@@ -5,6 +5,8 @@
 .fl-page {
   position: relative;
   overflow: hidden;
+  /* clip (unlike hidden) can't be scrolled — not even by a caret following long text. */
+  overflow: clip;
   contain: layout paint;
   isolation: isolate;
   box-sizing: border-box;

@@ -41,6 +41,12 @@ export const MIGRATIONS: readonly Migration[] = [
       sounds: isObject(doc.sounds) ? doc.sounds : {},
     }),
   },
+  {
+    // v4 adds text auto-fit, groups and speech bubbles — all optional, so nothing to convert.
+    from: 3,
+    to: 4,
+    migrate: (doc) => ({ ...doc, schemaVersion: 4 }),
+  },
 ];
 
 export class ProjectLoadError extends Error {

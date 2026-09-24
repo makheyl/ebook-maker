@@ -1,3 +1,5 @@
+import { effectiveFontSize } from '../text/autofit';
+import { splitRun, wordsPerChunk, type TextSplit } from '../text/split';
 import { clampWeight, fontStack } from '../fonts/catalog';
 import type {
   AssetRef,
@@ -32,15 +34,16 @@ function el<K extends keyof HTMLElementTagNameMap>(
 // ─── Text ──────────────────────────────────────────────────────────────────────
 
 /**
- * Builds the text box. With `splitChars`, every character is wrapped in its own span so
- * the typewriter animation can reveal them one by one; the full text is then exposed to
- * assistive tech through a visually hidden copy, and the per-character spans are hidden from it.
+ * Builds the text box. With `split`, the text is wrapped in reveal units (letters, words or
+ * chunks of words, each a `.fl-char` span) so the typewriter can reveal them one by one; the
+ * full text is then exposed to assistive tech through a visually hidden copy, and the unit
+ * spans are hidden from it. Shrink-to-fit text is drawn at the size the editor measured.
  */
-export function buildText(element: TextElement, splitChars = false): HTMLElement {
+export function buildText(element: TextElement, split: TextSplit | false = false): HTMLElement {
   const s = element.style;
   const box = el('div', 'fl-text');
   box.style.fontFamily = fontStack(s.fontFamily);
-  box.style.fontSize = `${s.fontSize}px`;
+  box.style.fontSize = `${effectiveFontSize(s)}px`;
   box.style.fontWeight = String(clampWeight(s.fontFamily, s.fontWeight));
   box.style.fontStyle = s.italic ? 'italic' : 'normal';
   box.style.color = s.color;
@@ -59,6 +62,7 @@ export function buildText(element: TextElement, splitChars = false): HTMLElement
 
   const inner = el('div', 'fl-text-inner');
   let charIndex = 0;
+  const perChunk = split === 'chunks' ? wordsPerChunk(element) : 1;
   for (const paragraph of element.content) {
     const p = el('p', 'fl-p');
     const hasText = paragraph.runs.some((r) => r.text.length > 0);
@@ -73,10 +77,10 @@ export function buildText(element: TextElement, splitChars = false): HTMLElement
       if (run.italic) span.style.fontStyle = 'italic';
       if (run.underline) span.style.textDecoration = 'underline';
       if (run.color) span.style.color = run.color;
-      if (splitChars) {
-        for (const ch of Array.from(run.text)) {
+      if (split) {
+        for (const unit of splitRun(run.text, split, perChunk)) {
           const c = el('span', 'fl-char');
-          c.textContent = ch;
+          c.textContent = unit;
           c.dataset.i = String(charIndex++);
           span.appendChild(c);
         }
@@ -88,7 +92,7 @@ export function buildText(element: TextElement, splitChars = false): HTMLElement
     inner.appendChild(p);
   }
   box.appendChild(inner);
-  if (splitChars) {
+  if (split) {
     inner.setAttribute('aria-hidden', 'true');
     const sr = el('span', 'fl-sr-only');
     sr.textContent = element.content.map((p) => p.runs.map((r) => r.text).join('')).join('\n');
