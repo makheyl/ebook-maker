@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -49,6 +49,29 @@ export const assetRefSchema = z.object({
   opaqueBounds: z.object({ x: unit, y: unit, width: unit, height: unit }).optional(),
 });
 
+/** Audio formats every current browser can play (no transcoding). */
+export const SOUND_MIMES = [
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/aac',
+] as const;
+export const MAX_SOUND_BYTES = 2 * 1024 * 1024;
+
+export const soundRefSchema = z.object({
+  id, // content hash; also the key of the blob in storage (shared with images)
+  kind: z.literal('audio'),
+  mime: z.enum(SOUND_MIMES),
+  bytes: z.number().int().nonnegative().max(MAX_SOUND_BYTES),
+  /** Seconds, when the browser could read it at upload. */
+  duration: z.number().nonnegative().optional(),
+  name: z.string().max(200).optional(),
+});
+
 // ─── Interactions ──────────────────────────────────────────────────────────────
 
 export const BURST_EFFECTS = ['confetti', 'sparkles', 'hearts'] as const;
@@ -63,6 +86,7 @@ export const storyActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('unlockNext') }),
   z.object({ type: z.literal('burst'), effect: z.enum(BURST_EFFECTS) }),
   z.object({ type: z.literal('collect') }),
+  z.object({ type: z.literal('playSound'), soundId: id }),
 ]);
 
 export const interactionSchema = z.object({
@@ -344,6 +368,8 @@ export const readerSettingsSchema = z.object({
   showPageMenu: z.boolean(),
   rememberPosition: z.boolean(),
   hints: z.boolean(),
+  /** Played when the reader turns a page (after their first tap or key press). */
+  pageTurnSound: id.optional(),
 });
 
 export const projectSchema = z.object({
@@ -358,6 +384,7 @@ export const projectSchema = z.object({
   assets: z.record(z.string(), assetRefSchema),
   characters: z.record(z.string(), characterSchema),
   reader: readerSettingsSchema,
+  sounds: z.record(id, soundRefSchema),
   exportSettings: exportSettingsSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

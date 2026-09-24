@@ -152,7 +152,9 @@ function ExportForm({ onDone }: { onDone: () => void }) {
             Estimated size: <strong>{formatBytes(size.bytes)}</strong>
             <span className="text-muted-foreground">
               {' '}
-              · images {formatBytes(size.images)} · fonts {formatBytes(size.fonts)}
+              · images {formatBytes(size.images)}
+              {size.audio > 0 && <> · sounds {formatBytes(size.audio)}</>} · fonts{' '}
+              {formatBytes(size.fonts)}
             </span>
           </span>
         ) : (

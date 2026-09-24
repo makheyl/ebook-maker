@@ -14,6 +14,7 @@ import {
 import { deletePages, duplicatePage } from './pages';
 import { deleteElements, duplicateElements } from './elements';
 import { removeAnimations } from './animations';
+import { addSound, removeSound } from './sounds';
 
 const tap = (actions: Interaction['actions'], id = 'ia1'): Interaction => ({
   id,
@@ -138,5 +139,28 @@ describe('reference hygiene', () => {
   it('repair returns the same object when nothing is wrong', () => {
     const { project } = book();
     expect(repairProject(project)).toBe(project);
+  });
+
+  it('removing a sound drops the actions that play it and the page-turn setting', () => {
+    const { project, button } = book();
+    const sound = {
+      id: 'snd_boing',
+      kind: 'audio' as const,
+      mime: 'audio/mpeg' as const,
+      bytes: 10,
+    };
+    const history = new PatchHistory<Project>();
+    const withSound = history.apply(project, (d) => {
+      addSound(d, sound);
+      d.reader.pageTurnSound = sound.id;
+      const el = d.pages[0]!.elements.find((e) => e.id === button.id)!;
+      el.interactions![0]!.actions.unshift({ type: 'playSound', soundId: sound.id });
+    });
+    expect(actionsOf(withSound, 0, 1)[0]).toEqual({ type: 'playSound', soundId: sound.id });
+    const removed = history.apply(withSound, (d) => removeSound(d, sound.id));
+    expect(removed.sounds).toEqual({});
+    expect(removed.reader.pageTurnSound).toBeUndefined();
+    expect(actionsOf(removed, 0, 1).map((a) => a.type)).toEqual(['playStep', 'goToPage']);
+    expect(history.undo(removed)).toEqual(withSound);
   });
 });

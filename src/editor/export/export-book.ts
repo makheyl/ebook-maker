@@ -7,7 +7,7 @@ import {
   type ExportResult,
   type SizeEstimate,
 } from '@/core/export/build';
-import { usedAssetIds } from '@/core/export/usage';
+import { usedAssetIds, usedImageIds, usedSoundIds } from '@/core/export/usage';
 import type { FontFace } from '@/core/fonts/catalog';
 import type { Project } from '@/core/schema';
 import { assetRepo } from '@/storage';
@@ -55,14 +55,16 @@ export async function estimateExport(
   project: Project,
   format: ExportFormat,
 ): Promise<SizeEstimate> {
-  const [player, assets, fonts] = await Promise.all([
+  const [player, images, sounds, fonts] = await Promise.all([
     loadPlayer(),
-    assetRepo.getMany(usedAssetIds(project)),
+    assetRepo.getMany(usedImageIds(project)),
+    assetRepo.getMany(usedSoundIds(project)),
     Promise.all(selectFontFaces(project, FONT_FILES).map(fetchFont)),
   ]);
   return estimateSize({
     format,
-    imageBytes: [...assets.values()].map((a) => a.blob.size),
+    imageBytes: [...images.values()].map((a) => a.blob.size),
+    audioBytes: [...sounds.values()].map((a) => a.blob.size),
     fontBytes: fonts.map((f) => f.byteLength),
     playerBytes: player.js.length + player.css.length,
     projectJsonBytes: JSON.stringify(project).length,

@@ -1,11 +1,17 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import type { FontFace } from '../fonts/catalog';
-import { createImageElement, createProject, createTextElement, type Project } from '../schema';
+import {
+  createButtonElement,
+  createImageElement,
+  createProject,
+  createTextElement,
+  type Project,
+} from '../schema';
 import { buildSingleFile, buildZip, estimateSize, renderBookHtml, selectFontFaces } from './build';
 import { escapeHtml, escapeInlineCode, escapeJsonForHtml, slugify } from './escape';
 import { BOOK_DATA_ID, isBookData } from './format';
-import { usedAssetIds, usedFontFaces } from './usage';
+import { usedAssetIds, usedFontFaces, usedSoundIds } from './usage';
 
 const EVIL = '</script><script>alert(1)</script><!-- &   "quotes"';
 
@@ -149,6 +155,95 @@ describe('zip export', () => {
     const data = JSON.parse(doc.getElementById(BOOK_DATA_ID)!.textContent!);
     expect(data.assets.img1).toBe('assets/images/img1.png');
     expect(doc.querySelector('script[src]')!.getAttribute('src')).toBe('assets/player.js');
+  });
+});
+
+describe('sounds', () => {
+  /** A book with a button that plays "ding", a page-turn "whoosh", and an unused "spare". */
+  function soundBook(): Project {
+    const project = createProject({ title: 'Noisy' });
+    const ref = (id: string) => ({
+      id,
+      kind: 'audio' as const,
+      mime: 'audio/mpeg' as const,
+      bytes: 3,
+    });
+    project.sounds = {
+      snd_ding: ref('snd_ding'),
+      snd_whoosh: ref('snd_whoosh'),
+      snd_spare: ref('snd_spare'),
+    };
+    project.reader.pageTurnSound = 'snd_whoosh';
+    project.pages[0]!.elements.push(
+      createButtonElement(
+        'Ring',
+        { x: 0, y: 0, width: 100, height: 40 },
+        {
+          interactions: [
+            {
+              id: 'ia',
+              trigger: 'tap',
+              once: false,
+              actions: [{ type: 'playSound', soundId: 'snd_ding' }],
+            },
+          ],
+        },
+      ),
+    );
+    return project;
+  }
+  const audioInputs = (project: Project) => ({
+    ...inputs(project),
+    getAsset: async (id: string) =>
+      id.startsWith('snd_')
+        ? new Blob([new Uint8Array([7, 7, 7])], { type: 'audio/mpeg' })
+        : undefined,
+  });
+
+  it('exports only sounds a reader can hear', () => {
+    const project = soundBook();
+    expect(usedSoundIds(project).sort()).toEqual(['snd_ding', 'snd_whoosh']);
+    expect(usedAssetIds(project)).not.toContain('snd_spare');
+    project.pages[0]!.elements[0]!.hidden = true;
+    expect(usedSoundIds(project)).toEqual(['snd_whoosh']);
+  });
+
+  it('inlines audio in the single file and allows media only from data: URIs', async () => {
+    const result = await buildSingleFile(audioInputs(soundBook()));
+    const doc = parse(await result.blob.text());
+    const data = JSON.parse(doc.getElementById(BOOK_DATA_ID)!.textContent!);
+    expect(data.assets.snd_ding).toBe('data:audio/mpeg;base64,BwcH');
+    const csp = doc
+      .querySelector('meta[http-equiv="Content-Security-Policy"]')!
+      .getAttribute('content')!;
+    expect(csp).toContain('media-src data:;');
+    expect(csp).toContain("default-src 'none'");
+  });
+
+  it('puts audio in assets/audio/ in the zip', async () => {
+    const result = await buildZip(audioInputs(soundBook()));
+    const zip = await JSZip.loadAsync(await result.blob.arrayBuffer());
+    expect(Object.keys(zip.files)).toEqual(
+      expect.arrayContaining(['assets/audio/snd_ding.mp3', 'assets/audio/snd_whoosh.mp3']),
+    );
+    const doc = parse(await zip.file('index.html')!.async('string'));
+    const csp = doc
+      .querySelector('meta[http-equiv="Content-Security-Policy"]')!
+      .getAttribute('content')!;
+    expect(csp).toContain("media-src 'self' data:;");
+  });
+
+  it('counts audio in the size estimate', () => {
+    const e = estimateSize({
+      format: 'html',
+      imageBytes: [],
+      audioBytes: [3000],
+      fontBytes: [],
+      playerBytes: 0,
+      projectJsonBytes: 0,
+    });
+    expect(e.audio).toBe(4000);
+    expect(e.bytes).toBeGreaterThanOrEqual(4000);
   });
 });
 

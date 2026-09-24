@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { imageFilesFrom, importImageFiles } from '../assets/upload';
 import { docStore } from '../store/doc-store';
 import { getActivePage, getSelectedElements } from '../store/selectors';
+import { uploadSound } from '../sound/actions';
 import { useUiStore } from '../store/ui-store';
 
 /**
@@ -211,20 +212,28 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   unlockNext: 'Unlock the next page',
   burst: 'Burst of fun',
   collect: 'Collect it',
+  playSound: 'Play a sound',
 };
 
 /**
- * A sensible action of the given type for an element: jumps target the next page, and
+ * A sensible action of the given type for an element: jumps target the next page,
  * "play an animation" reuses the element's first tap animation — or creates a new one
- * (returned as `step`, to be added in the same undo step).
+ * (returned as `step`, to be added in the same undo step) — and "play a sound" uses the given
+ * or first sound (null when the book has none yet).
  */
 export function defaultAction(
   project: Project,
   page: Page,
   elementId: string,
   type: ActionType,
-): { action: StoryAction; step?: AnimationStep } {
+  soundId?: string,
+): { action: StoryAction; step?: AnimationStep } | null {
   switch (type) {
+    case 'playSound': {
+      // The newest upload (the caller passes it) or the book's first sound.
+      const id = soundId ?? Object.keys(project.sounds)[0];
+      return id ? { action: { type, soundId: id } } : null;
+    }
     case 'goToPage': {
       const i = project.pages.findIndex((p) => p.id === page.id);
       const target = project.pages[i + 1] ?? project.pages.find((p) => p.id !== page.id) ?? page;
@@ -248,16 +257,24 @@ export function defaultAction(
  * Edits one element's interactions with a recipe that may need a new reaction step; the
  * step and the interaction change land in one undo step.
  */
-function editWithAction(
+async function editWithAction(
   elementId: string,
   type: ActionType,
   label: string,
   recipe: (list: Interaction[], action: StoryAction) => Interaction[],
-) {
+): Promise<void> {
+  // "Play a sound" in a book without sounds asks for one first (still inside the click).
+  let soundId: string | undefined;
+  if (type === 'playSound' && !Object.keys(docStore.project()?.sounds ?? {}).length) {
+    soundId = (await uploadSound())?.id;
+    if (!soundId) return;
+  }
   const project = docStore.project();
   const page = getActivePage();
   if (!project || !page) return;
-  const { action, step } = defaultAction(project, page, elementId, type);
+  const made = defaultAction(project, page, elementId, type, soundId);
+  if (!made) return;
+  const { action, step } = made;
   docStore.change(
     (d) => {
       if (step) addAnimation(d, page.id, step);
@@ -277,15 +294,19 @@ function editWithAction(
 }
 
 /** Adds a new tap behaviour with one action of the given type. */
-export function addInteraction(elementId: string, type: ActionType): void {
-  editWithAction(elementId, type, 'Add tap action', (list, action) =>
+export function addInteraction(elementId: string, type: ActionType): Promise<void> {
+  return editWithAction(elementId, type, 'Add tap action', (list, action) =>
     list.length >= 4 ? list : [...list, newInteraction([action])],
   );
 }
 
 /** Appends an action ("…then …") to an existing tap behaviour. */
-export function appendAction(elementId: string, interactionId: string, type: ActionType): void {
-  editWithAction(elementId, type, 'Add tap action', (list, action) => {
+export function appendAction(
+  elementId: string,
+  interactionId: string,
+  type: ActionType,
+): Promise<void> {
+  return editWithAction(elementId, type, 'Add tap action', (list, action) => {
     const target = list.find((i) => i.id === interactionId);
     if (target && target.actions.length < 8) target.actions.push(action);
     return list;
@@ -298,8 +319,8 @@ export function setActionType(
   interactionId: string,
   index: number,
   type: ActionType,
-): void {
-  editWithAction(elementId, type, 'Edit tap action', (list, action) => {
+): Promise<void> {
+  return editWithAction(elementId, type, 'Edit tap action', (list, action) => {
     const target = list.find((i) => i.id === interactionId);
     if (target?.actions[index]) target.actions[index] = action;
     return list;

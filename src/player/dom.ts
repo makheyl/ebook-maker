@@ -11,6 +11,8 @@ const ICON_PATHS = {
   lock: 'M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z',
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z',
+  soundOn: 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14',
+  soundOff: 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6',
 };
 
 export type IconName = keyof typeof ICON_PATHS;

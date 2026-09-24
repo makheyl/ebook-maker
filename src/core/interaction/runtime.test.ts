@@ -189,6 +189,28 @@ describe('reader runtime', () => {
     expect(second.effects).toEqual(['playStep']);
   });
 
+  it('play-a-sound actions become sound effects without turning the page', () => {
+    const p0 = createPage();
+    p0.elements.push(
+      createHotspotElement(
+        { x: 0, y: 0, width: 10, height: 10 },
+        {
+          id: 'bell',
+          interactions: [
+            tap([
+              { type: 'playSound', soundId: 'snd_ding' },
+              { type: 'burst', effect: 'sparkles' },
+            ]),
+          ],
+        },
+      ),
+    );
+    const project = createProject({ pages: [p0, createPage()] });
+    const r = reduce(project, initialReaderState(), { type: 'tap', elementId: 'bell' });
+    expect(r.effects[0]).toEqual({ type: 'playSound', soundId: 'snd_ding' });
+    expect(r.state.page).toBe(0);
+  });
+
   it('stops running actions once the reader has left the page', () => {
     const p0 = createPage();
     const p1 = createPage();

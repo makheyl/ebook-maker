@@ -3,8 +3,11 @@ import {
   CheckCircle2,
   CircleX,
   MousePointerClick,
+  Music,
+  Play,
   Plus,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import { useId, useMemo } from 'react';
@@ -40,6 +43,8 @@ import {
   updateReader,
   type ActionType,
 } from '../interaction/actions';
+import { assetUrls } from '../assets/asset-urls';
+import { deleteSound, setPageTurnSound, setSoundName, uploadSound } from '../sound/actions';
 import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
 import { Field, NumberField, Section } from './controls';
@@ -53,6 +58,7 @@ const ACTION_ORDER: ActionType[] = [
   'unlockNext',
   'burst',
   'collect',
+  'playSound',
 ];
 
 const BURST_LABELS: Record<(typeof BURST_EFFECTS)[number], string> = {
@@ -80,6 +86,7 @@ export function InteractPanel() {
           <PageFlowSection page={page} />
           <GoalSection page={page} />
           <ReaderSection />
+          <SoundsSection />
         </>
       )}
       <ChecksSection />
@@ -136,7 +143,7 @@ function ElementInteractions({ element, page }: { element: PageElement; page: Pa
           />
         ))}
         <AddActionMenu
-          onPick={(type) => addInteraction(element.id, type)}
+          onPick={(type) => void addInteraction(element.id, type)}
           disabled={interactions.length >= 4 || element.locked}
         >
           <Button variant="outline" size="sm" className="justify-self-start">
@@ -200,7 +207,7 @@ function InteractionCard({
       ))}
       <div className="flex items-center justify-between gap-2">
         <AddActionMenu
-          onPick={(type) => appendAction(element.id, interaction.id, type)}
+          onPick={(type) => void appendAction(element.id, interaction.id, type)}
           disabled={interaction.actions.length >= 8}
         >
           <Button variant="ghost" size="sm" className="h-7 px-2 text-xs">
@@ -256,7 +263,9 @@ function ActionRow({
         {index > 0 && <span className="shrink-0 text-xs text-muted-foreground">then</span>}
         <Select
           value={action.type}
-          onValueChange={(t) => setActionType(element.id, interaction.id, index, t as ActionType)}
+          onValueChange={(t) =>
+            void setActionType(element.id, interaction.id, index, t as ActionType)
+          }
         >
           <SelectTrigger className="h-8 min-w-0 flex-1" aria-label={`Action ${index + 1}`}>
             <SelectValue />
@@ -315,6 +324,32 @@ function ActionRow({
           Change how it moves in the Animate tab (Start: “When tapped”).
         </p>
       )}
+      {action.type === 'playSound' && (
+        <div className="flex items-center gap-1">
+          <Select
+            value={action.soundId}
+            onValueChange={(v) => {
+              if (v !== UPLOAD) return set({ type: 'playSound', soundId: v });
+              void uploadSound().then(
+                (sound) => sound && set({ type: 'playSound', soundId: sound.id }),
+              );
+            }}
+          >
+            <SelectTrigger className="h-8 min-w-0 flex-1" aria-label="Sound to play">
+              <SelectValue placeholder="Choose a sound" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.values(project.sounds).map((snd) => (
+                <SelectItem key={snd.id} value={snd.id}>
+                  {snd.name ?? 'Sound'}
+                </SelectItem>
+              ))}
+              <SelectItem value={UPLOAD}>Upload a sound…</SelectItem>
+            </SelectContent>
+          </Select>
+          <PreviewSoundButton soundId={action.soundId} />
+        </div>
+      )}
       {action.type === 'burst' && (
         <Select
           value={action.effect}
@@ -335,6 +370,114 @@ function ActionRow({
         </Select>
       )}
     </div>
+  );
+}
+
+/** Select items can't trigger uploads directly; this value stands for "upload a new one". */
+const UPLOAD = '__upload';
+
+let previewAudio: HTMLAudioElement | null = null;
+
+/** Plays a sound in the editor (stopping any other preview). */
+function PreviewSoundButton({ soundId, name }: { soundId: string; name?: string }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-7 shrink-0"
+      aria-label={`Play ${name ?? 'sound'}`}
+      onClick={() => {
+        const src = assetUrls.resolve(soundId);
+        if (!src) return;
+        previewAudio?.pause();
+        previewAudio = new Audio(src);
+        void previewAudio.play().catch(() => undefined);
+      }}
+    >
+      <Play />
+    </Button>
+  );
+}
+
+const NO_SOUND = '__none';
+
+function SoundsSection() {
+  const project = useProject();
+  const sounds = Object.values(project.sounds);
+  return (
+    <Section title="Sounds (whole book)">
+      {!sounds.length ? (
+        <p className="text-xs text-muted-foreground">
+          MP3, OGG, WAV or M4A up to 2 MB. Play them when something is tapped, or when a page turns.
+          Readers can mute them.
+        </p>
+      ) : (
+        <ul className="grid gap-1.5" aria-label="Sounds">
+          {sounds.map((snd) => (
+            <li key={snd.id} className="flex items-center gap-1">
+              <Music className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <Input
+                key={snd.id + snd.name}
+                defaultValue={snd.name ?? 'Sound'}
+                aria-label="Sound name"
+                maxLength={200}
+                className="h-7 min-w-0 flex-1 text-xs"
+                onBlur={(e) =>
+                  e.target.value.trim() &&
+                  e.target.value.trim() !== snd.name &&
+                  setSoundName(snd.id, e.target.value)
+                }
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+              <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                {snd.duration !== undefined && `${snd.duration.toFixed(1)} s`}
+              </span>
+              <PreviewSoundButton soundId={snd.id} name={snd.name} />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0"
+                aria-label={`Remove ${snd.name ?? 'sound'}`}
+                onClick={() => deleteSound(snd.id)}
+              >
+                <Trash2 />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="justify-self-start"
+        onClick={() => void uploadSound()}
+      >
+        <Upload /> Upload sound
+      </Button>
+      <Field label="Page-turn sound">
+        <Select
+          value={project.reader.pageTurnSound ?? NO_SOUND}
+          onValueChange={(v) => {
+            if (v === UPLOAD) {
+              void uploadSound().then((snd) => snd && setPageTurnSound(snd.id));
+            } else setPageTurnSound(v === NO_SOUND ? undefined : v);
+          }}
+        >
+          <SelectTrigger className="h-8 w-full" aria-label="Page-turn sound">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_SOUND}>None</SelectItem>
+            {sounds.map((snd) => (
+              <SelectItem key={snd.id} value={snd.id}>
+                {snd.name ?? 'Sound'}
+              </SelectItem>
+            ))}
+            <SelectItem value={UPLOAD}>Upload a sound…</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    </Section>
   );
 }
 

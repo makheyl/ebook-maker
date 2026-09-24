@@ -16,6 +16,7 @@ import {
 } from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
 import type { BurstEffect, Page, Project } from '../core/schema';
+import { bookHasSound, SoundBoard } from './audio';
 import { burst } from './burst';
 import { el, icon, type IconName } from './dom';
 import { buildEnd } from './end';
@@ -61,6 +62,8 @@ export class Player {
   private readonly menu: PageMenu | null;
   private readonly menuBtn: HTMLButtonElement | null;
   private readonly resumeEnabled: boolean;
+  private readonly sounds: SoundBoard;
+  private readonly muteBtn: HTMLButtonElement | null;
   private state: ReaderState;
   /** Index of the page on screen (can lag `state.page` only inside `showPage`). */
   private index = -1;
@@ -126,6 +129,14 @@ export class Player {
     } else {
       this.menu = null;
       this.menuBtn = null;
+    }
+    this.sounds = new SoundBoard(opts.resolveAsset);
+    if (bookHasSound(project)) {
+      this.muteBtn = this.button('Mute sounds', 'soundOn', () => this.toggleMute());
+      controls.append(this.muteBtn);
+      this.updateMute();
+    } else {
+      this.muteBtn = null;
     }
     controls.append(this.fsBtn);
     if (opts.onExit) {
@@ -266,6 +277,9 @@ export class Player {
       case 'burst':
         this.burstAt(effect.elementId, effect.effect);
         break;
+      case 'playSound':
+        this.sounds.play(effect.soundId);
+        break;
       case 'collect':
         this.markCollected(effect.elementId, true);
         this.updateGoal();
@@ -290,6 +304,22 @@ export class Player {
     this.root.classList.add('fp-hinting');
     clearTimeout(this.hintTimer);
     this.hintTimer = setTimeout(() => this.root.classList.remove('fp-hinting'), 1600);
+  }
+
+  private toggleMute(): void {
+    this.sounds.setMuted(!this.sounds.muted);
+    this.updateMute();
+    this.say(this.sounds.muted ? 'Sounds off.' : 'Sounds on.');
+  }
+
+  private updateMute(): void {
+    if (!this.muteBtn) return;
+    const muted = this.sounds.muted;
+    this.muteBtn.replaceChildren(icon(muted ? 'soundOff' : 'soundOn'));
+    this.muteBtn.setAttribute('aria-pressed', String(muted));
+    const label = muted ? 'Unmute sounds' : 'Mute sounds';
+    this.muteBtn.setAttribute('aria-label', label);
+    this.muteBtn.title = label;
   }
 
   private say(text: string): void {
@@ -483,6 +513,8 @@ export class Player {
     }
 
     for (const id of this.state.collected[page.id] ?? []) this.markCollected(id, false);
+    const turn = this.opts.project.reader.pageTurnSound;
+    if (turn && direction !== 0) this.sounds.play(turn);
     this.preloadAround(i);
     this.updateChrome();
     this.updateGoal();
@@ -498,6 +530,7 @@ export class Player {
     clearTimeout(this.idleHintTimer);
     clearTimeout(this.toastTimer);
     this.menu?.close();
+    this.sounds.destroy();
     for (const a of this.transitionAnims) a.cancel();
     if (this.outgoing) this.unmountPage(this.outgoing);
     if (this.current) this.unmountPage(this.current);
@@ -630,6 +663,12 @@ export class Player {
       this.cleanups.push(() => target.removeEventListener(type, fn as EventListener, options));
     };
 
+    // Sounds may play only after the reader's first tap or key press (capture: before any
+    // handler below runs the action that plays one).
+    const unlock = () => this.sounds.unlock();
+    on(this.root, 'pointerdown', unlock, { capture: true });
+    on(this.root, 'keydown', unlock, { capture: true });
+
     const interactiveOf = (target: EventTarget | null) =>
       target instanceof Element ? target.closest<HTMLElement>('.fp-page [data-interactive]') : null;
     const elementIdOf = (node: HTMLElement) => node.dataset.elementId;
@@ -671,6 +710,8 @@ export class Player {
         this.goTo(this.pages.length - 1, 1);
       } else if (key === 'f' || key === 'F') {
         this.toggleFullscreen();
+      } else if ((key === 'm' || key === 'M') && this.muteBtn) {
+        this.toggleMute();
       } else if (key === 'Escape' && this.opts.onExit && !document.fullscreenElement) {
         this.opts.onExit();
       }

@@ -58,6 +58,7 @@ export function createProject(
     assets: {},
     characters: {},
     reader: { ...DEFAULT_READER },
+    sounds: {},
     exportSettings: { ...DEFAULT_EXPORT_SETTINGS },
     createdAt: now,
     updatedAt: now,

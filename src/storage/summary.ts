@@ -17,6 +17,8 @@ export function projectAssetIds(project: Project): string[] {
     ids.add(character.assetId);
     for (const pose of character.poses) ids.add(pose.assetId);
   }
+  // Sound blobs live in the same store, so they must count as used too.
+  for (const id of Object.keys(project.sounds)) ids.add(id);
   return [...ids];
 }
 

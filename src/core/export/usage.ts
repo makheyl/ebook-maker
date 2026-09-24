@@ -1,8 +1,23 @@
 import { getFont, type FontSubset } from '../fonts/catalog';
 import type { Project } from '../schema/types';
 
-/** Asset ids actually shown in the book (unused uploads are not exported). */
-export function usedAssetIds(project: Project): string[] {
+/** Sounds the reader can actually hear: played by a visible element, or the page turn. */
+export function usedSoundIds(project: Project): string[] {
+  const ids = new Set<string>();
+  if (project.reader.pageTurnSound) ids.add(project.reader.pageTurnSound);
+  for (const page of project.pages) {
+    for (const el of page.elements) {
+      if (el.hidden) continue;
+      for (const it of el.interactions ?? []) {
+        for (const a of it.actions) if (a.type === 'playSound') ids.add(a.soundId);
+      }
+    }
+  }
+  return [...ids].filter((id) => project.sounds[id]);
+}
+
+/** Image asset ids actually shown in the book (unused uploads are not exported). */
+export function usedImageIds(project: Project): string[] {
   const ids = new Set<string>();
   for (const page of project.pages) {
     if (page.background.type === 'image') ids.add(page.background.assetId);
@@ -15,6 +30,11 @@ export function usedAssetIds(project: Project): string[] {
     }
   }
   return [...ids].filter((id) => project.assets[id]);
+}
+
+/** Every stored blob the export needs: used images, then used sounds. */
+export function usedAssetIds(project: Project): string[] {
+  return [...usedImageIds(project), ...usedSoundIds(project)];
 }
 
 export type FontUsage = { fontId: string; style: 'normal' | 'italic'; subset: FontSubset };

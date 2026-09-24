@@ -46,8 +46,10 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
   useEffect(() => {
-    void assetUrls.ensure(Object.keys(project.assets)).catch(() => undefined);
-  }, [project.assets]);
+    void assetUrls
+      .ensure([...Object.keys(project.assets), ...Object.keys(project.sounds)])
+      .catch(() => undefined);
+  }, [project.assets, project.sounds]);
 
   return (
     <div className="flex h-full flex-col">

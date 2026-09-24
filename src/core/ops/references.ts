@@ -4,7 +4,7 @@ import type { Project, StoryAction } from '../schema/types';
 /**
  * Removes references that no longer point anywhere: animation steps of deleted elements,
  * actions that jump to deleted pages or play deleted steps, page "next" overrides to deleted
- * pages, and character links to deleted characters. Only writes when something changes, so
+ * pages, character links to deleted characters, and sounds that were removed. Only writes when something changes, so
  * Immer keeps untouched pages structurally shared.
  */
 export function cleanReferences(draft: Draft<Project>): void {
@@ -20,7 +20,9 @@ export function cleanReferences(draft: Draft<Project>): void {
         ? pageIds.has(a.pageId)
         : a.type === 'playStep'
           ? stepIds.has(a.stepId)
-          : true;
+          : a.type === 'playSound'
+            ? !!draft.sounds[a.soundId]
+            : true;
 
     for (const el of page.elements) {
       if (el.interactions?.some((i) => i.actions.some((a) => !valid(a)))) {
@@ -35,4 +37,6 @@ export function cleanReferences(draft: Draft<Project>): void {
     const next = page.flow?.next;
     if (page.flow && next && next !== 'end' && !pageIds.has(next)) delete page.flow.next;
   }
+  const turn = draft.reader.pageTurnSound;
+  if (turn && !draft.sounds[turn]) delete draft.reader.pageTurnSound;
 }

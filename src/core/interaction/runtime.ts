@@ -38,7 +38,8 @@ export type ReaderEffect =
   | { type: 'hint' }
   | { type: 'unlocked' }
   | { type: 'showEnd' }
-  | { type: 'hideEnd' };
+  | { type: 'hideEnd' }
+  | { type: 'playSound'; soundId: string };
 
 export type ReduceResult = { state: ReaderState; effects: ReaderEffect[] };
 
@@ -174,6 +175,9 @@ function tap(
         return false;
       case 'burst':
         add({ state: s, effects: [{ type: 'burst', effect: action.effect, elementId }] });
+        return false;
+      case 'playSound':
+        add({ state: s, effects: [{ type: 'playSound', soundId: action.soundId }] });
         return false;
       case 'collect': {
         const got = s.collected[page.id] ?? [];

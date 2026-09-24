@@ -18,6 +18,8 @@ import type {
   trackKeyframeSchema,
   animationStepSchema,
   assetRefSchema,
+  soundRefSchema,
+  SOUND_MIMES,
   exportSettingsSchema,
   imageElementSchema,
   imageFiltersSchema,
@@ -41,6 +43,8 @@ export type Project = z.infer<typeof projectSchema>;
 export type PageSize = z.infer<typeof pageSizeSchema>;
 export type Theme = z.infer<typeof themeSchema>;
 export type AssetRef = z.infer<typeof assetRefSchema>;
+export type SoundRef = z.infer<typeof soundRefSchema>;
+export type SoundMime = (typeof SOUND_MIMES)[number];
 export type Page = z.infer<typeof pageSchema>;
 export type PageBackground = z.infer<typeof pageBackgroundSchema>;
 export type PageTransition = z.infer<typeof pageTransitionSchema>;

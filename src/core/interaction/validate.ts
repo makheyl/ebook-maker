@@ -146,7 +146,8 @@ export function validateInteractivity(project: Project): CheckIssue[] {
         for (const a of it.actions) {
           const dangling =
             (a.type === 'goToPage' && !pageIds.has(a.pageId)) ||
-            (a.type === 'playStep' && !stepIds.has(a.stepId));
+            (a.type === 'playStep' && !stepIds.has(a.stepId)) ||
+            (a.type === 'playSound' && !project.sounds[a.soundId]);
           if (dangling) {
             issues.push({
               id: `dangling:${it.id}:${a.type}`,

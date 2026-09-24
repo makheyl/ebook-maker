@@ -37,6 +37,14 @@ const EXT_BY_MIME: Record<string, string> = {
   'image/gif': 'gif',
   'image/avif': 'avif',
   'image/svg+xml': 'svg',
+  'audio/mpeg': 'mp3',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/aac': 'aac',
 };
 
 function toBase64(bytes: ArrayBuffer): string {
@@ -133,9 +141,9 @@ ${script}
 }
 
 const SINGLE_FILE_CSP =
-  "default-src 'none'; img-src data: blob:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+  "default-src 'none'; img-src data: blob:; font-src data:; media-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'";
 const FOLDER_CSP =
-  "default-src 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'";
+  "default-src 'none'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'";
 
 async function fontCssFor(inputs: ExportInputs): Promise<{ css: string; bytes: number }> {
   const faces = selectFontFaces(inputs.project, inputs.fontFiles);
@@ -177,7 +185,8 @@ export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
   for (const id of usedAssetIds(inputs.project)) {
     const blob = await inputs.getAsset(id);
     if (!blob) continue;
-    const path = `assets/images/${id}.${EXT_BY_MIME[blob.type] ?? 'bin'}`;
+    const folder = inputs.project.sounds[id] ? 'audio' : 'images';
+    const path = `assets/${folder}/${id}.${EXT_BY_MIME[blob.type] ?? 'bin'}`;
     zip.file(path, blob);
     assets[id] = path;
   }
@@ -206,6 +215,7 @@ export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
 export type SizeEstimate = {
   bytes: number;
   images: number;
+  audio: number;
   fonts: number;
   runtime: number;
   data: number;
@@ -218,16 +228,18 @@ export type SizeEstimate = {
 export function estimateSize(opts: {
   format: ExportFormat;
   imageBytes: readonly number[];
+  audioBytes?: readonly number[];
   fontBytes: readonly number[];
   playerBytes: number;
   projectJsonBytes: number;
 }): SizeEstimate {
   const inflate = (n: number) => (opts.format === 'html' ? Math.ceil(n / 3) * 4 : n);
   const images = opts.imageBytes.reduce((s, n) => s + inflate(n), 0);
+  const audio = (opts.audioBytes ?? []).reduce((s, n) => s + inflate(n), 0);
   const fonts = opts.fontBytes.reduce((s, n) => s + Math.ceil(n / 3) * 4, 0);
   const runtime = opts.playerBytes;
   const data = opts.projectJsonBytes + 2048;
-  return { bytes: images + fonts + runtime + data, images, fonts, runtime, data };
+  return { bytes: images + audio + fonts + runtime + data, images, audio, fonts, runtime, data };
 }
 
 export const SIZE_WARNING_BYTES = 25 * 1024 * 1024;

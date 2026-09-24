@@ -31,6 +31,16 @@ export const MIGRATIONS: readonly Migration[] = [
       reader: isObject(doc.reader) ? doc.reader : { ...DEFAULT_READER },
     }),
   },
+  {
+    // v3 adds sounds (a book-level list, a "play a sound" action, a page-turn sound).
+    from: 2,
+    to: 3,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 3,
+      sounds: isObject(doc.sounds) ? doc.sounds : {},
+    }),
+  },
 ];
 
 export class ProjectLoadError extends Error {
