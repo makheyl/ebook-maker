@@ -1,4 +1,5 @@
 import { pivotToLocal, visibleWidthLocal } from '../character/pivot';
+import { accessibleName } from '../interaction/names';
 import type { AssetRef, Character, Page, PageElement, PageSize } from '../schema/types';
 import {
   buildButton,
@@ -83,7 +84,7 @@ function applyInteractivity(frame: HTMLElement, el: PageElement, mode: RenderMod
   if (interactive && el.type !== 'button') {
     frame.setAttribute('role', 'button');
     frame.tabIndex = 0;
-    frame.setAttribute('aria-label', el.a11yLabel?.trim() || el.name);
+    frame.setAttribute('aria-label', accessibleName(el) || el.name);
   } else {
     frame.removeAttribute('role');
     frame.removeAttribute('tabindex');
@@ -118,6 +119,10 @@ function applyCharacter(entry: Entry, asset: AssetRef | undefined) {
   entry.anim.style.transformOrigin = origin;
   if (entry.idle) entry.idle.style.transformOrigin = origin;
   entry.frame.dataset.characterId = character.id;
+  // A tappable character is announced by its name unless it has its own label.
+  if (entry.frame.hasAttribute('data-interactive')) {
+    entry.frame.setAttribute('aria-label', accessibleName(el, character.name) || el.name);
+  }
   if (entry.shadow) {
     const width = visibleWidthLocal(asset, el) * el.width * 0.8 * character.shadow.size;
     const height = Math.max(4, width * 0.16);

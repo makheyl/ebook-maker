@@ -95,6 +95,21 @@ describe('interactive elements', () => {
   });
 });
 
+describe('button names', () => {
+  it('an explicit screen-reader name is used for story buttons', () => {
+    const flap = createButtonElement(
+      'Who is there?',
+      { x: 0, y: 0, width: 200, height: 200 },
+      { a11yLabel: 'Lift the flap: who is there?' },
+    );
+    const v = view('player');
+    v.update(pageWith(flap), {});
+    const b = v.root.querySelector('.fl-button')!;
+    expect(b.getAttribute('aria-label')).toBe('Lift the flap: who is there?');
+    expect(b.textContent).toContain('Who is there?');
+  });
+});
+
 describe('character layers', () => {
   const asset = {
     id: 'art',
@@ -182,5 +197,24 @@ describe('character layers', () => {
     // Poses are not "media" (Ken Burns) targets; the artwork stays the only .fl-img.
     expect(anim.querySelectorAll('.fl-img')).toHaveLength(1);
     expect(poses[0]!.previousElementSibling?.classList.contains('fl-img')).toBe(true);
+  });
+
+  it('a tappable character is announced by its name (or its own label)', () => {
+    const img = createImageElement(
+      asset,
+      { x: 0, y: 0, width: 200, height: 200 },
+      { characterId: 'pip', name: 'pip.png' },
+      'exact',
+    );
+    img.interactions = [
+      { id: 'ia', trigger: 'tap', once: false, actions: [{ type: 'burst', effect: 'hearts' }] },
+    ];
+    const v = view('player');
+    v.update(pageWith(img), { art: asset }, { pip: character });
+    expect(v.getNodes(img.id)!.frame.getAttribute('aria-label')).toBe('Pip');
+    const labelled = { ...img, a11yLabel: 'Tickle Pip' };
+    const w = view('player');
+    w.update(pageWith(labelled), { art: asset }, { pip: character });
+    expect(w.getNodes(img.id)!.frame.getAttribute('aria-label')).toBe('Tickle Pip');
   });
 });

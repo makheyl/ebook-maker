@@ -48,6 +48,18 @@ export class PageMenu {
         e.preventDefault();
         e.stopPropagation();
         this.opts.onClose();
+      } else if (e.key === 'Tab') {
+        // Keep Tab cycling inside the dialog.
+        const items = [...this.el.querySelectorAll<HTMLElement>('button')];
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     });
   }

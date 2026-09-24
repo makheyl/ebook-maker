@@ -149,6 +149,9 @@ test('exported book: page menu, resume where you left off, and start over', asyn
     'aria-current',
     'page',
   );
+  // Focus stays inside the menu (everything behind it is inert).
+  for (let i = 0; i < 6; i++) await book.keyboard.press('Tab');
+  expect(await book.evaluate(() => !!document.activeElement?.closest('.fp-menu'))).toBe(true);
   await book.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(menuButton).toBeFocused();

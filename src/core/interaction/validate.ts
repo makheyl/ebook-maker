@@ -1,4 +1,7 @@
-import type { Page, PageElement, Project } from '../schema/types';
+import type { Page, Project } from '../schema/types';
+import { accessibleName } from './names';
+
+export { accessibleName };
 
 export type CheckIssue = {
   /** Stable key for React lists. */
@@ -30,13 +33,6 @@ function hasWayOut(page: Page): boolean {
         i.actions.some((a) => ['next', 'goToPage', 'unlockNext', 'firstPage'].includes(a.type)),
       ),
   );
-}
-
-/** The accessible name a reader's screen reader would announce for an interactive element. */
-export function accessibleName(element: PageElement): string {
-  if (element.a11yLabel?.trim()) return element.a11yLabel.trim();
-  if (element.type === 'button' && element.iconPosition !== 'only') return element.label.trim();
-  return '';
 }
 
 /** Pages the reader can reach from page 1 by reading forward and tapping. */
@@ -114,7 +110,11 @@ export function validateInteractivity(project: Project): CheckIssue[] {
       const interactions = element.interactions ?? [];
       const interactive =
         element.type === 'button' || element.type === 'hotspot' || interactions.length > 0;
-      if (interactive && !accessibleName(element)) {
+      const characterName =
+        element.type === 'image' && element.characterId
+          ? project.characters[element.characterId]?.name
+          : undefined;
+      if (interactive && !accessibleName(element, characterName)) {
         issues.push({
           id: `name:${element.id}`,
           severity: 'warning',

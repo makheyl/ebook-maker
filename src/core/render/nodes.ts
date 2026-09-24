@@ -257,7 +257,9 @@ export function buildButton(element: ButtonElement, interactive: boolean): HTMLE
   const label = element.label.trim();
   const iconOnly = element.iconPosition === 'only' && element.icon;
   const name = element.a11yLabel?.trim() || label || element.name;
-  if (iconOnly || !label) box.setAttribute('aria-label', name);
+  // An explicit screen-reader name wins (keep the visible words in it, e.g. "Lift the flap:
+  // who is there?"); icon-only buttons need one to be announced at all.
+  if (iconOnly || !label || element.a11yLabel?.trim()) box.setAttribute('aria-label', name);
   if (element.icon && element.iconPosition !== 'end')
     box.appendChild(buildIcon(element.icon, 'fl-button-icon'));
   if (!iconOnly && label) {

@@ -64,6 +64,8 @@ export class Player {
   private readonly resumeEnabled: boolean;
   private readonly sounds: SoundBoard;
   private readonly muteBtn: HTMLButtonElement | null;
+  /** Everything behind the page menu (made inert while it is open). */
+  private readonly behindMenu: HTMLElement[];
   private state: ReaderState;
   /** Index of the page on screen (can lag `state.page` only inside `showPage`). */
   private index = -1;
@@ -159,6 +161,7 @@ export class Player {
       onPages: this.menu ? () => this.openMenu() : undefined,
     });
     this.root.append(stage, this.goalEl, controls, bar, this.endEl, this.live);
+    this.behindMenu = [stage, this.goalEl, controls, this.endEl];
     if (this.menu) this.root.appendChild(this.menu.el);
     if (opts.showBadge) {
       const badge = el('div', 'fp-badge', MADE_WITH_LABEL);
@@ -387,6 +390,8 @@ export class Player {
     this.finishTransition();
     clearTimeout(this.idleHintTimer);
     this.root.classList.add('fp-menu-open');
+    // A modal menu: keyboard and screen-reader focus stay inside it.
+    for (const node of this.behindMenu) node.inert = true;
     const back = this.state.ended
       ? this.endEl.querySelector<HTMLElement>('.fp-end-primary')
       : this.menuBtn;
@@ -396,6 +401,7 @@ export class Player {
   private closeMenu(restoreFocus = true): void {
     if (!this.menu?.isOpen) return;
     this.root.classList.remove('fp-menu-open');
+    for (const node of this.behindMenu) node.inert = false;
     this.menu.close();
     if (!restoreFocus) this.root.focus({ preventScroll: true });
     this.armIdleHint();
