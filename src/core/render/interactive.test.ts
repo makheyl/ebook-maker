@@ -158,4 +158,29 @@ describe('character layers', () => {
     expect(p.getNodes(plain.id)!.idle).toBeUndefined();
     expect(p.root.querySelector('.fl-shadow')).toBeNull();
   });
+
+  it("stacks one hidden layer per pose over the artwork, in the character's order", () => {
+    const img = createImageElement(
+      asset,
+      { x: 0, y: 0, width: 200, height: 200 },
+      { characterId: 'pip' },
+      'exact',
+    );
+    const posed: Character = {
+      ...character,
+      poses: [
+        { id: 'po1', name: 'talk', assetId: 'talk-art' },
+        { id: 'po2', name: 'blink', assetId: 'blink-art' },
+      ],
+    };
+    const v = view('player');
+    v.update(pageWith(img), { art: asset }, { pip: posed });
+    const anim = v.getNodes(img.id)!.anim;
+    const poses = [...anim.querySelectorAll<HTMLImageElement>('.fl-pose')];
+    expect(poses.map((p) => p.dataset.poseId)).toEqual(['po1', 'po2']);
+    expect(poses.every((p) => p.getAttribute('aria-hidden') === 'true' && !p.alt)).toBe(true);
+    // Poses are not "media" (Ken Burns) targets; the artwork stays the only .fl-img.
+    expect(anim.querySelectorAll('.fl-img')).toHaveLength(1);
+    expect(poses[0]!.previousElementSibling?.classList.contains('fl-img')).toBe(true);
+  });
 });

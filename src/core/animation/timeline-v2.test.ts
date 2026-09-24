@@ -95,7 +95,7 @@ function setup(build: (ids: { a: string; b: string; mascot: string }) => Page['a
 }
 
 describe('timeline: seek', () => {
-  it('freezes earlier groups at their end, the current group at ms, later groups at 0', () => {
+  it('freezes earlier groups at their end, the current group at ms; later ones wait', () => {
     const { timeline, anims, view, ids } = setup(({ a, b }) => [
       { ...createAnimationStep(a, 'fadeIn'), trigger: 'onPageEnter', duration: 400 },
       { ...createAnimationStep(b, 'fadeIn'), trigger: 'onClick', duration: 600, delay: 100 },
@@ -111,8 +111,30 @@ describe('timeline: seek', () => {
     const [enterB] = on(ids.b);
     expect(enterA!.currentTime).toBe(400); // group 0 ended
     expect(enterB!.currentTime).toBe(250); // group 1 at 250ms (delay is inside currentTime)
-    expect(exitA!.currentTime).toBe(0); // group 2 not started
-    expect([enterA, enterB, exitA].every((x) => x!.playState === 'paused')).toBe(true);
+    expect([enterA, enterB].every((x) => x!.playState === 'paused')).toBe(true);
+    // Group 2 hasn't started: an exit has no "before" state, so it waits idle (no effect).
+    expect(exitA!.playState).toBe('idle');
+  });
+
+  it('waiting reactions never pin a character over its story motion', () => {
+    const { timeline, anims, view, ids } = setup(({ mascot, b }) => [
+      { ...createAnimationStep(mascot, 'hop'), trigger: 'onPageEnter' },
+      { ...createAnimationStep(mascot, 'wiggle'), trigger: 'onInteraction' },
+      { ...createAnimationStep(b, 'popIn'), trigger: 'onInteraction' },
+    ]);
+    const anim = view.getNodes(ids.mascot)!.anim;
+    const onMascot = anims.filter((x) => x.target === anim);
+    timeline.seek(0, 300);
+    const hop = onMascot.find((x) => x.currentTime === 300)!;
+    expect(hop.playState).toBe('paused');
+    // The wiggle (no backwards fill) rests idle instead of holding its first frame.
+    const wiggle = onMascot.filter((x) => x !== hop && x.options.fill === 'none');
+    expect(wiggle.length).toBeGreaterThan(0);
+    expect(wiggle.every((x) => x.playState === 'idle')).toBe(true);
+    // A reveal (entrance) still holds its hidden start.
+    const reveal = anims.find((x) => x.target === view.getNodes(ids.b)!.anim)!;
+    expect(reveal.playState).toBe('paused');
+    expect(reveal.currentTime).toBe(0);
   });
 
   it('reports each group length (loops count one cycle)', () => {
@@ -167,7 +189,7 @@ describe('timeline: characters', () => {
     const idle = anims.filter((x) => x.target === nodes.idle);
     expect(idle).toHaveLength(1);
     expect(idle[0]!.options.iterations).toBe(Infinity);
-    expect(idle[0]!.playState).toBe('paused');
+    expect(idle[0]!.playState).toBe('idle'); // waits without effect until started
     timeline.startIdle();
     expect(idle[0]!.playState).toBe('running');
     // Breathing doesn't leave the ground, so the shadow isn't animated by it.

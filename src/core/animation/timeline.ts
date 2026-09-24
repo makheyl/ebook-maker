@@ -56,7 +56,22 @@ export type PageTimeline = {
   startIdle(): void;
 };
 
-type Tracked = { anim: Animation; end: number; loop: boolean };
+/**
+ * `holdsStart`: the animation applies its first frame before it plays (entrances start
+ * hidden). Everything else rests idle until played — held at t=0 it would be "active" and
+ * pin its target over earlier animations (e.g. a tap reaction freezing a character's walk).
+ */
+type Tracked = { anim: Animation; end: number; loop: boolean; holdsStart: boolean };
+
+/** Puts an animation in its waiting state (see `Tracked.holdsStart`). */
+function rest(t: Tracked): void {
+  if (t.holdsStart) {
+    t.anim.pause();
+    t.anim.currentTime = 0;
+  } else {
+    t.anim.cancel();
+  }
+}
 
 const defaultAnimate: AnimateFn = (target, keyframes, options) =>
   target.animate(keyframes, options);
@@ -144,14 +159,15 @@ export function createPageTimeline(
       // An unsupported easing string throws; fall back to a safe one.
       anim = animate(target, keyframes, { ...options, easing: 'ease-out' });
     }
-    // Hold at t=0 so entrances apply their "before" state (hidden) until played.
-    anim.pause();
-    anim.currentTime = 0;
     const iterations = Number(options.iterations ?? 1);
     const loop = !Number.isFinite(iterations);
     const end =
       Number(options.delay ?? 0) + Number(options.duration ?? 0) * (loop ? 1 : iterations);
-    into.push({ anim, end, loop });
+    const holdsStart = options.fill === 'both' || options.fill === 'backwards';
+    const tracked = { anim, end, loop, holdsStart };
+    // Entrances hold their "before" state (hidden) until played; the rest wait idle.
+    rest(tracked);
+    into.push(tracked);
   }
 
   function buildStep(step: AnimationStep, start: number, into: Tracked[]) {
@@ -317,16 +333,15 @@ export function createPageTimeline(
     seek(group, ms) {
       groups.forEach((list, gi) => {
         for (const t of list) {
+          if (gi > group) {
+            rest(t);
+            continue;
+          }
           t.anim.pause();
-          t.anim.currentTime = gi < group ? (t.loop ? ms : t.end) : gi === group ? ms : 0;
+          t.anim.currentTime = gi < group ? (t.loop ? ms : t.end) : ms;
         }
       });
-      for (const list of interactions.values()) {
-        for (const t of list) {
-          t.anim.pause();
-          t.anim.currentTime = 0;
-        }
-      }
+      for (const list of interactions.values()) for (const t of list) rest(t);
       for (const t of idle) {
         t.anim.pause();
         t.anim.currentTime = ms;
