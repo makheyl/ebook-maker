@@ -72,10 +72,10 @@
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  background: var(--fp-glass);
-  backdrop-filter: var(--fp-blur);
-  -webkit-backdrop-filter: var(--fp-blur);
-  /* Hairlines as inset shadows, not borders: the bar's size is part of the page layout. */
+  /* Always on screen and below the page, over the plain stage: no blur needed, so it costs
+     nothing while pages animate. Hairlines are inset shadows, not borders: the bar's size is
+     part of the page layout. */
+  background: var(--fp-glass-strong);
   box-shadow:
     inset 0 0 0 1px var(--fp-glass-border),
     inset 0 1px 0 var(--fp-highlight),
@@ -145,9 +145,7 @@
   position: absolute;
   top: 14px;
   right: 14px;
-  background: var(--fp-glass);
-  backdrop-filter: var(--fp-blur);
-  -webkit-backdrop-filter: var(--fp-blur);
+  background: var(--fp-glass-strong);
   box-shadow:
     inset 0 0 0 1px var(--fp-glass-border),
     inset 0 1px 0 var(--fp-highlight);

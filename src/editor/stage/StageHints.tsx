@@ -31,7 +31,7 @@ export function StageHints() {
     <>
       {empty && !previewing && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <div className="flex max-w-sm flex-col items-center gap-2 glass-strong rounded-2xl px-6 py-5 text-center">
+          <div className="flex max-w-sm flex-col items-center gap-2 glass-pill rounded-2xl px-6 py-5 text-center">
             <MousePointerClick className="size-6 text-primary" />
             <p className="font-medium">This page is empty</p>
             <p className="text-sm text-muted-foreground">
@@ -53,7 +53,7 @@ export function StageHints() {
       {showTips && expanded && (
         <aside
           aria-label="Tips"
-          className="glass-strong absolute bottom-3 left-3 z-10 w-72 rounded-2xl p-3 text-sm"
+          className="glass-pill absolute bottom-3 left-3 z-10 w-72 rounded-2xl p-3 text-sm"
         >
           <div className="mb-2 flex items-center gap-2 font-medium">
             <Lightbulb className="size-4 text-amber-500" /> Quick tips

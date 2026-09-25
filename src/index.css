@@ -50,9 +50,10 @@
   --canvas: #e3eeea80;
   --selection: #3a8bc2;
 
-  --glass: #ffffff8c;
+  --glass: #ffffffa1;
   --glass-strong: #ffffffd9;
   --glass-subtle: #ffffff80;
+  --glass-pill: #ffffffeb;
   --glass-border: #ffffffb3;
   --glass-edge: #24333817;
   --glass-highlight: #ffffffcc;
@@ -91,9 +92,10 @@
   /* Drawn on the (white) page, so it stays ocean in the dark too. */
   --selection: #428fbc;
 
-  --glass: #14262b8c;
+  --glass: #14262ba6;
   --glass-strong: #14242ae0;
   --glass-subtle: #ffffff0d;
+  --glass-pill: #15262bf0;
   --glass-border: #ffffff1f;
   --glass-edge: #ffffff1a;
   --glass-highlight: #ffffff14;
@@ -150,12 +152,27 @@
 
 /* ─── Glass ─────────────────────────────────────────────────────────────────── */
 
-/* Docked panels (top bar, side panels, timeline): frosted, flush, no outer shadow. */
+/*
+ * Docked panels (editor top bar, side panels, timeline): translucent over the mesh, flush, no
+ * outer shadow. No blur: behind them is only the soft mesh, which a blur wouldn't change, and
+ * blurring on every repaint costs frames on slower machines.
+ */
 @utility glass {
+  background-color: var(--glass);
+  /* Composes with Tailwind's ring and shadow utilities instead of replacing them. */
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
+    inset 0 1px 0 var(--glass-highlight);
+}
+
+/* Sticky bars that content scrolls under (dashboard and quick-create): frosted. */
+@utility glass-float {
   background-color: var(--glass);
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
-  /* Composes with Tailwind's ring and shadow utilities instead of replacing them. */
   box-shadow:
     var(--tw-inset-shadow, 0 0 #0000),
     var(--tw-ring-offset-shadow, 0 0 #0000),
@@ -169,6 +186,20 @@
   background-color: var(--glass-strong);
   -webkit-backdrop-filter: var(--glass-filter-strong);
   backdrop-filter: var(--glass-filter-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+
+/* Pills that float over the stage all the time (insert toolbar, zoom, tips): framed and lifted
+   like glass-strong, but not blurred, so an animating page underneath stays cheap to draw. */
+@utility glass-pill {
+  background-color: var(--glass-pill);
   border: 1px solid var(--glass-border);
   box-shadow:
     var(--tw-inset-shadow, 0 0 #0000),
@@ -241,6 +272,10 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    /* Its own compositor layer: painted once, then only blended under the translucent panels
+       (otherwise every repaint of a panel would repaint the gradients behind it). */
+    will-change: transform;
+    contain: strict;
     background:
       radial-gradient(60rem 42rem at 6% -6%, var(--mesh-a), transparent 70%),
       radial-gradient(52rem 38rem at 96% 8%, var(--mesh-b), transparent 70%),
@@ -261,6 +296,7 @@
     --glass: var(--sidebar);
     --glass-strong: var(--popover);
     --glass-subtle: var(--card);
+    --glass-pill: var(--popover);
     --glass-filter: none;
     --glass-filter-strong: none;
     --canvas: var(--muted);

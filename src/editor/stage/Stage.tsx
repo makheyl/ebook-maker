@@ -25,7 +25,7 @@ function ZoomControl() {
   const setZoom = useUiStore((s) => s.setZoom);
   const timelineOpen = useUiStore((s) => s.timelineOpen);
   return (
-    <div className="glass-strong absolute right-3 bottom-3 flex items-center gap-0.5 rounded-xl p-0.5">
+    <div className="glass-pill absolute right-3 bottom-3 flex items-center gap-0.5 rounded-xl p-0.5">
       <Button
         variant={timelineOpen ? 'secondary' : 'ghost'}
         size="xs"

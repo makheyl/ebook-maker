@@ -84,7 +84,7 @@ export function Dashboard() {
           </p>
         </div>
       )}
-      <header className="glass glass-edge-b sticky top-0 z-10">
+      <header className="glass-float glass-edge-b sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Logo />
           <div className="flex-1" />

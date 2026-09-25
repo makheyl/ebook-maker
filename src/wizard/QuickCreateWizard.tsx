@@ -129,7 +129,7 @@ export function QuickCreateWizard() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="glass glass-edge-b sticky top-0 z-10">
+      <header className="glass-float glass-edge-b sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
           <Link
             href="/"
@@ -209,7 +209,7 @@ export function QuickCreateWizard() {
         )}
       </main>
 
-      <footer className="glass glass-edge-t sticky bottom-0">
+      <footer className="glass-float glass-edge-t sticky bottom-0">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4">
           {step > 0 ? (
             <Button variant="ghost" onClick={() => setStep(step - 1)}>
