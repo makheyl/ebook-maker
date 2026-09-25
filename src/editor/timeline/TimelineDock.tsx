@@ -20,6 +20,7 @@ import {
   type TrackProperty,
 } from '@/core/schema';
 import { updateAnimation } from '@/core/ops';
+import { defaultLanguageOf } from '@/core/voice';
 import { Button } from '@/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { cn } from '@/ui/utils';
@@ -44,9 +45,10 @@ import {
   type TimelineBar,
 } from './model';
 import { endScrub, isPlaying, pause, playFrom, scrubTo } from './session';
+import { LABEL_W, Row } from './row';
+import { audioGroupEnds, buildAudioLanes } from './audio-model';
+import { AudioLanes } from './AudioLanes';
 
-const LABEL_W = 176;
-const ROW_H = 32;
 const GROUP_GAP = 28;
 const KIND_BAR: Record<AnimationKind, string> = {
   entrance: 'bg-emerald-500/85 border-emerald-700',
@@ -103,7 +105,16 @@ export default function TimelineDock() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
 
-  const durations = model.groups.map((g) => g.duration);
+  const languages = project.voiceover.languages;
+  const previewVoice = useUiStore((s) => s.previewVoice);
+  const lang =
+    (previewVoice && languages.some((l) => l.code === previewVoice) ? previewVoice : undefined) ??
+    defaultLanguageOf(project) ??
+    'en';
+  const audioLanes = useMemo(() => buildAudioLanes(page, project, lang), [page, project, lang]);
+  const audioEnds = useMemo(() => audioGroupEnds(audioLanes), [audioLanes]);
+  // Groups make room for audio that plays past their last animation.
+  const durations = model.groups.map((g, gi) => Math.max(g.duration, audioEnds.get(gi) ?? 0));
   const offsets = groupOffsets(durations, pxPerMs, GROUP_GAP);
   const totalWidth =
     (offsets[offsets.length - 1] ?? 0) +
@@ -160,6 +171,7 @@ export default function TimelineDock() {
       speed,
       loop,
       onDone: () => setPlaying(false),
+      audio: { project, lang },
     });
   };
 
@@ -167,6 +179,21 @@ export default function TimelineDock() {
     setPlaying(false);
     endScrub();
     useUiStore.getState().setPlayhead({ group: playhead.group, ms: 0 });
+  };
+
+  /** Snap targets for an audio bar: animation edges, other audio bars and the playhead. */
+  const audioSnapTargets = (group: number, exclude: string) => {
+    const targets = snapTargets(
+      model,
+      group,
+      '',
+      playhead.group === group ? playhead.ms : undefined,
+    );
+    for (const lane of audioLanes)
+      for (const b of lane.bars)
+        if (b.group === group && b.key !== exclude && b.kind !== 'music')
+          targets.push(b.start, b.start + b.length);
+    return targets;
   };
 
   const selectBar = (bar: TimelineBar) => {
@@ -497,6 +524,20 @@ export default function TimelineDock() {
           </div>
         )}
         <div className="flex-1" />
+        {languages.length > 1 && (
+          <Select value={lang} onValueChange={(v) => useUiStore.getState().setPreviewVoice(v)}>
+            <SelectTrigger className="h-7 w-28 text-xs" aria-label="Timeline voice language">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((l) => (
+                <SelectItem key={l.code} value={l.code}>
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <label className="flex items-center gap-1 text-muted-foreground">
           Zoom
           <input
@@ -555,7 +596,7 @@ export default function TimelineDock() {
               }}
             >
               {model.groups.map((g, gi) => {
-                const span = groupSpan(g.duration);
+                const span = groupSpan(durations[gi] ?? g.duration);
                 const step = pxPerMs > 0.2 ? 250 : pxPerMs > 0.08 ? 500 : 1000;
                 return (
                   <div
@@ -584,7 +625,7 @@ export default function TimelineDock() {
             </div>
           </div>
 
-          {model.lanes.length === 0 && model.interaction.length === 0 && (
+          {model.lanes.length === 0 && model.interaction.length === 0 && !audioLanes.length && (
             <p className="p-4 text-sm text-muted-foreground" style={{ marginLeft: LABEL_W }}>
               No animations on this page yet. Add some from the Animate tab — or double-click a row
               here later to add a custom move.
@@ -631,7 +672,10 @@ export default function TimelineDock() {
                     <div
                       key={gi}
                       className="absolute top-2 bottom-2 rounded bg-[repeating-linear-gradient(90deg,var(--muted)_0_10px,transparent_10px_14px)] px-2 text-[10px] leading-4 text-muted-foreground"
-                      style={{ left: offsets[gi], width: (groupSpan(g.duration) - 200) * pxPerMs }}
+                      style={{
+                        left: offsets[gi],
+                        width: (groupSpan(durations[gi] ?? g.duration) - 200) * pxPerMs,
+                      }}
                     >
                       {lane.idle!.label} (loops)
                     </div>
@@ -708,6 +752,16 @@ export default function TimelineDock() {
             </>
           )}
 
+          <AudioLanes
+            page={page}
+            lanes={audioLanes}
+            offsets={offsets}
+            pxPerMs={pxPerMs}
+            totalWidth={totalWidth}
+            groupWidths={durations.map((d) => (groupSpan(d) - 200) * pxPerMs)}
+            snapTargets={audioSnapTargets}
+          />
+
           {/* Playhead */}
           <div
             aria-hidden="true"
@@ -726,33 +780,5 @@ export default function TimelineDock() {
         </div>
       </div>
     </section>
-  );
-}
-
-function Row({
-  label,
-  width,
-  children,
-  onDoubleClick,
-  testId,
-}: {
-  label: React.ReactNode;
-  width: number;
-  children?: React.ReactNode;
-  onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  testId?: string;
-}) {
-  return (
-    <div className="flex border-b border-border/60" style={{ height: ROW_H }} data-testid={testId}>
-      <div
-        className="sticky left-0 z-10 flex shrink-0 items-center border-r bg-sidebar"
-        style={{ width: LABEL_W }}
-      >
-        {label}
-      </div>
-      <div className="relative" style={{ width }} onDoubleClick={onDoubleClick}>
-        {children}
-      </div>
-    </div>
   );
 }

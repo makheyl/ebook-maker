@@ -1,6 +1,7 @@
 import { createPageTimeline, type PageTimeline } from '@/core/animation';
 import type { PageView } from '@/core/render';
-import type { Page, PageSize } from '@/core/schema';
+import type { Page, PageSize, Project } from '@/core/schema';
+import { startTimelineAudio, stopTimelineAudio } from '../audio/timeline-audio';
 import { stopPreview } from '../animation/preview';
 import { getStageView } from '../stage/stage-view';
 import { useUiStore } from '../store/ui-store';
@@ -56,17 +57,25 @@ export function playFrom(
     speed: number;
     loop: boolean;
     onDone?: () => void;
+    /** Plays the page's audio along (the timeline's language for voice lines). */
+    audio?: { project: Project; lang: string };
   },
 ): void {
   pause();
   let ms = opts.from >= opts.end ? 0 : opts.from;
   let last = performance.now();
+  const audio = () =>
+    opts.audio &&
+    startTimelineAudio(page, opts.audio.project, opts.group, ms, opts.speed, opts.audio.lang);
+  audio();
   const tick = (now: number) => {
     ms += (now - last) * opts.speed;
     last = now;
     if (ms >= opts.end) {
-      if (opts.loop) ms = 0;
-      else {
+      if (opts.loop) {
+        ms = 0;
+        audio();
+      } else {
         scrubTo(page, pageSize, opts.group, opts.end);
         raf = 0;
         opts.onDone?.();
@@ -83,6 +92,7 @@ export function playFrom(
 export function pause(): void {
   if (raf) cancelAnimationFrame(raf);
   raf = 0;
+  stopTimelineAudio();
 }
 
 export function isPlaying(): boolean {
