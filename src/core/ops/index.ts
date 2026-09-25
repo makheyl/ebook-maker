@@ -11,3 +11,4 @@ export * from './replace';
 export * from './bubbles';
 export * from './voice';
 export * from './audio';
+export * from './music';

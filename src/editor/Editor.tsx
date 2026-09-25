@@ -64,10 +64,11 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
       .ensure([
         ...Object.keys(project.assets),
         ...Object.keys(project.sounds),
+        ...Object.keys(project.music.tracks),
         ...(voiceIds ? voiceIds.split(',') : []),
       ])
       .catch(() => undefined);
-  }, [project.assets, project.sounds, voiceIds]);
+  }, [project.assets, project.sounds, project.music.tracks, voiceIds]);
 
   return (
     <div className="flex h-full flex-col">

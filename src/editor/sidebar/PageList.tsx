@@ -15,7 +15,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowDown, ArrowUp, Copy, MoreVertical, PanelLeftClose, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  MoreVertical,
+  Music2,
+  PanelLeftClose,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { Page, Project } from '@/core/schema';
 import { Button } from '@/ui/button';
@@ -71,8 +80,11 @@ function PageItem({
       className="group absolute inset-x-0 flex items-start gap-1.5 px-2 py-[5px]"
       data-testid="page-item"
     >
-      <span className="w-5 pt-1 text-right text-xs text-muted-foreground tabular-nums">
+      <span className="grid w-5 justify-items-end gap-1 pt-1 text-right text-xs text-muted-foreground tabular-nums">
         {index + 1}
+        {project.music.sections.some((m) => m.fromPageId === page.id) && (
+          <Music2 className="size-3 text-primary" aria-label="Music changes here" />
+        )}
       </span>
       <button
         type="button"

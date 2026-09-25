@@ -1,4 +1,4 @@
-import { MAX_SOUND_BYTES, MAX_VOICE_BYTES, SOUND_MIMES } from '../schema/project';
+import { MAX_MUSIC_BYTES, MAX_SOUND_BYTES, MAX_VOICE_BYTES, SOUND_MIMES } from '../schema/project';
 import type { SoundMime } from '../schema/types';
 
 const BY_EXTENSION: Record<string, SoundMime> = {
@@ -58,6 +58,28 @@ export function checkVoiceFile(file: {
     return {
       ok: false,
       message: 'Recordings can be up to 10 MB — try a shorter clip, or save it as MP3/M4A.',
+    };
+  }
+  if (file.size === 0) return { ok: false, message: 'This file is empty.' };
+  return asSound;
+}
+
+/** Like checkSoundFile, for background music (up to 15 MB). */
+export function checkMusicFile(file: {
+  name: string;
+  type: string;
+  size: number;
+}): { ok: true; mime: SoundMime } | { ok: false; message: string } {
+  const asSound = checkSoundFile({
+    name: file.name,
+    type: file.type,
+    size: Math.min(file.size, 1),
+  });
+  if (!asSound.ok) return { ok: false, message: 'Use an MP3, M4A, OGG or WAV music file.' };
+  if (file.size > MAX_MUSIC_BYTES) {
+    return {
+      ok: false,
+      message: 'Music can be up to 15 MB — save it as MP3 or M4A (about 1 MB per minute).',
     };
   }
   if (file.size === 0) return { ok: false, message: 'This file is empty.' };

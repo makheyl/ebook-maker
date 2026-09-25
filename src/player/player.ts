@@ -24,7 +24,9 @@ import { defaultLanguageOf, resolveClip, type VoiceChoice } from '../core/voice/
 import { bookHasEffects, SoundBoard } from './audio';
 import { Curl } from './curl';
 import { AudioMenu, buildListenCard } from './listen-card';
-import { loadVoicePrefs, saveVoicePrefs } from './audio-prefs';
+import { loadAudioPrefs, saveAudioPrefs, type AudioPrefs } from './audio-prefs';
+import { MusicPlayer } from './music';
+import { bookHasMusic, musicSectionAt } from '../core/audio/music';
 import { CueClock, VoicePlayer } from './voice';
 import { AudioClock } from './audio-clock';
 import { Mixer } from './mixer';
@@ -146,6 +148,11 @@ export class Player {
   private readonly mixer = new Mixer();
   private readonly clipClock: AudioClock<ScheduledClip>;
   private readonly voiceBtn: HTMLButtonElement | null = null;
+  private readonly music: MusicPlayer | null = null;
+  private musicOn = true;
+  private musicVolume = 1;
+  /** What this reader chose for this book before (null in the preview, or the first time). */
+  private readonly prefs: AudioPrefs | null;
   private readonly audioMenu: AudioMenu | null = null;
   private voiceChoice: VoiceChoice = 'off';
   /** The last language chosen (what V switches back to). */
@@ -228,20 +235,37 @@ export class Player {
       this.saidCues.push(cue);
       this.sayLine(cue.line, 'queue');
     });
+    this.prefs = opts.audio?.remember !== false ? loadAudioPrefs(project.id) : null;
     const languages = project.voiceover?.languages ?? [];
     if (languages.length && bookHasVoice(project)) {
       this.voice = new VoicePlayer(opts.resolveAsset, this.root, this.mixer);
       this.voice.onBlocked = () => this.showPill('Tap to listen');
       this.voice.onIdle = () => this.armAutoTurn();
+      this.voice.onBusyChange = (busy) => this.music?.duck(busy);
       this.voiceChoice = this.initialVoiceChoice();
       this.lastLanguage =
         this.voiceChoice !== 'off' ? this.voiceChoice : defaultLanguageOf(project);
-      this.voiceBtn = this.button('Voiceover', 'voice', () => this.openAudioMenu());
+    }
+    if (bookHasMusic(project)) {
+      this.music = new MusicPlayer(opts.resolveAsset, this.mixer, {
+        crossfadeMs: project.music.crossfadeMs,
+        ducking: project.music.ducking,
+      });
+      this.musicOn = this.prefs?.music ?? true;
+      this.musicVolume = this.prefs?.musicVolume ?? 1;
+      this.music.setVolume(this.musicVolume);
+      this.music.setEnabled(this.musicOn);
+    }
+    if (this.voice || this.music) {
+      this.voiceBtn = this.button('Audio', this.voice ? 'voice' : 'music', () =>
+        this.openAudioMenu(),
+      );
       this.voiceBtn.setAttribute('aria-haspopup', 'dialog');
       this.voiceBtn.classList.add('fp-voice-btn');
       controls.append(this.voiceBtn);
       this.audioMenu = new AudioMenu({
-        languages,
+        languages: this.voice ? languages : [],
+        music: !!this.music,
         onLanguage: (choice) => {
           this.setVoiceChoice(choice);
           this.closeAudioMenu();
@@ -251,13 +275,15 @@ export class Player {
           this.closeAudioMenu();
           this.listenAgain();
         },
+        onMusic: (on) => this.setMusic(on),
+        onMusicVolume: (v) => this.setMusicVolume(v),
         onClose: () => this.closeAudioMenu(),
       });
     }
     // Page 1 waits for the reader's first tap when the book would make sound on its own
     // (voiceover, or timed sounds): browsers only let audio start after a tap.
     const timedAudio = project.pages.some((p) => p.audio?.length);
-    this.holding = (!!this.voice || timedAudio) && opts.audio?.prompt !== false;
+    this.holding = (!!this.voice || !!this.music || timedAudio) && opts.audio?.prompt !== false;
     if (bookHasEffects(project)) {
       this.muteBtn = this.button('Mute sound effects', 'soundOn', () => this.toggleMute());
       controls.append(this.muteBtn);
@@ -323,8 +349,11 @@ export class Player {
   }
 
   /** For tests: the sound effects playing now and their gains. */
-  debugAudio(): { effects: { src: string; key: string; gain: number }[] } {
-    return { effects: this.sounds.debug() };
+  debugAudio(): {
+    effects: { src: string; key: string; gain: number }[];
+    music: { trackId: string | null; level: number; gain: number } | null;
+  } {
+    return { effects: this.sounds.debug(), music: this.music?.debug() ?? null };
   }
 
   /** Freezes the current page at a moment (used by tests to compare with the editor). */
@@ -590,6 +619,7 @@ export class Player {
       this.cueClock.clear();
       this.clipClock.clear();
     }
+    this.music?.setEndScreen(show);
     this.endEl.hidden = !show;
     this.root.classList.toggle('fp-ended', show);
     if (this.current) this.current.layer.inert = show;
@@ -632,6 +662,7 @@ export class Player {
     this.cancelAutoTurn();
     this.pageSpoke = false;
     const speak = direction === 1 || this.firstShow;
+    const restartMusic = direction === 0 && !this.firstShow;
     // A story button that turned the page is about to disappear: keep keyboard focus in the book.
     const active = document.activeElement;
     const hadFocus = !!active && !!this.current?.layer.contains(active);
@@ -707,6 +738,8 @@ export class Player {
       afterTransition();
     }
 
+    // Music follows the page (once the reader's first tap has let audio start).
+    if (!this.holding) this.updateMusic(restartMusic);
     for (const id of this.state.collected[page.id] ?? []) this.markCollected(id, false);
     const turn = this.opts.project.reader.pageTurnSound;
     if (turn && direction !== 0) this.sounds.play(turn);
@@ -729,6 +762,7 @@ export class Player {
     this.voice?.destroy();
     this.cueClock.clear();
     this.clipClock.clear();
+    this.music?.destroy();
     this.mixer.destroy();
     this.cancelAutoTurn();
     for (const a of this.transitionAnims) a.cancel();
@@ -900,7 +934,7 @@ export class Player {
     const { project } = this.opts;
     const codes = project.voiceover.languages.map((l) => l.code);
     const valid = (c: string | undefined): c is string => !!c && (c === 'off' || codes.includes(c));
-    const saved = this.opts.audio?.remember !== false ? loadVoicePrefs(project.id) : null;
+    const saved = this.prefs;
     if (saved) this.readToMe = saved.readToMe;
     if (valid(saved?.lang)) return saved.lang;
     if (valid(this.opts.audio?.language)) return this.opts.audio.language;
@@ -915,7 +949,31 @@ export class Player {
 
   private savePrefs(): void {
     if (this.opts.audio?.remember === false) return;
-    saveVoicePrefs(this.opts.project.id, { lang: this.voiceChoice, readToMe: this.readToMe });
+    saveAudioPrefs(this.opts.project.id, {
+      ...(this.voice ? { lang: this.voiceChoice } : {}),
+      readToMe: this.readToMe,
+      music: this.musicOn,
+      musicVolume: this.musicVolume,
+    });
+  }
+
+  private setMusic(on: boolean): void {
+    this.musicOn = on;
+    this.music?.setEnabled(on);
+    this.savePrefs();
+    this.updateVoiceButton();
+    this.say(on ? 'Music on.' : 'Music off.');
+  }
+
+  private setMusicVolume(v: number): void {
+    this.musicVolume = v;
+    this.music?.setVolume(v);
+    this.savePrefs();
+  }
+
+  /** The music for the page on screen (keeps playing, crossfades, or fades out). */
+  private updateMusic(restart: boolean): void {
+    this.music?.update(musicSectionAt(this.opts.project, this.index), restart);
   }
 
   /** A page arrives and starts: its animations, its voice (going forward), its bubble lines. */
@@ -1045,6 +1103,19 @@ export class Player {
   private updateVoiceButton(): void {
     const btn = this.voiceBtn;
     if (!btn) return;
+    this.audioMenu?.update({
+      choice: this.voiceChoice,
+      readToMe: this.readToMe,
+      music: this.musicOn,
+      musicVolume: this.musicVolume,
+    });
+    if (!this.voice) {
+      btn.replaceChildren(icon('music'));
+      const label = this.musicOn ? 'Audio: music on. Change' : 'Audio: music off. Change';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      return;
+    }
     const { languages } = this.opts.project.voiceover;
     const off = this.voiceChoice === 'off';
     const name = languages.find((l) => l.code === this.voiceChoice)?.name;
@@ -1053,13 +1124,12 @@ export class Player {
     const label = off ? 'Voiceover off. Change language' : `Voiceover: ${name}. Change language`;
     btn.setAttribute('aria-label', label);
     btn.title = label;
-    this.audioMenu?.update(this.voiceChoice, this.readToMe);
   }
 
   private openAudioMenu(): void {
     if (!this.audioMenu) return;
     this.release();
-    this.audioMenu.update(this.voiceChoice, this.readToMe);
+    this.updateVoiceButton();
     this.root.classList.add('fp-audio-open');
     this.audioMenu.open(this.voiceBtn);
   }
@@ -1076,7 +1146,7 @@ export class Player {
       this.showPill('Tap to start');
       return;
     }
-    const remembered = this.opts.audio?.remember !== false && !!loadVoicePrefs(project.id)?.lang;
+    const remembered = !!this.prefs?.lang;
     if (remembered) {
       this.showPill(this.voiceChoice === 'off' ? 'Tap to start' : 'Tap to listen');
       return;
@@ -1119,6 +1189,7 @@ export class Player {
     this.sounds.unlock();
     this.mixer.start();
     this.voice?.prime();
+    this.music?.prime();
     this.listenPill?.remove();
     this.listenPill = null;
     this.voiceBtn?.classList.remove('fp-pulse');
@@ -1132,6 +1203,7 @@ export class Player {
     if (!this.holding) return;
     this.holding = false;
     if (this.current && !this.state.ended) this.startPage(this.current, true);
+    this.updateMusic(false);
   }
 
   // ─── Dragging the corner (page curl) ─────────────────────────────────────────
@@ -1360,9 +1432,11 @@ export class Player {
         this.goTo(this.pages.length - 1, 1);
       } else if (key === 'f' || key === 'F') {
         this.toggleFullscreen();
+      } else if ((key === 'b' || key === 'B') && this.music) {
+        this.setMusic(!this.musicOn);
       } else if ((key === 'v' || key === 'V') && this.voice) {
         this.toggleVoice();
-      } else if ((key === 'l' || key === 'L') && this.voice) {
+      } else if ((key === 'l' || key === 'L') && this.audioMenu) {
         e.preventDefault();
         this.openAudioMenu();
       } else if ((key === 'm' || key === 'M') && this.muteBtn) {
@@ -1454,6 +1528,11 @@ export class Player {
         this.next();
       }
     });
+
+    // Music pauses while the book's tab is hidden.
+    const onVisibility = () => this.music?.setHidden(document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    this.cleanups.push(() => document.removeEventListener('visibilitychange', onVisibility));
 
     const onResize = () => this.layout();
     on(window, 'resize', onResize);

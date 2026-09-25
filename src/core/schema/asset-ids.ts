@@ -25,5 +25,6 @@ export function projectAssetIds(project: Project): string[] {
   // Sound and voice blobs live in the same store, so they must count as owned too.
   for (const id of Object.keys(project.sounds)) ids.add(id);
   for (const clip of voiceClips(project)) ids.add(clip.id);
+  for (const id of Object.keys(project.music?.tracks ?? {})) ids.add(id);
   return [...ids];
 }

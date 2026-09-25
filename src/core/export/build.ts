@@ -194,7 +194,13 @@ export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
   for (const id of exportedAssetIds(inputs.project)) {
     const blob = await inputs.getAsset(id);
     if (!blob) continue;
-    const folder = voice.has(id) ? 'voice' : inputs.project.sounds[id] ? 'audio' : 'images';
+    const folder = voice.has(id)
+      ? 'voice'
+      : inputs.project.music.tracks[id]
+        ? 'music'
+        : inputs.project.sounds[id]
+          ? 'audio'
+          : 'images';
     const path = `assets/${folder}/${id}.${EXT_BY_MIME[blob.type] ?? 'bin'}`;
     zip.file(path, blob);
     assets[id] = path;
@@ -226,6 +232,7 @@ export type SizeEstimate = {
   images: number;
   audio: number;
   voice: number;
+  music: number;
   fonts: number;
   runtime: number;
   data: number;
@@ -240,6 +247,7 @@ export function estimateSize(opts: {
   imageBytes: readonly number[];
   audioBytes?: readonly number[];
   voiceBytes?: readonly number[];
+  musicBytes?: readonly number[];
   fontBytes: readonly number[];
   playerBytes: number;
   projectJsonBytes: number;
@@ -248,14 +256,16 @@ export function estimateSize(opts: {
   const images = opts.imageBytes.reduce((s, n) => s + inflate(n), 0);
   const audio = (opts.audioBytes ?? []).reduce((s, n) => s + inflate(n), 0);
   const voice = (opts.voiceBytes ?? []).reduce((s, n) => s + inflate(n), 0);
+  const music = (opts.musicBytes ?? []).reduce((s, n) => s + inflate(n), 0);
   const fonts = opts.fontBytes.reduce((s, n) => s + Math.ceil(n / 3) * 4, 0);
   const runtime = opts.playerBytes;
   const data = opts.projectJsonBytes + 2048;
   return {
-    bytes: images + audio + voice + fonts + runtime + data,
+    bytes: images + audio + voice + music + fonts + runtime + data,
     images,
     audio,
     voice,
+    music,
     fonts,
     runtime,
     data,

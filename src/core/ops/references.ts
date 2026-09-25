@@ -76,6 +76,17 @@ export function cleanReferences(draft: Draft<Project>): void {
     const next = page.flow?.next;
     if (page.flow && next && next !== 'end' && !pageIds.has(next)) delete page.flow.next;
   }
+  // Music sections for pages and tracks that are gone go too.
+  const music = draft.music;
+  if (
+    music.sections.some(
+      (s) => !pageIds.has(s.fromPageId) || (s.trackId !== null && !music.tracks[s.trackId]),
+    )
+  ) {
+    music.sections = music.sections.filter(
+      (s) => pageIds.has(s.fromPageId) && (s.trackId === null || !!music.tracks[s.trackId]),
+    );
+  }
   const turn = draft.reader.pageTurnSound;
   if (turn && !draft.sounds[turn]) delete draft.reader.pageTurnSound;
 }

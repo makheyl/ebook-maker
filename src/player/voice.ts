@@ -4,7 +4,7 @@ import type { Mixer } from './mixer';
 import type { VoiceCue } from '../core/voice/cues';
 
 /** A fraction of a second of silence, to give the voice element its first play inside a tap. */
-const SILENCE =
+export const SILENCE =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 type Item = { clip: VoiceClip; key: string; mix: AudioMix };
@@ -27,6 +27,17 @@ export class VoicePlayer {
   onIdle: () => void = () => undefined;
   /** Called when playback was refused (show "Tap to listen"). */
   onBlocked: () => void = () => undefined;
+  /** Called when the voice starts or stops speaking (music ducks under it). */
+  onBusyChange: (busy: boolean) => void = () => undefined;
+  private wasBusy = false;
+
+  private notifyBusy(): void {
+    const busy = !!this.current;
+    if (busy !== this.wasBusy) {
+      this.wasBusy = busy;
+      this.onBusyChange(busy);
+    }
+  }
 
   constructor(
     private readonly resolve: (id: string) => string | undefined,
@@ -83,6 +94,7 @@ export class VoicePlayer {
     this.queue = [];
     this.blocked = null;
     this.stopCurrent();
+    this.notifyBusy();
   }
 
   /** After "Tap to listen": plays the line that was refused. */
@@ -112,6 +124,7 @@ export class VoicePlayer {
     const item = this.queue.shift();
     if (!item) {
       this.el.pause();
+      this.notifyBusy();
       this.onIdle();
       return;
     }
@@ -131,6 +144,7 @@ export class VoicePlayer {
     this.armWatchdog((item.clip.duration ?? 60) * 1000 + 2000);
     const length = item.clip.duration !== undefined ? item.clip.duration * 1000 : undefined;
     this.mixer?.playMix(this.el, 'voice', item.mix, length);
+    this.notifyBusy();
     const playing = this.el.play();
     void playing?.catch((err: unknown) => {
       if (this.current !== item) return;
@@ -138,6 +152,7 @@ export class VoicePlayer {
         clearTimeout(this.watchdog);
         this.current = null;
         this.blocked = item;
+        this.notifyBusy();
         this.onBlocked();
       } else {
         this.advance();

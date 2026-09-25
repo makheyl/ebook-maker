@@ -1,6 +1,11 @@
 import { toast } from 'sonner';
 import {
   addClip,
+  addMusicTracks,
+  removeMusicTrack,
+  renameMusicTrack,
+  setMusicSection,
+  setMusicVolume,
   addLanguage,
   addSoundToTap,
   addVoiceToTap,
@@ -15,7 +20,8 @@ import {
   setVoiceClip,
 } from '@/core/ops';
 import { DEFAULT_MIX, entranceStepOf } from '@/core/audio';
-import type { AudioClip, AudioMix, VoiceLanguage } from '@/core/schema';
+import type { AudioClip, AudioMix, MusicTrack, VoiceLanguage } from '@/core/schema';
+import { importMusicFiles, pickMusicFiles } from '../assets/upload-music';
 import { getActivePage } from '../store/selectors';
 import { useUiStore } from '../store/ui-store';
 import { VOICE_TOTAL_WARNING_BYTES } from '@/core/sound/validate';
@@ -99,10 +105,12 @@ export function setOpenSound(pageId: string, soundId: string | undefined): void 
 export function warnIfLarge(): void {
   const project = docStore.project();
   if (!project) return;
-  const total = voiceClips(project).reduce((n, c) => n + c.bytes, 0);
+  const total =
+    voiceClips(project).reduce((n, c) => n + c.bytes, 0) +
+    Object.values(project.music.tracks).reduce((n, t) => n + t.bytes, 0);
   if (total > VOICE_TOTAL_WARNING_BYTES) {
     toast.warning(
-      'This book has over 80 MB of voiceover — it may be slow to open on phones. Export as ZIP, or save recordings as mono MP3.',
+      'This book has over 80 MB of voiceover and music — it may be slow to open on phones. Export as ZIP, or save recordings as MP3.',
     );
   }
 }
@@ -232,4 +240,40 @@ export function updateTapMix(
       }),
     { label: 'Adjust sound' },
   );
+}
+
+// ─── Background music ──────────────────────────────────────────────────────────
+
+/** Asks for music files and adds them to the book's tracks. Returns the added tracks. */
+export async function uploadMusic(files?: readonly File[]): Promise<MusicTrack[]> {
+  const picked = files ?? (await pickMusicFiles());
+  if (!picked.length) return [];
+  const { tracks, errors } = await importMusicFiles(picked);
+  errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
+  if (!tracks.length) return [];
+  change(tracks.length > 1 ? 'Add music' : 'Add music track', (d) => addMusicTracks(d, tracks));
+  warnIfLarge();
+  return tracks;
+}
+
+export function removeMusic(id: string): void {
+  change('Remove music track', (d) => removeMusicTrack(d, id));
+  toast.info('Music track removed.', { action: undo, duration: 6000 });
+}
+
+export function renameMusic(id: string, name: string): void {
+  change('Rename music', (d) => renameMusicTrack(d, id, name));
+}
+
+/** Music from this page on: a track, null (stop), or undefined (carry on). */
+export function setPageMusic(pageId: string, trackId: string | null | undefined): void {
+  change('Music from this page', (d) => setMusicSection(d, pageId, trackId));
+}
+
+export function setPageMusicVolume(pageId: string, volume: number): void {
+  docStore.change((d) => setMusicVolume(d, pageId, volume), { label: 'Music volume' });
+}
+
+export function setMusicOptions(patch: { ducking?: boolean; crossfadeMs?: number }): void {
+  change('Music settings', (d) => void Object.assign(d.music, patch));
 }

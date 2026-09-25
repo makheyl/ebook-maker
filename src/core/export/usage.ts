@@ -19,13 +19,23 @@ export function bookVoiceIds(project: Project): string[] {
   return voiceClips(project).map((c) => c.id);
 }
 
+/** Every background music track in the book's list. */
+export function bookMusicIds(project: Project): string[] {
+  return Object.keys(project.music.tracks);
+}
+
 /**
  * The files an export carries: everything the book owns, not only what a reader sees on the
  * first read, so every export is a complete backup that imports back as an editable book.
  * (Files no page or character refers to any more are still left out.)
  */
 export function exportedAssetIds(project: Project): string[] {
-  return [...bookImageIds(project), ...bookSoundIds(project), ...bookVoiceIds(project)];
+  return [
+    ...bookImageIds(project),
+    ...bookSoundIds(project),
+    ...bookVoiceIds(project),
+    ...bookMusicIds(project),
+  ];
 }
 
 export type FontUsage = { fontId: string; style: 'normal' | 'italic'; subset: FontSubset };

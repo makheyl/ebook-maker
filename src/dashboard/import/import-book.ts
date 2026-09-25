@@ -14,7 +14,7 @@ import { assetRepo, projectRepo, type ProjectSummary } from '@/storage';
 /** A file to write to the asset store (thumbnails already made). */
 type PreparedFile = {
   id: string;
-  kind: 'image' | 'audio' | 'voice';
+  kind: 'image' | 'audio' | 'voice' | 'music';
   blob: Blob;
   thumb: Blob;
   width: number;
@@ -64,7 +64,7 @@ export async function prepareImport(
       continue;
     }
     const blob = new Blob([f.bytes as BlobPart], { type: f.mime });
-    if (f.kind === 'audio' || f.kind === 'voice') {
+    if (f.kind !== 'image') {
       // Recordings have no thumbnail; they're stored as they are.
       files.push({ id: f.id, kind: f.kind, blob, thumb: blob, width: 0, height: 0 });
       continue;

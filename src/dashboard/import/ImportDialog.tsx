@@ -118,6 +118,7 @@ function ReadyView({
   const pictures = Object.keys(project.assets).length;
   const sounds = Object.keys(project.sounds).length;
   const voices = voiceClips(project).length;
+  const tracks = Object.keys(project.music.tracks).length;
   const characters = Object.keys(project.characters).length;
   const summary = [
     plural(project.pages.length, 'page'),
@@ -125,6 +126,7 @@ function ReadyView({
     ...(characters ? [plural(characters, 'character')] : []),
     ...(sounds ? [plural(sounds, 'sound')] : []),
     ...(voices ? [plural(voices, 'voice recording')] : []),
+    ...(tracks ? [plural(tracks, 'music track')] : []),
   ].join(' · ');
 
   return (
@@ -155,9 +157,11 @@ function ReadyView({
                 {m.name ??
                   (m.kind === 'voice'
                     ? 'A voice recording'
-                    : m.kind === 'audio'
-                      ? 'A sound'
-                      : 'A picture')}
+                    : m.kind === 'music'
+                      ? 'A music track'
+                      : m.kind === 'audio'
+                        ? 'A sound'
+                        : 'A picture')}
                 : {m.reason}
               </li>
             ))}

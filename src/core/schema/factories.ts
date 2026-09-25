@@ -63,6 +63,7 @@ export function createProject(
     sounds: {},
     voiceover: { languages: [] },
     language: 'en',
+    music: { tracks: {}, sections: [], ducking: true, crossfadeMs: 1500 },
     exportSettings: { ...DEFAULT_EXPORT_SETTINGS },
     createdAt: now,
     updatedAt: now,

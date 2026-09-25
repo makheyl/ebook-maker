@@ -22,6 +22,8 @@ import type {
   SOUND_MIMES,
   voiceClipSchema,
   audioClipSchema,
+  musicSchema,
+  musicTrackSchema,
   audioMixSchema,
   voiceLanguageSchema,
   voiceLineSchema,
@@ -60,6 +62,8 @@ export type VoiceLanguage = z.infer<typeof voiceLanguageSchema>;
 export type VoiceLine = z.infer<typeof voiceLineSchema>;
 export type Voiceover = z.infer<typeof voiceoverSchema>;
 export type AudioMix = z.infer<typeof audioMixSchema>;
+export type MusicTrack = z.infer<typeof musicTrackSchema>;
+export type Music = z.infer<typeof musicSchema>;
 /** A sound or voice line placed at a moment on a page. */
 export type AudioClip = z.infer<typeof audioClipSchema>;
 export type Page = z.infer<typeof pageSchema>;

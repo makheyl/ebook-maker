@@ -96,6 +96,18 @@ export const MIGRATIONS: readonly Migration[] = [
         : doc.pages,
     }),
   },
+  {
+    // v8 adds background music (tracks and page sections).
+    from: 7,
+    to: 8,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 8,
+      music: isObject(doc.music)
+        ? doc.music
+        : { tracks: {}, sections: [], ducking: true, crossfadeMs: 1500 },
+    }),
+  },
 ];
 
 export class ProjectLoadError extends Error {

@@ -235,6 +235,14 @@ function richBook(): Project {
   ];
   bubble.voice = { tl: vo('vo_bubble_tl') };
   pip.interactions![0]!.actions.push({ type: 'playVoice', line: { en: vo('vo_pip_en') } });
+  project.music = {
+    tracks: {
+      mu_theme: { id: 'mu_theme', kind: 'music', mime: 'audio/mpeg', bytes: 9, name: 'Theme' },
+    },
+    sections: [{ fromPageId: p1.id, trackId: 'mu_theme', volume: 0.5 }],
+    ducking: true,
+    crossfadeMs: 1500,
+  };
   return project;
 }
 
@@ -253,7 +261,10 @@ function inputs(project: Project): ExportInputs {
     fontFiles: [],
     getAsset: async (id) => {
       const mime =
-        project.sounds[id]?.mime ?? project.assets[id]?.mime ?? voiceMimes(project).get(id);
+        project.sounds[id]?.mime ??
+        project.assets[id]?.mime ??
+        project.music.tracks[id]?.mime ??
+        voiceMimes(project).get(id);
       return mime ? new Blob([bytesFor(id)], { type: mime }) : undefined;
     },
     getFont: async () => new ArrayBuffer(0),
@@ -281,7 +292,13 @@ describe('import: round trip', () => {
       for (const file of parsed.files) {
         expect([...file.bytes], file.id).toEqual([...bytesFor(file.id)]);
         expect(file.kind).toBe(
-          file.id.startsWith('vo_') ? 'voice' : original.sounds[file.id] ? 'audio' : 'image',
+          file.id.startsWith('vo_')
+            ? 'voice'
+            : file.id.startsWith('mu_')
+              ? 'music'
+              : original.sounds[file.id]
+                ? 'audio'
+                : 'image',
         );
       }
       // Nothing new for the editor's checks to complain about.
@@ -308,6 +325,30 @@ describe('import: round trip', () => {
       expect(parsed.missing).toEqual([]);
       const file = parsed.files.find((f) => f.id === 'vo_page1_tl')!;
       expect(file.kind).toBe('voice');
+      expect(file.bytes.length).toBe(big.length);
+      expect(file.bytes.every((b, i) => b === big[i])).toBe(true);
+    });
+  }
+
+  for (const format of ['html', 'zip'] as const) {
+    it(`restores a 5 MB music track byte-for-byte (${format})`, async () => {
+      const project = richBook();
+      const big = new Uint8Array(5 * 1024 * 1024).map((_, i) => (i * 7) % 253);
+      const base = inputs(project);
+      const withBig: ExportInputs = {
+        ...base,
+        getAsset: async (id) =>
+          id === 'mu_theme' ? new Blob([big], { type: 'audio/mpeg' }) : base.getAsset(id),
+      };
+      const exported = format === 'html' ? await buildSingleFile(withBig) : await buildZip(withBig);
+      if (format === 'zip') {
+        const zip = await JSZip.loadAsync(await exportBytes(exported.blob));
+        expect(Object.keys(zip.files).some((n) => n.startsWith('assets/music/mu_'))).toBe(true);
+      }
+      const parsed = await parseImport(exported.filename, await exportBytes(exported.blob));
+      expect(parsed.missing).toEqual([]);
+      const file = parsed.files.find((f) => f.id === 'mu_theme')!;
+      expect(file.kind).toBe('music');
       expect(file.bytes.length).toBe(big.length);
       expect(file.bytes.every((b, i) => b === big[i])).toBe(true);
     });

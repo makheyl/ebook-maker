@@ -659,3 +659,14 @@
   opacity: 0.4;
   cursor: default;
 }
+.fp-audio-volume {
+  display: grid;
+  gap: 4px;
+  padding: 4px 12px 8px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+.fp-audio-volume input {
+  width: 100%;
+  accent-color: var(--fp-accent);
+}

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VoiceClip } from '../core/schema';
 import type { VoiceCue } from '../core/voice/cues';
-import { loadVoicePrefs, saveVoicePrefs } from './audio-prefs';
+import { loadAudioPrefs, saveAudioPrefs } from './audio-prefs';
 import { CueClock, VoicePlayer } from './voice';
 import { AudioClock } from './audio-clock';
 
@@ -128,14 +128,26 @@ describe('bubble cues', () => {
 });
 
 describe('remembered choices', () => {
-  it('round-trip per book, and ignore junk', () => {
-    saveVoicePrefs('bk_1', { lang: 'tl', readToMe: true });
-    expect(loadVoicePrefs('bk_1')).toEqual({ lang: 'tl', readToMe: true });
-    expect(loadVoicePrefs('bk_2')).toBeNull();
-    localStorage.setItem('folio:voice:bk_3', '{"lang":42}');
-    expect(loadVoicePrefs('bk_3')).toEqual({ readToMe: false });
-    localStorage.setItem('folio:voice:bk_4', 'not json');
-    expect(loadVoicePrefs('bk_4')).toBeNull();
+  it('round-trip per book, move old voice choices over, and ignore junk', () => {
+    saveAudioPrefs('bk_1', { lang: 'tl', readToMe: true, music: false, musicVolume: 0.4 });
+    expect(loadAudioPrefs('bk_1')).toEqual({
+      lang: 'tl',
+      readToMe: true,
+      music: false,
+      musicVolume: 0.4,
+    });
+    expect(loadAudioPrefs('bk_2')).toBeNull();
+    localStorage.setItem('folio:voice:bk_3', '{"lang":"en","readToMe":true}');
+    expect(loadAudioPrefs('bk_3')).toEqual({
+      lang: 'en',
+      readToMe: true,
+      music: true,
+      musicVolume: 1,
+    });
+    expect(localStorage.getItem('folio:voice:bk_3')).toBeNull();
+    expect(localStorage.getItem('folio:audio:bk_3')).not.toBeNull();
+    localStorage.setItem('folio:audio:bk_4', 'not json');
+    expect(loadAudioPrefs('bk_4')).toBeNull();
   });
 });
 

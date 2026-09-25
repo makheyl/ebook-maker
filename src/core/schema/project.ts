@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -152,6 +152,39 @@ export const audioClipSchema = z.object({
   mix: audioMixSchema,
   /** Sounds only: keeps looping until the page is left (birds, rain). */
   loop: z.boolean(),
+});
+
+// ─── Background music ──────────────────────────────────────────────────────────
+
+export const MAX_MUSIC_BYTES = 15 * 1024 * 1024;
+
+export const musicTrackSchema = z.object({
+  id, // 'mu_' + content hash; also the key of the blob in storage
+  kind: z.literal('music'),
+  mime: z.enum(SOUND_MIMES),
+  bytes: z.number().int().positive().max(MAX_MUSIC_BYTES),
+  duration: z.number().nonnegative().optional(),
+  name: z.string().max(200).optional(),
+});
+
+/**
+ * Music across the book: from a section's page on (in page order) its track plays — or
+ * nothing, for a null track — until the next section. Tracks crossfade; the music ducks while
+ * the voiceover speaks.
+ */
+export const musicSchema = z.object({
+  tracks: z.record(id, musicTrackSchema),
+  sections: z
+    .array(
+      z.object({
+        fromPageId: id,
+        trackId: id.nullable(),
+        volume: z.number().min(0).max(1),
+      }),
+    )
+    .max(50),
+  ducking: z.boolean(),
+  crossfadeMs: z.number().int().min(0).max(8000),
 });
 
 // ─── Interactions ──────────────────────────────────────────────────────────────
@@ -543,6 +576,7 @@ export const projectSchema = z.object({
   voiceover: voiceoverSchema,
   /** The language the book is written in: `lang` of every page (hyphenation, screen readers). */
   language: languageCodeSchema,
+  music: musicSchema,
   exportSettings: exportSettingsSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

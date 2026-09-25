@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import { BOOK_DATA_ID, isBookData, type BookData } from '../export/format';
 import { loadProject } from '../migrations';
 import { projectAssetIds } from '../schema/asset-ids';
-import { MAX_SOUND_BYTES, MAX_VOICE_BYTES, SOUND_MIMES } from '../schema/project';
+import { MAX_MUSIC_BYTES, MAX_SOUND_BYTES, MAX_VOICE_BYTES, SOUND_MIMES } from '../schema/project';
 import { voiceClips } from '../voice/lines';
 import type { Project } from '../schema/types';
 
@@ -34,7 +34,7 @@ export class ImportError extends Error {
   }
 }
 
-export type FileKind = 'image' | 'audio' | 'voice';
+export type FileKind = 'image' | 'audio' | 'voice' | 'music';
 
 /** A picture, sound or voice recording found in the file, checked for type and size (not yet decoded). */
 export type ImportedFile = { id: string; kind: FileKind; mime: string; bytes: Uint8Array };
@@ -101,7 +101,7 @@ export function decodeDataUri(uri: string): { mime: string; bytes: Uint8Array } 
 // ─── Files ─────────────────────────────────────────────────────────────────────
 
 /** Where a zip export keeps each file (relative to its index.html). */
-const ZIP_ASSET_PATH = /^assets\/(images|audio|voice)\/[A-Za-z0-9_-]{1,100}\.[a-z0-9]{1,5}$/;
+const ZIP_ASSET_PATH = /^assets\/(images|audio|voice|music)\/[A-Za-z0-9_-]{1,100}\.[a-z0-9]{1,5}$/;
 
 const MIME_BY_EXT: Record<string, string> = {
   webp: 'image/webp',
@@ -120,6 +120,9 @@ function checkFile(kind: FileKind, mime: string, size: number): string | null {
   if (kind === 'image') {
     if (!(IMPORT_IMAGE_MIMES as readonly string[]).includes(mime)) return 'not a supported picture';
     if (size > MAX_IMAGE_BYTES) return 'picture is too large';
+  } else if (kind === 'music') {
+    if (!(SOUND_MIMES as readonly string[]).includes(mime)) return 'not a supported music file';
+    if (size > MAX_MUSIC_BYTES) return 'music is over 15 MB';
   } else if (kind === 'voice') {
     if (!(SOUND_MIMES as readonly string[]).includes(mime)) return 'not a supported recording';
     if (size > MAX_VOICE_BYTES) return 'recording is over 10 MB';
@@ -143,13 +146,21 @@ async function collectFiles(project: Project, read: FileReader) {
   const missing: MissingFile[] = [];
   const voice = new Map(voiceClips(project).map((c) => [c.id, c]));
   for (const id of projectAssetIds(project)) {
-    const kind: FileKind = voice.has(id) ? 'voice' : project.sounds[id] ? 'audio' : 'image';
+    const kind: FileKind = voice.has(id)
+      ? 'voice'
+      : project.music.tracks[id]
+        ? 'music'
+        : project.sounds[id]
+          ? 'audio'
+          : 'image';
     const name =
       kind === 'voice'
         ? voice.get(id)?.name
-        : kind === 'audio'
-          ? project.sounds[id]?.name
-          : project.assets[id]?.name;
+        : kind === 'music'
+          ? project.music.tracks[id]?.name
+          : kind === 'audio'
+            ? project.sounds[id]?.name
+            : project.assets[id]?.name;
     if (kind === 'image' && !project.assets[id]) {
       missing.push({ id, kind, reason: 'the book has no details for this picture' });
       continue;
@@ -238,9 +249,11 @@ async function fromZip(bytes: Uint8Array): Promise<ParsedImport> {
     const mime =
       (kind === 'voice'
         ? voice.get(id)?.mime
-        : kind === 'audio'
-          ? project.sounds[id]?.mime
-          : project.assets[id]?.mime) ??
+        : kind === 'music'
+          ? project.music.tracks[id]?.mime
+          : kind === 'audio'
+            ? project.sounds[id]?.mime
+            : project.assets[id]?.mime) ??
       MIME_BY_EXT[ext] ??
       '';
     const fileBytes = await entry.async('uint8array');

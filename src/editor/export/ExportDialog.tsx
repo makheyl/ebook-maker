@@ -154,6 +154,7 @@ function ExportForm({ onDone }: { onDone: () => void }) {
               {' '}
               · images {formatBytes(size.images)}
               {size.voice > 0 && <> · voiceover {formatBytes(size.voice)}</>}
+              {size.music > 0 && <> · music {formatBytes(size.music)}</>}
               {size.audio > 0 && <> · sounds {formatBytes(size.audio)}</>} · fonts{' '}
               {formatBytes(size.fonts)}
             </span>
