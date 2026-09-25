@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bendRadius,
   clampCorner,
   cornerAt,
   curlFrame,
@@ -87,5 +88,12 @@ describe('page curl geometry', () => {
         [20, 'transparent'],
       ]),
     ).toBe('linear-gradient(90deg, black 700px, transparent 720px)');
+  });
+
+  it('rounds the fold most in mid-turn', () => {
+    expect(bendRadius(size, 0)).toBe(4);
+    expect(bendRadius(size, 0.36)).toBeGreaterThan(bendRadius(size, 0.1));
+    expect(bendRadius(size, 0.36)).toBeGreaterThan(bendRadius(size, 0.9));
+    expect(bendRadius(size, 0.36)).toBeLessThanOrEqual(4 + 800 * 0.09);
   });
 });

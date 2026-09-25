@@ -166,3 +166,12 @@ export function foldGradient(
   const parts = stops.map(([at, color]) => `${color} ${round(fold + at)}px`);
   return `linear-gradient(${round((theta * 180) / Math.PI)}deg, ${parts.join(', ')})`;
 }
+
+/**
+ * How rounded the fold looks (px): a flat crease at rest and when turned over, a wide roll
+ * mid-turn, like paper curving under a hand.
+ */
+export function bendRadius({ width: W }: Size, progress: number): number {
+  const p = Math.min(1, Math.max(0, progress));
+  return Math.round((4 + W * 0.09 * Math.sin(Math.PI * Math.min(1, p * 1.4))) * 100) / 100;
+}

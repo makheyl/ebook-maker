@@ -1,4 +1,5 @@
 import {
+  bendRadius,
   cornerAt,
   curlFrame,
   foldGradient,
@@ -62,21 +63,27 @@ export class Curl {
     this.corner = f.corner;
     const W = size.width;
     this.top.style.clipPath = polygonCss(f.front);
-    // The flap is the lifted part of the page, mirrored over the fold; the paper's back is
-    // darker where it bends and brighter where it faces the light.
+    // The flap is the lifted part of the page, mirrored over the fold. Its back is shaded like
+    // a rolled sheet: a dark crease where it bends, a bright band where the roll faces the
+    // light, then a soft falloff onto flat paper. The roll is widest mid-turn.
     this.flap.style.clipPath = polygonCss(f.lifted);
     this.flap.style.transform = `matrix(${f.mirror.join(', ')})`;
+    const r = bendRadius(size, f.progress);
     this.flap.style.background = `${foldGradient(size, f, [
-      [0, 'rgba(0, 0, 0, 0.22)'],
-      [W * 0.04, 'rgba(0, 0, 0, 0.08)'],
-      [W * 0.22, 'rgba(255, 255, 255, 0.28)'],
-      [W, 'rgba(0, 0, 0, 0.06)'],
+      [0, 'rgba(0, 0, 0, 0.3)'],
+      [r * 0.18, 'rgba(0, 0, 0, 0.12)'],
+      [r * 0.45, 'rgba(255, 255, 255, 0.55)'],
+      [r * 0.8, 'rgba(255, 255, 255, 0.2)'],
+      [r * 1.6, 'rgba(0, 0, 0, 0.1)'],
+      [r * 3, 'rgba(0, 0, 0, 0.02)'],
+      [W, 'rgba(0, 0, 0, 0.07)'],
     ])}, ${PAPER}`;
     // The lifted page casts a soft shadow on the page underneath, strongest mid-turn.
-    const reach = 8 + W * 0.1 * Math.sin(Math.PI * Math.min(1, f.progress * 1.6));
+    const reach = 10 + r * 1.4;
     this.shade.style.clipPath = polygonCss(f.lifted);
     this.shade.style.background = foldGradient(size, f, [
-      [0, 'rgba(0, 0, 0, 0.38)'],
+      [0, 'rgba(0, 0, 0, 0.32)'],
+      [reach * 0.35, 'rgba(0, 0, 0, 0.14)'],
       [reach, 'rgba(0, 0, 0, 0)'],
     ]);
     const hidden = f.progress <= 0;

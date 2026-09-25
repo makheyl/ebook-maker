@@ -68,6 +68,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { cn } from '@/ui/utils';
 import { previewAnimations, stopPreview } from '../animation/preview';
+import { TransitionPreview } from '../animation/TransitionPreview';
 import { AnimateStoryDialog } from '../character/AnimateStoryDialog';
 import { convertToKeyframes } from '../timeline/actions';
 import { getStageView } from '../stage/stage-view';
@@ -534,21 +535,39 @@ function StepRow({
 
 function TransitionSection({ page }: { page: Page }) {
   const t = page.transition;
+  const pageCount = useProject().pages.length;
+  const [hovered, setHovered] = useState<string | null>(null);
   const set = (patch: Partial<Page['transition']>) =>
     change('Page transition', (d) => updatePage(d, page.id, { transition: { ...t, ...patch } }));
+  const pick = (preset: TransitionPreset) =>
+    // A transition needs time to play: picking one on a page set to 0 s gives it a default.
+    set({ preset, ...(preset !== 'none' && t.duration <= 0 ? { duration: 800 } : {}) });
+  const useEverywhere = () =>
+    change('Page transition on every page', (d) => {
+      for (const p of d.pages) p.transition = { ...t };
+    });
+  const shown = hovered ?? (t.preset !== 'none' ? t.preset : null);
   return (
     <Section title="Page transition">
       <p className="-mt-1 text-[11px] text-muted-foreground">
         How this page appears when the reader turns to it.
       </p>
-      <div className="grid grid-cols-5 gap-1" role="radiogroup" aria-label="Page transition">
+      <div
+        className="grid grid-cols-3 gap-1"
+        role="radiogroup"
+        aria-label="Page transition"
+        onMouseLeave={() => setHovered(null)}
+      >
         {TRANSITIONS.map((tr) => (
           <button
             key={tr.id}
             type="button"
             role="radio"
             aria-checked={t.preset === tr.id}
-            onClick={() => set({ preset: tr.id as TransitionPreset })}
+            onClick={() => pick(tr.id as TransitionPreset)}
+            onMouseEnter={() => setHovered(tr.id === 'none' ? null : tr.id)}
+            onFocus={() => setHovered(tr.id === 'none' ? null : tr.id)}
+            onBlur={() => setHovered(null)}
             className={cn(
               'rounded-md border px-1 py-1.5 text-[11px] focus-visible:ring-2 focus-visible:ring-ring',
               t.preset === tr.id
@@ -560,6 +579,12 @@ function TransitionSection({ page }: { page: Page }) {
           </button>
         ))}
       </div>
+      {shown && <TransitionPreview preset={shown} />}
+      {t.preset === 'curl' && (
+        <p className="text-[11px] text-muted-foreground">
+          Readers can also drag the page’s bottom corner to turn it.
+        </p>
+      )}
       {t.preset !== 'none' && (
         <NumberField
           label="Duration"
@@ -571,6 +596,11 @@ function TransitionSection({ page }: { page: Page }) {
           suffix="s"
           onCommit={(v) => set({ duration: Math.round(v * 1000) })}
         />
+      )}
+      {pageCount > 1 && (
+        <Button variant="outline" size="sm" onClick={useEverywhere}>
+          Use on every page
+        </Button>
       )}
     </Section>
   );
