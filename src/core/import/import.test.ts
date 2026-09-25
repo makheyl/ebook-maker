@@ -216,7 +216,23 @@ function richBook(): Project {
     bytes: 9,
   });
   p1.voiceover = { en: vo('vo_page1_en'), tl: vo('vo_page1_tl') };
-  p1.openSound = 'snd_ding';
+  p1.audio = [
+    {
+      id: 'ac_open',
+      source: { kind: 'sound', soundId: 'snd_ding' },
+      start: { kind: 'time', group: 0, at: 0 },
+      mix: { volume: 0.7, fadeInMs: 100, fadeOutMs: 200, trimStartMs: 50, trimEndMs: 400 },
+      loop: false,
+    },
+    {
+      id: 'ac_voice',
+      elementId: pip.id,
+      source: { kind: 'voice', line: { en: vo('vo_clip_en') } },
+      start: { kind: 'withStep', stepId: reaction.id, offset: 200 },
+      mix: { volume: 1, fadeInMs: 0, fadeOutMs: 0, trimStartMs: 0 },
+      loop: false,
+    },
+  ];
   bubble.voice = { tl: vo('vo_bubble_tl') };
   pip.interactions![0]!.actions.push({ type: 'playVoice', line: { en: vo('vo_pip_en') } });
   return project;

@@ -70,6 +70,8 @@ export type PageTimeline = {
    * know when something appears (e.g. to say a speech bubble's line).
    */
   readonly entrances: readonly Entrance[];
+  /** Every step that was built and when it starts (timed audio can start with any of them). */
+  readonly starts: readonly { stepId: string; group: number | null; at: number }[];
 };
 
 export type Entrance = { elementId: string; stepId: string; group: number | null; at: number };
@@ -222,6 +224,7 @@ export function createPageTimeline(
   const schedule = scheduleSteps(steps);
   const groups: Tracked[][] = schedule.groups.map(() => []);
   const entrances: Entrance[] = [];
+  const starts: { stepId: string; group: number | null; at: number }[] = [];
 
   // Bubbles that move with their speaker, by the speaker's id.
   const followers = new Map<string, BubbleElement[]>();
@@ -295,6 +298,7 @@ export function createPageTimeline(
 
     const timing = { duration, delay, easing: resolveEasing(step.easing), fill, loop };
     applySpecs(specs, nodes, timing, into);
+    starts.push({ stepId: step.id, group, at: Math.round(delay) });
     if (preset.kind === 'entrance') {
       entrances.push({ elementId: element.id, stepId: step.id, group, at: Math.round(delay) });
     }
@@ -413,6 +417,7 @@ export function createPageTimeline(
     groupCount: groups.length,
     durations: schedule.groups.map((g) => g.duration),
     entrances,
+    starts,
     play(group) {
       const list = groups[group] ?? [];
       for (const t of list) {

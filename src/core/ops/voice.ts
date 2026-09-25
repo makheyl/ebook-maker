@@ -44,6 +44,10 @@ function lineAt(draft: Draft<Project>, target: VoiceTarget, create: boolean): Dr
     if (!page.voiceover && create) page.voiceover = {};
     return (page.voiceover as DraftLine | undefined) ?? null;
   }
+  if (target.kind === 'clip') {
+    const clip = page.audio?.find((c) => c.id === target.clipId);
+    return clip?.source.kind === 'voice' ? (clip.source.line as DraftLine) : null;
+  }
   const el = findElement(page.elements, target.elementId);
   if (!el) return null;
   if (target.kind === 'bubble') {
@@ -68,17 +72,6 @@ export function setVoiceClip(
   else delete line[code];
   // An emptied page or bubble line goes away (a tap's stays: the checks flag it).
   cleanReferences(draft);
-}
-
-/** A sound effect that plays when the page opens (undefined: none). */
-export function setPageOpenSound(
-  draft: Draft<Project>,
-  pageId: string,
-  soundId: string | undefined,
-): void {
-  const page = getPage(draft, pageId);
-  if (soundId && draft.sounds[soundId]) page.openSound = soundId;
-  else delete page.openSound;
 }
 
 /** The first voice line said when this element is tapped, if any. */

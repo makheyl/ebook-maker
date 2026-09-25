@@ -1,4 +1,5 @@
 import { useActivePage, useProject } from '../store/selectors';
+import { PageAudioList } from './PageAudioList';
 import { SoundEffectsSection } from './SoundEffectsSection';
 import { VoiceoverSection } from './VoiceoverSection';
 
@@ -11,6 +12,7 @@ export function AudioPanel() {
     <div>
       <VoiceoverSection page={page} pageNumber={pageNumber} />
       <SoundEffectsSection page={page} />
+      <PageAudioList />
     </div>
   );
 }

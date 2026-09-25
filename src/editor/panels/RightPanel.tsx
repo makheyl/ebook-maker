@@ -19,6 +19,7 @@ import { useLayoutStore } from '../layout/layout-store';
 import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
 import { AudioPanel } from '../audio/AudioPanel';
+import { ElementAudioSection } from '../audio/ElementAudioSection';
 import { ArrangeSection } from './ArrangeSection';
 import { BubblePanel } from './BubblePanel';
 import { ButtonPanel } from './ButtonPanel';
@@ -55,6 +56,7 @@ function DesignPanel() {
       {selected.length === 1 && selected[0]!.type === 'group' && (
         <GroupPanel group={selected[0]!} />
       )}
+      {selected.length === 1 && <ElementAudioSection element={selected[0]!} />}
       <ArrangeSection elements={selected} />
     </div>
   );

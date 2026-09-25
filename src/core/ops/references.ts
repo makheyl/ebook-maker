@@ -57,7 +57,22 @@ export function cleanReferences(draft: Draft<Project>): void {
       }
     });
     if (page.voiceover && !keepDeclared(page.voiceover)) delete page.voiceover;
-    if (page.openSound && !draft.sounds[page.openSound]) delete page.openSound;
+    if (page.audio) {
+      const keep = page.audio.filter((clip) => {
+        if (clip.elementId && !elementIds.has(clip.elementId)) return false;
+        if (clip.source.kind === 'sound') return !!draft.sounds[clip.source.soundId];
+        keepDeclared(clip.source.line); // an emptied voice clip stays: the checks flag it
+        return true;
+      });
+      for (const clip of keep) {
+        // Its step is gone: it keeps playing, from when the page opens.
+        if (clip.start.kind === 'withStep' && !stepIds.has(clip.start.stepId)) {
+          clip.start = { kind: 'time', group: 0, at: Math.max(0, clip.start.offset) };
+        }
+      }
+      if (keep.length !== page.audio.length) page.audio = keep;
+      if (!page.audio.length) delete page.audio;
+    }
     const next = page.flow?.next;
     if (page.flow && next && next !== 'end' && !pageIds.has(next)) delete page.flow.next;
   }

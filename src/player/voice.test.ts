@@ -3,6 +3,7 @@ import type { VoiceClip } from '../core/schema';
 import type { VoiceCue } from '../core/voice/cues';
 import { loadVoicePrefs, saveVoicePrefs } from './audio-prefs';
 import { CueClock, VoicePlayer } from './voice';
+import { AudioClock } from './audio-clock';
 
 const clip = (id: string, duration = 1): VoiceClip => ({
   id,
@@ -135,5 +136,34 @@ describe('remembered choices', () => {
     expect(loadVoicePrefs('bk_3')).toEqual({ readToMe: false });
     localStorage.setItem('folio:voice:bk_4', 'not json');
     expect(loadVoicePrefs('bk_4')).toBeNull();
+  });
+});
+
+describe('timed audio clock', () => {
+  it('fires at the times of the group that plays; skipping ahead keeps voice, drops sounds', () => {
+    const fired: string[] = [];
+    const clock = new AudioClock<{
+      id: string;
+      group: number | null;
+      at: number;
+      voice: boolean;
+      stepId?: string;
+    }>((i) => fired.push(i.id));
+    const items = [
+      { id: 'pop', group: 0, at: 100, voice: false },
+      { id: 'line', group: 0, at: 500, voice: true },
+      { id: 'birds', group: 0, at: 800, voice: false },
+      { id: 'tap', group: null, at: 0, voice: false, stepId: 'st' },
+    ];
+    clock.schedule(items, 0);
+    vi.advanceTimersByTime(150);
+    expect(fired).toEqual(['pop']);
+    expect(clock.pending((i) => i.voice)).toBe(true);
+    clock.flush(0, (i) => i.voice);
+    expect(fired).toEqual(['pop', 'line']);
+    vi.advanceTimersByTime(2000);
+    expect(fired).toEqual(['pop', 'line']);
+    clock.fireStep(items, 'st');
+    expect(fired).toEqual(['pop', 'line', 'tap']);
   });
 });

@@ -1,9 +1,10 @@
 import { Check, CornerDownRight, FolderUp, TableProperties } from 'lucide-react';
 import { useState } from 'react';
 import type { Project } from '@/core/schema';
-import { findElement } from '@/core/schema/tree';
 import {
   defaultLanguageOf,
+  LINE_WHEN,
+  lineName,
   lineStatus,
   matchVoiceFiles,
   pageVoiceLines,
@@ -39,10 +40,10 @@ function rowsOf(project: Project): Row[] {
     ];
     for (const { target, line } of lines) {
       if (target.kind === 'page') continue;
-      const name = findElement(page.elements, target.elementId)?.name ?? 'Item';
+      const name = lineName(page, target);
       rows.push({
         key: JSON.stringify(target),
-        label: target.kind === 'bubble' ? `${name} (bubble)` : `${name} (tap)`,
+        label: `${name} (${LINE_WHEN[target.kind]})`,
         indent: true,
         line,
       });

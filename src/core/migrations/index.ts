@@ -68,6 +68,34 @@ export const MIGRATIONS: readonly Migration[] = [
       language: typeof doc.language === 'string' ? doc.language : 'en',
     }),
   },
+  {
+    // v7 adds timed audio on pages and elements. A page's "when it opens" sound effect becomes
+    // the first of its timed clips (at 0 s), so there's one way to time a sound.
+    from: 6,
+    to: 7,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 7,
+      pages: Array.isArray(doc.pages)
+        ? doc.pages.map((page: unknown) => {
+            if (!isObject(page) || typeof page.openSound !== 'string') return page;
+            const { openSound, ...rest } = page;
+            return {
+              ...rest,
+              audio: [
+                {
+                  id: `open-${String(page.id)}`.slice(0, 64),
+                  source: { kind: 'sound', soundId: openSound },
+                  start: { kind: 'time', group: 0, at: 0 },
+                  mix: { volume: 1, fadeInMs: 0, fadeOutMs: 0, trimStartMs: 0 },
+                  loop: false,
+                },
+              ],
+            };
+          })
+        : doc.pages,
+    }),
+  },
 ];
 
 export class ProjectLoadError extends Error {

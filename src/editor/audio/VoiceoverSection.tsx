@@ -1,8 +1,14 @@
 import { Languages, Plus, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { MAX_VOICE_LANGUAGES, type Page } from '@/core/schema';
-import { findElement } from '@/core/schema/tree';
-import { defaultLanguageOf, pageVoiceLines, validateVoice } from '@/core/voice';
+import {
+  defaultLanguageOf,
+  LINE_WHEN,
+  lineElementId,
+  lineName,
+  pageVoiceLines,
+  validateVoice,
+} from '@/core/voice';
 import { useUiStore } from '../store/ui-store';
 import { Button } from '@/ui/button';
 import {
@@ -150,16 +156,16 @@ function PageVoiceLines({ page }: { page: Page }) {
       <h4 className="text-xs font-medium">Voice lines on this page</h4>
       {lines.map(({ target, line }) => {
         if (target.kind === 'page') return null;
-        const el = findElement(page.elements, target.elementId);
-        const name = el?.name ?? 'Item';
+        const name = lineName(page, target);
+        const elementId = lineElementId(target);
         return (
           <div key={JSON.stringify(target)} className="grid gap-1">
             <button
               type="button"
               className="justify-self-start text-left text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => useUiStore.getState().select([target.elementId])}
+              onClick={() => useUiStore.getState().select(elementId ? [elementId] : [])}
             >
-              {target.kind === 'bubble' ? `${name} (bubble appears)` : `${name} (when tapped)`}
+              {`${name} (${LINE_WHEN[target.kind]})`}
             </button>
             <VoiceSlots target={target} line={line} what={name} />
           </div>

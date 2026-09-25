@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -111,6 +111,49 @@ export const voiceoverSchema = z.object({
   defaultLanguage: languageCodeSchema.optional(),
 });
 
+// ─── Timed audio ───────────────────────────────────────────────────────────────
+
+/** How a sound or voice plays: volume, fades and (sounds only) trim. Never changes the file. */
+export const audioMixSchema = z.object({
+  /** 0–1 of the recording's own loudness. */
+  volume: z.number().min(0).max(1),
+  fadeInMs: z.number().int().min(0).max(10_000),
+  fadeOutMs: z.number().int().min(0).max(10_000),
+  /** Where playing starts in the file (sounds and music only). */
+  trimStartMs: z.number().int().min(0).max(3_600_000),
+  /** Where it stops in the file; missing = the end. */
+  trimEndMs: z.number().int().min(0).max(3_600_000).optional(),
+});
+
+/**
+ * A sound or voice line on a page that plays at a moment: at a time in a click group, or
+ * together with an animation step (so it moves when the step moves). `elementId` is the element
+ * it belongs to (its Design panel shows it); without one it's the page's own.
+ */
+export const audioClipSchema = z.object({
+  id,
+  elementId: id.optional(),
+  source: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('sound'), soundId: id }),
+    z.object({ kind: z.literal('voice'), line: voiceLineSchema }),
+  ]),
+  start: z.discriminatedUnion('kind', [
+    z.object({
+      kind: z.literal('time'),
+      group: z.number().int().min(0).max(200),
+      at: z.number().int().min(0).max(600_000),
+    }),
+    z.object({
+      kind: z.literal('withStep'),
+      stepId: id,
+      offset: z.number().int().min(-60_000).max(600_000),
+    }),
+  ]),
+  mix: audioMixSchema,
+  /** Sounds only: keeps looping until the page is left (birds, rain). */
+  loop: z.boolean(),
+});
+
 // ─── Interactions ──────────────────────────────────────────────────────────────
 
 export const BURST_EFFECTS = ['confetti', 'sparkles', 'hearts'] as const;
@@ -125,9 +168,9 @@ export const storyActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('unlockNext') }),
   z.object({ type: z.literal('burst'), effect: z.enum(BURST_EFFECTS) }),
   z.object({ type: z.literal('collect') }),
-  z.object({ type: z.literal('playSound'), soundId: id }),
+  z.object({ type: z.literal('playSound'), soundId: id, mix: audioMixSchema.optional() }),
   /** Says a voice line in the reader's language (may be empty while being set up). */
-  z.object({ type: z.literal('playVoice'), line: voiceLineSchema }),
+  z.object({ type: z.literal('playVoice'), line: voiceLineSchema, mix: audioMixSchema.optional() }),
 ]);
 
 export const interactionSchema = z.object({
@@ -441,8 +484,10 @@ export const pageSchema = z.object({
   goal: z.object({ count: z.number().int().min(1).max(20), label: z.string().max(60) }).optional(),
   /** Voiceover played when the page opens. */
   voiceover: voiceLineSchema.optional(),
-  /** A sound effect played when the page opens. */
-  openSound: id.optional(),
+  /** When the page voice starts, in ms after the page opens (default 0). */
+  voiceoverAt: z.number().int().min(0).max(600_000).optional(),
+  /** Sounds and voice lines that play at set moments (timeline audio). */
+  audio: z.array(audioClipSchema).max(40).optional(),
 });
 
 // ─── Project ───────────────────────────────────────────────────────────────────

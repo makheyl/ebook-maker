@@ -10,3 +10,4 @@ export * from './groups';
 export * from './replace';
 export * from './bubbles';
 export * from './voice';
+export * from './audio';

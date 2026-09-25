@@ -4,6 +4,7 @@ import { exportedAssetIds } from '../export/usage';
 import { migrate } from '../migrations';
 import { addLanguage, removeLanguage, setDefaultLanguage, setVoiceClip } from '../ops/voice';
 import { removeSound } from '../ops/sounds';
+import { setPageOpenSound } from '../ops/audio';
 import {
   createBubbleElement,
   createButtonElement,
@@ -14,7 +15,7 @@ import {
   type Project,
   type VoiceClip,
 } from '../schema';
-import { MAX_VOICE_BYTES } from '../schema/project';
+import { MAX_VOICE_BYTES, SCHEMA_VERSION } from '../schema/project';
 import { bookHasVoice, voiceClips, voiceLines } from './lines';
 import { defaultLanguageOf, lineStatus, resolveClip } from './resolve';
 
@@ -66,7 +67,7 @@ function book(): Project {
       clip('vo_t_en'),
     );
     d.sounds.snd_x = { id: 'snd_x', kind: 'audio', mime: 'audio/mpeg', bytes: 5 };
-    d.pages[1]!.openSound = 'snd_x';
+    setPageOpenSound(d, d.pages[1]!.id, 'snd_x');
   });
   return project;
 }
@@ -76,7 +77,7 @@ describe('voiceover: schema and migration', () => {
     const v4 = { ...createProject(), schemaVersion: 4 } as Record<string, unknown>;
     delete v4.voiceover;
     const migrated = migrate(v4) as Project;
-    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.schemaVersion).toBe(SCHEMA_VERSION);
     expect(migrated.language).toBe('en');
     expect(migrated.voiceover).toEqual({ languages: [] });
     expect(projectSchema.safeParse(migrated).success).toBe(true);
@@ -167,7 +168,8 @@ describe('voiceover: keeping references valid', () => {
 
   it('removing a sound clears a page’s opening sound', () => {
     const project = produce(book(), (d) => removeSound(d, 'snd_x'));
-    expect(project.pages[1]!.openSound).toBeUndefined();
+    expect(book().pages[1]!.audio).toHaveLength(1);
+    expect(project.pages[1]!.audio).toBeUndefined();
   });
 
   it('duplicate language codes collapse and the default is repaired', () => {

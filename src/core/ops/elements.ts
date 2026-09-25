@@ -1,7 +1,7 @@
 import type { Draft } from 'immer';
 import { newId } from '../ids';
 import { findElement, flattenElements, isGroup, locate, walkElements } from '../schema/tree';
-import type { AssetRef, Character, PageElement, Project } from '../schema/types';
+import type { AssetRef, AudioClip, Character, PageElement, Project } from '../schema/types';
 import { freeTailsPointingAt } from './bubbles';
 import { fitGroupsToChildren, scaleGroupChildren } from './groups';
 import { getPage } from './pages';
@@ -164,6 +164,17 @@ export function duplicateElements(
         }
       }
     });
+  }
+  // A copy's timed sounds come too, attached to the copy's own steps.
+  for (const clip of (page.audio ?? []).filter((c) => c.elementId && idMap.has(c.elementId))) {
+    if ((page.audio?.length ?? 0) >= 40) break;
+    const copy = structuredClone(plain(clip)) as AudioClip;
+    copy.id = newId('ac');
+    copy.elementId = idMap.get(clip.elementId!)!;
+    if (copy.start.kind === 'withStep') {
+      copy.start = { ...copy.start, stepId: stepMap.get(copy.start.stepId) ?? copy.start.stepId };
+    }
+    (page.audio as AudioClip[]).push(copy);
   }
   fitGroupsToChildren(page);
   return ids.map((id) => topMap.get(id)).filter((id): id is string => !!id);

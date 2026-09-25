@@ -1,4 +1,5 @@
 import { Music, Trash2, Upload } from 'lucide-react';
+import { openSoundClipId } from '@/core/audio';
 import type { Page } from '@/core/schema';
 import { Button } from '@/ui/button';
 import { Input } from '@/ui/input';
@@ -96,7 +97,14 @@ export function SoundEffectsSection({ page }: { page: Page }) {
         <Upload /> Upload sound
       </Button>
       {picker('Page-turn sound', project.reader.pageTurnSound, setPageTurnSound)}
-      {picker('When this page opens', page.openSound, (id) => setOpenSound(page.id, id))}
+      {picker(
+        'When this page opens',
+        (() => {
+          const open = page.audio?.find((c) => c.id === openSoundClipId(page.id));
+          return open?.source.kind === 'sound' ? open.source.soundId : undefined;
+        })(),
+        (id) => setOpenSound(page.id, id),
+      )}
     </Section>
   );
 }

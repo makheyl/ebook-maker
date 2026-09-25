@@ -1,6 +1,6 @@
 import { findElement, flattenElements } from '../schema/tree';
 import { groupCount } from '../animation/schedule';
-import type { BurstEffect, Page, Project, StoryAction, VoiceLine } from '../schema/types';
+import type { AudioMix, BurstEffect, Page, Project, StoryAction, VoiceLine } from '../schema/types';
 
 /**
  * The reader's story logic as a pure state machine: pages, click groups, branching history,
@@ -40,9 +40,9 @@ export type ReaderEffect =
   | { type: 'unlocked' }
   | { type: 'showEnd' }
   | { type: 'hideEnd' }
-  | { type: 'playSound'; soundId: string }
+  | { type: 'playSound'; soundId: string; mix?: AudioMix }
   /** Say a voice line in the reader's language (never navigates). */
-  | { type: 'playVoice'; line: VoiceLine; elementId: string };
+  | { type: 'playVoice'; line: VoiceLine; elementId: string; mix?: AudioMix };
 
 export type ReduceResult = { state: ReaderState; effects: ReaderEffect[] };
 
@@ -203,10 +203,29 @@ function tap(
         add({ state: s, effects: [{ type: 'burst', effect: action.effect, elementId }] });
         return false;
       case 'playSound':
-        add({ state: s, effects: [{ type: 'playSound', soundId: action.soundId }] });
+        add({
+          state: s,
+          effects: [
+            {
+              type: 'playSound',
+              soundId: action.soundId,
+              ...(action.mix ? { mix: action.mix } : {}),
+            },
+          ],
+        });
         return false;
       case 'playVoice':
-        add({ state: s, effects: [{ type: 'playVoice', line: action.line, elementId }] });
+        add({
+          state: s,
+          effects: [
+            {
+              type: 'playVoice',
+              line: action.line,
+              elementId,
+              ...(action.mix ? { mix: action.mix } : {}),
+            },
+          ],
+        });
         return false;
       case 'collect': {
         const got = s.collected[page.id] ?? [];

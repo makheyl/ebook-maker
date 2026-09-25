@@ -1,14 +1,23 @@
 import { toast } from 'sonner';
 import {
+  addClip,
   addLanguage,
+  addSoundToTap,
   addVoiceToTap,
+  createClip,
+  removeClip,
+  updateClip,
+  updateElement,
   removeLanguage,
   renameLanguage,
   setDefaultLanguage,
   setPageOpenSound,
   setVoiceClip,
 } from '@/core/ops';
-import type { VoiceLanguage } from '@/core/schema';
+import { DEFAULT_MIX, entranceStepOf } from '@/core/audio';
+import type { AudioClip, AudioMix, VoiceLanguage } from '@/core/schema';
+import { getActivePage } from '../store/selectors';
+import { useUiStore } from '../store/ui-store';
 import { VOICE_TOTAL_WARNING_BYTES } from '@/core/sound/validate';
 import { voiceClips, type VoiceTarget } from '@/core/voice';
 import { importVoiceFiles, pickVoiceFiles } from '../assets/upload-voice';
@@ -130,4 +139,97 @@ export async function applyBulkVoice(plan: readonly BulkPlan[]): Promise<number>
   );
   warnIfLarge();
   return ready.length;
+}
+
+// ─── Timed audio on elements and pages ─────────────────────────────────────────
+
+const change = (label: string, recipe: Parameters<typeof docStore.change>[0]) =>
+  docStore.change(recipe, { label });
+
+/** Adds a clip for an element (or the page, without one). Returns its id. */
+export function addElementClip(
+  source: AudioClip['source'],
+  start: AudioClip['start'],
+  elementId?: string,
+): string | undefined {
+  const page = getActivePage();
+  if (!page) return undefined;
+  const clip = createClip(source, start, elementId);
+  let ok = false;
+  change(source.kind === 'voice' ? 'Add voice line' : 'Add sound', (d) => {
+    ok = addClip(d, page.id, clip);
+  });
+  if (!ok) toast.error('A page can have up to 40 timed sounds.');
+  return ok ? clip.id : undefined;
+}
+
+/** "When it appears": with the element's entrance, or when the page opens without one. */
+export function startWhenAppears(elementId: string): AudioClip['start'] {
+  const page = getActivePage();
+  const entrance = page ? entranceStepOf(page, elementId) : undefined;
+  return entrance
+    ? { kind: 'withStep', stepId: entrance, offset: 0 }
+    : { kind: 'time', group: 0, at: 0 };
+}
+
+/** "At a time": where the timeline's playhead is. */
+export function startAtPlayhead(): AudioClip['start'] {
+  const { group, ms } = useUiStore.getState().playhead;
+  return { kind: 'time', group, at: Math.round(ms) };
+}
+
+export function updateClipMix(clipId: string, patch: Partial<AudioMix>): void {
+  const page = getActivePage();
+  if (!page) return;
+  docStore.change((d) => updateClip(d, page.id, clipId, (c) => void Object.assign(c.mix, patch)), {
+    label: 'Adjust sound',
+  });
+}
+
+export function setClipLoop(clipId: string, loop: boolean): void {
+  const page = getActivePage();
+  if (!page) return;
+  change('Loop sound', (d) => updateClip(d, page.id, clipId, (c) => void (c.loop = loop)));
+}
+
+export function setClipSound(clipId: string, soundId: string): void {
+  const page = getActivePage();
+  if (!page) return;
+  change('Change sound', (d) =>
+    updateClip(d, page.id, clipId, (c) => void (c.source = { kind: 'sound', soundId })),
+  );
+}
+
+export function removeTimedClip(clipId: string): void {
+  const page = getActivePage();
+  if (!page) return;
+  change('Remove sound', (d) => removeClip(d, page.id, clipId));
+}
+
+export function addTapSound(elementId: string, soundId: string): void {
+  const page = getActivePage();
+  if (!page) return;
+  let ok = false;
+  change('Sound when tapped', (d) => void (ok = addSoundToTap(d, page.id, elementId, soundId)));
+  if (!ok) toast.error('This item already has 4 tap actions — remove one first.');
+}
+
+/** Volume, fades and trim of a tap's sound or voice action. */
+export function updateTapMix(
+  elementId: string,
+  interactionId: string,
+  index: number,
+  patch: Partial<AudioMix>,
+): void {
+  const page = getActivePage();
+  if (!page) return;
+  docStore.change(
+    (d) =>
+      updateElement(d, page.id, elementId, (el) => {
+        const action = el.interactions?.find((i) => i.id === interactionId)?.actions[index];
+        if (action?.type !== 'playSound' && action?.type !== 'playVoice') return;
+        action.mix = { ...DEFAULT_MIX, ...action.mix, ...patch };
+      }),
+    { label: 'Adjust sound' },
+  );
 }

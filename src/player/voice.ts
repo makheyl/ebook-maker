@@ -1,11 +1,13 @@
-import type { VoiceClip } from '../core/schema';
+import { DEFAULT_MIX } from '../core/audio/mix';
+import type { AudioMix, VoiceClip } from '../core/schema';
+import type { Mixer } from './mixer';
 import type { VoiceCue } from '../core/voice/cues';
 
 /** A fraction of a second of silence, to give the voice element its first play inside a tap. */
 const SILENCE =
   'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
-type Item = { clip: VoiceClip; key: string };
+type Item = { clip: VoiceClip; key: string; mix: AudioMix };
 
 /**
  * The reader's voice: one voice at a time, on exactly one reused <audio> element (iOS lets an
@@ -29,6 +31,7 @@ export class VoicePlayer {
   constructor(
     private readonly resolve: (id: string) => string | undefined,
     host: HTMLElement,
+    private readonly mixer: Mixer | null = null,
   ) {
     this.el = document.createElement('audio');
     this.el.dataset.folio = 'voice';
@@ -59,8 +62,8 @@ export class VoicePlayer {
   }
 
   /** Plays a line now (interrupting) or after what's queued. */
-  say(clip: VoiceClip, mode: 'interrupt' | 'queue', key = clip.id): void {
-    const item = { clip, key };
+  say(clip: VoiceClip, mode: 'interrupt' | 'queue', mix: AudioMix = DEFAULT_MIX): void {
+    const item = { clip, key: clip.id, mix };
     if (mode === 'interrupt') {
       this.queue = [item];
       this.stopCurrent();
@@ -126,6 +129,8 @@ export class VoicePlayer {
       // Not seekable yet: it starts from the beginning anyway.
     }
     this.armWatchdog((item.clip.duration ?? 60) * 1000 + 2000);
+    const length = item.clip.duration !== undefined ? item.clip.duration * 1000 : undefined;
+    this.mixer?.playMix(this.el, 'voice', item.mix, length);
     const playing = this.el.play();
     void playing?.catch((err: unknown) => {
       if (this.current !== item) return;

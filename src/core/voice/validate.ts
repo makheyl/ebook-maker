@@ -1,7 +1,6 @@
 import type { CheckIssue } from '../interaction/validate';
-import { findElement } from '../schema/tree';
 import type { Project } from '../schema/types';
-import { pageVoiceLines } from './lines';
+import { lineElementId, lineName, pageVoiceLines } from './lines';
 import { defaultLanguageOf } from './resolve';
 
 /**
@@ -20,11 +19,9 @@ export function validateVoice(project: Project): CheckIssue[] {
     for (const { target, line } of pageVoiceLines(page)) {
       const codes = Object.keys(line);
       const name =
-        target.kind === 'page'
-          ? `Page ${i + 1}`
-          : `“${findElement(page.elements, target.elementId)?.name ?? 'Item'}” on page ${i + 1}`;
-      const elementId = target.kind === 'page' ? undefined : target.elementId;
-      const key = `${target.kind}:${elementId ?? page.id}`;
+        target.kind === 'page' ? `Page ${i + 1}` : `“${lineName(page, target)}” on page ${i + 1}`;
+      const elementId = lineElementId(target);
+      const key = `${target.kind}:${target.kind === 'clip' ? target.clipId : (elementId ?? page.id)}`;
       if (!codes.length) {
         issues.push({
           id: `voice-empty:${key}`,

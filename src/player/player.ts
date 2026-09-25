@@ -17,7 +17,7 @@ import {
   type ReaderState,
 } from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
-import type { BurstEffect, Page, Project, VoiceLine } from '../core/schema';
+import type { AudioMix, BurstEffect, Page, Project, VoiceLine } from '../core/schema';
 import { bookHasVoice } from '../core/voice/lines';
 import { bubbleVoiceCues, type VoiceCue } from '../core/voice/cues';
 import { defaultLanguageOf, resolveClip, type VoiceChoice } from '../core/voice/resolve';
@@ -26,6 +26,10 @@ import { Curl } from './curl';
 import { AudioMenu, buildListenCard } from './listen-card';
 import { loadVoicePrefs, saveVoicePrefs } from './audio-prefs';
 import { CueClock, VoicePlayer } from './voice';
+import { AudioClock } from './audio-clock';
+import { Mixer } from './mixer';
+import { audioSchedule, type ScheduledClip } from '../core/audio/schedule';
+import { DEFAULT_MIX } from '../core/audio/mix';
 import { burst } from './burst';
 import { el, icon, type IconName } from './dom';
 import { buildEnd } from './end';
@@ -71,6 +75,8 @@ type Mounted = {
   timeline: PageTimeline | null;
   /** When the page's voiced speech bubbles are heard. */
   cues: VoiceCue[];
+  /** The page's timed audio (and its voice, as a clip at its start time). */
+  clips: ScheduledClip[];
 };
 
 /** A page turn drawn as a curl; `complete` jumps it to its end and runs what follows. */
@@ -137,6 +143,8 @@ export class Player {
   // ─── Voiceover ───
   private readonly voice: VoicePlayer | null = null;
   private readonly cueClock: CueClock;
+  private readonly mixer = new Mixer();
+  private readonly clipClock: AudioClock<ScheduledClip>;
   private readonly voiceBtn: HTMLButtonElement | null = null;
   private readonly audioMenu: AudioMenu | null = null;
   private voiceChoice: VoiceChoice = 'off';
@@ -212,14 +220,17 @@ export class Player {
       this.menu = null;
       this.menuBtn = null;
     }
-    this.sounds = new SoundBoard(opts.resolveAsset);
+    this.sounds = new SoundBoard(opts.resolveAsset, this.mixer);
+    this.clipClock = new AudioClock((item) => this.playClip(item));
+    // The preview opens from the author's click, so audio may start right away.
+    if (opts.audio?.prompt === false) this.mixer.start();
     this.cueClock = new CueClock((cue) => {
       this.saidCues.push(cue);
       this.sayLine(cue.line, 'queue');
     });
     const languages = project.voiceover?.languages ?? [];
     if (languages.length && bookHasVoice(project)) {
-      this.voice = new VoicePlayer(opts.resolveAsset, this.root);
+      this.voice = new VoicePlayer(opts.resolveAsset, this.root, this.mixer);
       this.voice.onBlocked = () => this.showPill('Tap to listen');
       this.voice.onIdle = () => this.armAutoTurn();
       this.voiceChoice = this.initialVoiceChoice();
@@ -242,8 +253,11 @@ export class Player {
         },
         onClose: () => this.closeAudioMenu(),
       });
-      this.holding = opts.audio?.prompt !== false;
     }
+    // Page 1 waits for the reader's first tap when the book would make sound on its own
+    // (voiceover, or timed sounds): browsers only let audio start after a tap.
+    const timedAudio = project.pages.some((p) => p.audio?.length);
+    this.holding = (!!this.voice || timedAudio) && opts.audio?.prompt !== false;
     if (bookHasEffects(project)) {
       this.muteBtn = this.button('Mute sound effects', 'soundOn', () => this.toggleMute());
       controls.append(this.muteBtn);
@@ -306,6 +320,11 @@ export class Player {
 
   get pageCount(): number {
     return this.pages.length;
+  }
+
+  /** For tests: the sound effects playing now and their gains. */
+  debugAudio(): { effects: { src: string; key: string; gain: number }[] } {
+    return { effects: this.sounds.debug() };
   }
 
   /** Freezes the current page at a moment (used by tests to compare with the editor). */
@@ -373,10 +392,15 @@ export class Player {
         break;
       case 'playGroup':
         void tl?.play(effect.group).then(() => this.armAutoTurn());
-        if (this.current) this.cueClock.schedule(this.current.cues, effect.group);
+        if (this.current) {
+          this.clipClock.schedule(this.current.clips, effect.group);
+          this.cueClock.schedule(this.current.cues, effect.group);
+        }
         break;
       case 'finishGroup':
         tl?.finish(effect.group);
+        // Skipping ahead: voice lines still queue, a burst of sound effects would be noise.
+        this.clipClock.flush(effect.group, (i) => i.clip.source.kind === 'voice');
         this.cueClock.flush(effect.group);
         break;
       case 'playStep': {
@@ -387,10 +411,11 @@ export class Player {
           this.saidCues.push(cue);
           this.sayTapLine(cue.line);
         }
+        if (this.current) this.clipClock.fireStep(this.current.clips, effect.stepId);
         break;
       }
       case 'playVoice':
-        this.sayTapLine(effect.line);
+        this.sayTapLine(effect.line, effect.mix);
         break;
       case 'hint':
         this.hint();
@@ -409,7 +434,10 @@ export class Player {
         this.burstAt(effect.elementId, effect.effect);
         break;
       case 'playSound':
-        this.sounds.play(effect.soundId);
+        this.sounds.play(effect.soundId, {
+          ...(effect.mix ? { mix: effect.mix } : {}),
+          fileMs: this.fileMs(effect.soundId),
+        });
         break;
       case 'collect':
         this.markCollected(effect.elementId, true);
@@ -560,6 +588,7 @@ export class Player {
     if (show) {
       this.voice?.stop();
       this.cueClock.clear();
+      this.clipClock.clear();
     }
     this.endEl.hidden = !show;
     this.root.classList.toggle('fp-ended', show);
@@ -597,6 +626,8 @@ export class Player {
     if (this.tapVoiceDispatch === this.dispatching) this.voice?.clearQueue();
     else this.voice?.stop();
     this.cueClock.clear();
+    this.clipClock.clear();
+    this.sounds.stopPrefix('page:', 150);
     this.saidCues = [];
     this.cancelAutoTurn();
     this.pageSpoke = false;
@@ -679,7 +710,6 @@ export class Player {
     for (const id of this.state.collected[page.id] ?? []) this.markCollected(id, false);
     const turn = this.opts.project.reader.pageTurnSound;
     if (turn && direction !== 0) this.sounds.play(turn);
-    if (page.openSound) this.sounds.play(page.openSound);
     this.preloadAround(i);
     this.updateChrome();
     this.updateGoal();
@@ -698,6 +728,8 @@ export class Player {
     this.sounds.destroy();
     this.voice?.destroy();
     this.cueClock.clear();
+    this.clipClock.clear();
+    this.mixer.destroy();
     this.cancelAutoTurn();
     for (const a of this.transitionAnims) a.cancel();
     this.turning?.curl.destroy();
@@ -721,6 +753,21 @@ export class Player {
     // Going back shows the page as it ends; going forward plays it.
     if (direction === -1) mounted.timeline.finishAll();
     mounted.cues = bubbleVoiceCues(page, mounted.timeline.entrances);
+    mounted.clips = audioSchedule(page, mounted.timeline.starts);
+    if (page.voiceover) {
+      // The page's voice is a clip at its start time, in the same clock as the rest.
+      mounted.clips.unshift({
+        clip: {
+          id: 'page-voice',
+          source: { kind: 'voice', line: page.voiceover },
+          start: { kind: 'time', group: 0, at: page.voiceoverAt ?? 0 },
+          mix: DEFAULT_MIX,
+          loop: false,
+        },
+        group: 0,
+        at: page.voiceoverAt ?? 0,
+      });
+    }
     return mounted;
   }
 
@@ -743,7 +790,7 @@ export class Player {
     scaler.appendChild(view.root);
     layer.appendChild(scaler);
     this.bookEl.appendChild(layer);
-    return { page, view, layer, timeline: null, cues: [] };
+    return { page, view, layer, timeline: null, cues: [], clips: [] };
   }
 
   private unmountPage(m: Mounted): void {
@@ -875,8 +922,34 @@ export class Player {
   private startPage(m: Mounted, speak: boolean): void {
     void m.timeline?.play(0).then(() => this.armAutoTurn());
     if (!speak) return;
-    this.pageSpoke = this.sayLine(m.page.voiceover, 'queue');
+    this.pageSpoke = !!resolveClip(
+      m.page.voiceover,
+      this.voice ? this.voiceChoice : 'off',
+      defaultLanguageOf(this.opts.project),
+    );
+    this.clipClock.schedule(m.clips, 0);
     this.cueClock.schedule(m.cues, 0);
+  }
+
+  /** One of the page's timed sounds or voice lines, at its moment. */
+  private playClip({ clip, group }: ScheduledClip): void {
+    if (clip.source.kind === 'sound') {
+      this.sounds.play(clip.source.soundId, {
+        mix: clip.mix,
+        loop: clip.loop,
+        key: `page:${clip.id}`,
+        fileMs: this.fileMs(clip.source.soundId),
+      });
+    } else if (group === null) {
+      this.sayTapLine(clip.source.line, clip.mix);
+    } else {
+      this.sayLine(clip.source.line, 'queue', clip.mix);
+    }
+  }
+
+  private fileMs(soundId: string): number | undefined {
+    const d = this.opts.project.sounds[soundId]?.duration;
+    return d !== undefined ? d * 1000 : undefined;
   }
 
   /**
@@ -898,6 +971,7 @@ export class Player {
       !this.transitionAnims.length &&
       !this.voice?.busy &&
       !this.cueClock.pending &&
+      !this.clipClock.pending((i) => i.clip.source.kind === 'voice') &&
       !this.groupRunning() &&
       autoTurnStep(this.opts.project, this.state) === 'next';
     if (!ready()) return;
@@ -913,17 +987,21 @@ export class Player {
   }
 
   /** Says a line in the reader's language (or the default); false if there's nothing to say. */
-  private sayLine(line: VoiceLine | undefined, mode: 'interrupt' | 'queue'): boolean {
+  private sayLine(
+    line: VoiceLine | undefined,
+    mode: 'interrupt' | 'queue',
+    mix?: AudioMix,
+  ): boolean {
     if (!this.voice || this.holding) return false;
     const clip = resolveClip(line, this.voiceChoice, defaultLanguageOf(this.opts.project));
-    if (clip) this.voice.say(clip, mode);
+    if (clip) this.voice.say(clip, mode, mix);
     return !!clip;
   }
 
   /** A tap's line interrupts whatever is being said. */
-  private sayTapLine(line: VoiceLine): void {
+  private sayTapLine(line: VoiceLine, mix?: AudioMix): void {
     this.tapVoiceDispatch = this.dispatching;
-    this.sayLine(line, 'interrupt');
+    this.sayLine(line, 'interrupt', mix);
   }
 
   private setVoiceChoice(choice: VoiceChoice): void {
@@ -994,6 +1072,10 @@ export class Player {
   /** "Listen in: English · Tagalog · Read it myself" — or, with a remembered choice, a pill. */
   private askToListen(): void {
     const { project } = this.opts;
+    if (!this.voice) {
+      this.showPill('Tap to start');
+      return;
+    }
     const remembered = this.opts.audio?.remember !== false && !!loadVoicePrefs(project.id)?.lang;
     if (remembered) {
       this.showPill(this.voiceChoice === 'off' ? 'Tap to start' : 'Tap to listen');
@@ -1035,6 +1117,7 @@ export class Player {
    */
   private release(): void {
     this.sounds.unlock();
+    this.mixer.start();
     this.voice?.prime();
     this.listenPill?.remove();
     this.listenPill = null;
@@ -1198,7 +1281,10 @@ export class Player {
 
     // Sounds may play only after the reader's first tap or key press (capture: before any
     // handler below runs the action that plays one).
-    const unlock = () => this.sounds.unlock();
+    const unlock = () => {
+      this.sounds.unlock();
+      this.mixer.start();
+    };
     on(this.root, 'pointerdown', unlock, { capture: true });
     on(this.root, 'keydown', unlock, { capture: true });
     // Voiceover: the first tap or key starts a held first page (and only that), and a line
