@@ -1,5 +1,6 @@
 import {
   AlignCenter,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   AlignVerticalJustifyCenter,
@@ -15,7 +16,10 @@ import { Switch } from '@/ui/switch';
 import { Toggle } from '@/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group';
 import { autofitOf, type Autofit } from '@/core/text/autofit';
+import { getPreset } from '@/core/animation';
 import { updateTextStyle } from '../actions';
+import { MOD } from '../keys';
+import { useActivePage } from '../store/selectors';
 import { setAutofit } from '../text/actions';
 import { ColorField, Field, NumberField, Section, SliderField } from './controls';
 
@@ -30,6 +34,42 @@ const WEIGHTS = [
   [800, 'Extra bold'],
   [900, 'Black'],
 ] as const;
+
+const SHIFT = MOD === '⌘' ? '⇧' : 'Shift+';
+
+/** Hyphenation for justified text, and a hint when a narrow box would look gappy. */
+function JustifyOptions({ elements }: { elements: TextLike[] }) {
+  const s = elements[0]!.style;
+  const typesIn = useActivePage().animations.some(
+    (a) => getPreset(a.preset)?.splitText && elements.some((e) => e.id === a.elementId),
+  );
+  // Roughly: fewer than ~12 characters per line leaves wide gaps between words.
+  const narrow = elements.some((e) => e.width - e.style.padding * 2 < e.style.fontSize * 6.5);
+  return (
+    <>
+      <label className="flex items-center justify-between text-xs text-muted-foreground">
+        Hyphenate
+        <Switch
+          checked={s.hyphenate ?? true}
+          disabled={typesIn}
+          onCheckedChange={(hyphenate) => updateTextStyle({ hyphenate })}
+          aria-label="Hyphenate"
+        />
+      </label>
+      {typesIn && (
+        <p className="text-[11px] text-muted-foreground">
+          Hyphenation is off for text that types in (it would wrap differently while typing).
+        </p>
+      )}
+      {narrow && (
+        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+          Justified text looks gappy in narrow boxes — try Left, widen the box, or turn on
+          Hyphenate.
+        </p>
+      )}
+    </>
+  );
+}
 
 const DEFAULT_SHADOW = { x: 0, y: 4, blur: 12, color: 'rgba(0, 0, 0, 0.35)' };
 
@@ -122,8 +162,16 @@ export function TextPanel({ elements }: { elements: TextLike[] }) {
           <ToggleGroupItem value="right" aria-label="Align text right">
             <AlignRight />
           </ToggleGroupItem>
+          <ToggleGroupItem
+            value="justify"
+            aria-label="Justify text"
+            title={`Justify (${MOD}${SHIFT}J)`}
+          >
+            <AlignJustify />
+          </ToggleGroupItem>
         </ToggleGroup>
       </div>
+      {s.align === 'justify' && <JustifyOptions elements={elements} />}
       <Field label="Vertical position">
         <ToggleGroup
           type="single"

@@ -1,3 +1,4 @@
+import { hasText } from '@/core/schema';
 import { parentOf } from '@/core/schema/tree';
 import { useLayoutStore } from './layout/layout-store';
 import { useEffect } from 'react';
@@ -13,6 +14,7 @@ import {
   pasteFromEvent,
   reorderSelected,
   selectAll,
+  updateTextStyle,
 } from './actions';
 import { stopPreview } from './animation/preview';
 import { endScrub } from './timeline/session';
@@ -92,6 +94,13 @@ export function useEditorShortcuts(opts: { onPreview: () => void }): void {
       if (mod && key === 'd') {
         e.preventDefault();
         duplicateSelected();
+        return;
+      }
+      // Text alignment (Docs/Word/Canva). Mod+Shift+R is left out: browsers use it to reload.
+      const align = { l: 'left', e: 'center', j: 'justify' } as const;
+      if (mod && e.shiftKey && key in align && getSelectedElements().some(hasText)) {
+        e.preventDefault();
+        updateTextStyle({ align: align[key as keyof typeof align] });
         return;
       }
       if (mod && e.key === ']') {

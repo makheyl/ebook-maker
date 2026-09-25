@@ -12,6 +12,8 @@ type Props = {
   mode: RenderMode;
   variant?: AssetVariant;
   splitTextFor?: (page: Page) => ReadonlyMap<string, TextSplit>;
+  /** The book's language (`lang` on the page: hyphenation). */
+  lang?: string;
   /** Receives the live PageView (for selection handles, animation preview…). */
   onView?: (view: PageView | null) => void;
   className?: string;
@@ -29,6 +31,7 @@ export function PageCanvas({
   mode,
   variant = 'full',
   splitTextFor,
+  lang,
   onView,
   className,
 }: Props) {
@@ -46,6 +49,7 @@ export function PageCanvas({
       mode,
       resolveAsset: variant === 'thumb' ? assetUrls.resolveThumb : assetUrls.resolveFull,
       splitTextFor,
+      lang,
     });
     viewRef.current = view;
     hostRef.current!.appendChild(view.root);
@@ -55,11 +59,11 @@ export function PageCanvas({
       view.destroy();
       viewRef.current = null;
     };
-  }, [pageSize, mode, variant, splitTextFor]);
+  }, [pageSize, mode, variant, splitTextFor, lang]);
 
   useLayoutEffect(() => {
     viewRef.current?.update(page, assets, characters);
-  }, [page, assets, characters, pageSize, mode, variant, splitTextFor]);
+  }, [page, assets, characters, pageSize, mode, variant, splitTextFor, lang]);
 
   useLayoutEffect(() => {
     if (assetsVersion) viewRef.current?.refreshAssets();

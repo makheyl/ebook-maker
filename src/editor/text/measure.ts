@@ -28,7 +28,7 @@ function measureHost(): HTMLDivElement {
  * real renderer output (so it matches the stage and the exported book exactly).
  */
 export function measureTextHeight(el: TextElement): number {
-  const box = buildText(el);
+  const box = buildText(el, false, { measuring: true });
   box.style.position = 'relative';
   box.style.inset = 'auto';
   box.style.width = `${el.width}px`;

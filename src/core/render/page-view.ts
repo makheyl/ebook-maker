@@ -45,6 +45,8 @@ export type PageViewOptions = {
   pageSize: PageSize;
   mode: RenderMode;
   resolveAsset: AssetResolver;
+  /** The book's language: `lang` of the page (hyphenation, screen readers). */
+  lang?: string;
   /** Texts to split into reveal units for typewriter-style animations, and how. */
   splitTextFor?: (page: Page) => ReadonlyMap<string, TextSplit>;
 };
@@ -163,6 +165,7 @@ export function createPageView(options: PageViewOptions): PageView {
   const { pageSize, mode, resolveAsset } = options;
   const root = document.createElement('div');
   root.className = `fl-page fl-mode-${mode}`;
+  if (options.lang) root.lang = options.lang;
   // A page is never scrollable (browsers without `overflow: clip` could still be scrolled by
   // code or a caret); snap back so what's shown always matches the page's real layout.
   root.addEventListener('scroll', () => {

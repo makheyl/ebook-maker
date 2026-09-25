@@ -730,6 +730,7 @@ export class Player {
       mode: 'player',
       resolveAsset: this.opts.resolveAsset,
       splitTextFor: elementsNeedingCharSplit,
+      lang: this.opts.project.language,
     });
     view.update(page, this.opts.project.assets, this.opts.project.characters);
     const layer = el('div', 'fp-page');

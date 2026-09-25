@@ -58,6 +58,16 @@ export const MIGRATIONS: readonly Migration[] = [
       voiceover: isObject(doc.voiceover) ? doc.voiceover : { languages: [] },
     }),
   },
+  {
+    // v6 adds justified text (optional style fields) and the book's text language.
+    from: 5,
+    to: 6,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 6,
+      language: typeof doc.language === 'string' ? doc.language : 'en',
+    }),
+  },
 ];
 
 export class ProjectLoadError extends Error {

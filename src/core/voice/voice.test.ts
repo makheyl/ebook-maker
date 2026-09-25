@@ -76,7 +76,8 @@ describe('voiceover: schema and migration', () => {
     const v4 = { ...createProject(), schemaVersion: 4 } as Record<string, unknown>;
     delete v4.voiceover;
     const migrated = migrate(v4) as Project;
-    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.schemaVersion).toBe(6);
+    expect(migrated.language).toBe('en');
     expect(migrated.voiceover).toEqual({ languages: [] });
     expect(projectSchema.safeParse(migrated).success).toBe(true);
   });

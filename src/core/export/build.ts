@@ -127,7 +127,7 @@ export function renderBookHtml(parts: HtmlParts): string {
     : `<script src="${escapeHtml(parts.playerJsSrc ?? '')}"></script>`;
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(project.language || 'en')}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">

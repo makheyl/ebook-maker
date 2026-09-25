@@ -266,6 +266,7 @@ export function Stage({
                 characters={project.characters}
                 mode="editor"
                 splitTextFor={elementsNeedingCharSplit}
+                lang={project.language}
                 onView={onView}
               />
             </div>

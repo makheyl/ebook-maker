@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -181,7 +181,9 @@ export const textStyleSchema = z.object({
   fontWeight: z.number().int().min(100).max(900),
   italic: z.boolean(),
   color: cssColor,
-  align: z.enum(['left', 'center', 'right']),
+  align: z.enum(['left', 'center', 'right', 'justify']),
+  /** Hyphenate words at line ends (default: on for justified text). Uses the book's language. */
+  hyphenate: z.boolean().optional(),
   verticalAlign: z.enum(['top', 'middle', 'bottom']),
   lineHeight: z.number().min(0.5).max(4),
   letterSpacing: z.number().min(-50).max(200),
@@ -494,6 +496,8 @@ export const projectSchema = z.object({
   reader: readerSettingsSchema,
   sounds: z.record(id, soundRefSchema),
   voiceover: voiceoverSchema,
+  /** The language the book is written in: `lang` of every page (hyphenation, screen readers). */
+  language: languageCodeSchema,
   exportSettings: exportSettingsSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

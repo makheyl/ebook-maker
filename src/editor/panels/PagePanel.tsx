@@ -8,7 +8,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group';
 import { assetUrls } from '../assets/asset-urls';
 import { imageFilesFrom, importImageFiles } from '../assets/upload';
 import { docStore } from '../store/doc-store';
-import { useActivePage } from '../store/selectors';
+import { useActivePage, useProject } from '../store/selectors';
+import { LANGUAGE_PRESETS } from '../audio/actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select';
 import { ColorField, Field, NumberField, Section } from './controls';
 
 function setBackground(pageId: string, background: PageBackground, coalesceKey?: string) {
@@ -156,6 +158,40 @@ export function PagePanel({ extra }: { extra?: React.ReactNode }) {
         )}
       </Section>
       {extra}
+      <BookLanguage />
     </div>
+  );
+}
+
+/** The language the book is written in (hyphenation, screen readers; not the voiceover). */
+function BookLanguage() {
+  const language = useProject().language;
+  const known = LANGUAGE_PRESETS.some((l) => l.code === language);
+  return (
+    <Section title="Book">
+      <Field label="Book language">
+        <Select
+          value={language}
+          onValueChange={(code) =>
+            docStore.change((d) => void (d.language = code), { label: 'Book language' })
+          }
+        >
+          <SelectTrigger className="h-8 w-full" aria-label="Book language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGE_PRESETS.map((l) => (
+              <SelectItem key={l.code} value={l.code}>
+                {l.name}
+              </SelectItem>
+            ))}
+            {!known && <SelectItem value={language}>{language}</SelectItem>}
+          </SelectContent>
+        </Select>
+      </Field>
+      <p className="-mt-1 text-[11px] text-muted-foreground">
+        The language the text is written in: used to hyphenate justified text and by screen readers.
+      </p>
+    </Section>
   );
 }

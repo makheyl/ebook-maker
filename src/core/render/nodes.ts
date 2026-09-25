@@ -44,6 +44,7 @@ function el<K extends keyof HTMLElementTagNameMap>(
 export function buildText(
   element: Pick<TextElement, 'content' | 'style'>,
   split: TextSplit | false = false,
+  opts: { measuring?: boolean } = {},
 ): HTMLElement {
   const s = element.style;
   const box = el('div', 'fl-text');
@@ -53,6 +54,14 @@ export function buildText(
   box.style.fontStyle = s.italic ? 'italic' : 'normal';
   box.style.color = s.color;
   box.style.textAlign = s.align;
+  if (s.align === 'justify') box.style.textAlignLast = 'start';
+  // Hyphenation (in the page's language) — never for text that types in: browsers don't
+  // hyphenate across the pieces a word is split into, so editor and reader would differ.
+  // Measuring is done without it, as the widest case, so fitted text never overflows in a
+  // browser whose hyphenation dictionary breaks lines differently.
+  const hyphenate = (s.hyphenate ?? s.align === 'justify') && !split && !opts.measuring;
+  box.style.hyphens = hyphenate ? 'auto' : 'manual';
+  box.style.setProperty('-webkit-hyphens', hyphenate ? 'auto' : 'manual');
   box.style.justifyContent =
     s.verticalAlign === 'middle'
       ? 'center'
