@@ -39,7 +39,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
     <article className="group relative flex flex-col gap-3" data-testid="project-card">
       <Link
         href={href}
-        className="block overflow-hidden rounded-xl border bg-muted shadow-xs transition-shadow group-hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+        className="block overflow-hidden rounded-2xl border border-glass-border bg-white/50 shadow-[0_1px_2px_rgb(30_70_50/0.08)] ring-1 ring-ink/5 transition group-hover:-translate-y-0.5 group-hover:shadow-[0_14px_32px_-10px_rgb(30_70_50/0.35)] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 dark:bg-white/5 dark:ring-white/10"
         aria-label={`Open ${project.title}`}
       >
         <CoverThumbnail summary={project} />

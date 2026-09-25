@@ -1,10 +1,10 @@
-import { BookHeart, BookOpen, FileUp, Plus, Sparkles } from 'lucide-react';
+import { BookHeart, FileUp, Plus, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useLocation } from 'wouter';
 import { PRODUCT_NAME } from '@/core/brand';
 import { Button } from '@/ui/button';
-import { Logo } from '@/ui/Logo';
+import { Logo, LogoMark } from '@/ui/Logo';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 import { NewBookDialog } from './NewBookDialog';
 import { ProjectCard } from './ProjectCard';
@@ -76,7 +76,7 @@ export function Dashboard() {
       />
       {dragging && (
         <div
-          className="pointer-events-none fixed inset-3 z-50 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-background/80 backdrop-blur-sm"
+          className="pointer-events-none fixed inset-3 z-50 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-glass-strong shadow-2xl backdrop-blur-xl"
           aria-hidden="true"
         >
           <p className="flex items-center gap-2 text-lg font-medium">
@@ -84,7 +84,7 @@ export function Dashboard() {
           </p>
         </div>
       )}
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+      <header className="glass glass-edge-b sticky top-0 z-10">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <Logo />
           <div className="flex-1" />
@@ -115,7 +115,10 @@ export function Dashboard() {
         {state.status === 'loading' && (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4" aria-busy="true">
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="aspect-[4/3] animate-pulse rounded-xl bg-muted" />
+              <div
+                key={i}
+                className="aspect-[4/3] animate-pulse rounded-2xl bg-white/50 dark:bg-white/5"
+              />
             ))}
           </div>
         )}
@@ -123,7 +126,7 @@ export function Dashboard() {
         {state.status === 'error' && (
           <div
             role="alert"
-            className="rounded-xl border border-destructive/40 bg-destructive/5 p-6"
+            className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6 backdrop-blur-sm"
           >
             <p className="font-medium">Couldn’t open your saved books.</p>
             <p className="text-sm text-muted-foreground">
@@ -133,10 +136,8 @@ export function Dashboard() {
         )}
 
         {state.status === 'ready' && state.projects.length === 0 && (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed px-6 py-16 text-center">
-            <span className="grid size-14 place-items-center rounded-2xl bg-accent text-accent-foreground">
-              <BookOpen className="size-7" />
-            </span>
+          <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-foreground/15 bg-white/45 px-6 py-16 text-center shadow-[inset_0_1px_0_var(--glass-highlight)] backdrop-blur-md dark:bg-white/[0.03]">
+            <LogoMark className="size-16 shadow-lg" />
             <div>
               <h2 className="text-lg font-semibold">Make your first book</h2>
               <p className="mx-auto max-w-md text-sm text-muted-foreground">
@@ -153,7 +154,7 @@ export function Dashboard() {
               <Button variant="outline" onClick={() => setNewOpen(true)}>
                 <Plus /> Start from blank
               </Button>
-              <Button variant="ghost" onClick={openSample} disabled={sampleBusy}>
+              <Button variant="secondary" onClick={openSample} disabled={sampleBusy}>
                 <BookHeart /> {sampleBusy ? 'Preparing…' : 'Try a sample book'}
               </Button>
               {importButton}

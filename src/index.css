@@ -155,7 +155,13 @@
   background-color: var(--glass);
   -webkit-backdrop-filter: var(--glass-filter);
   backdrop-filter: var(--glass-filter);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  /* Composes with Tailwind's ring and shadow utilities instead of replacing them. */
+  box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
+    inset 0 1px 0 var(--glass-highlight);
 }
 
 /* Floating UI (menus, dialogs, toolbars on the stage): more opaque, framed and lifted. */
@@ -165,6 +171,10 @@
   backdrop-filter: var(--glass-filter-strong);
   border: 1px solid var(--glass-border);
   box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
     inset 0 1px 0 var(--glass-highlight),
     var(--glass-shadow);
 }
@@ -174,6 +184,10 @@
   background-color: var(--glass-subtle);
   border: 1px solid var(--glass-border);
   box-shadow:
+    var(--tw-inset-shadow, 0 0 #0000),
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow, 0 0 #0000),
     inset 0 1px 0 var(--glass-highlight),
     0 1px 2px rgb(30 70 50 / 0.06);
 }

@@ -73,7 +73,7 @@ function Row({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'flex items-center gap-2 rounded-xl border bg-card p-2',
+        'flex items-center gap-2 rounded-xl border bg-white/55 shadow-[inset_0_1px_0_var(--glass-highlight)] dark:bg-white/5 p-2',
         isDragging && 'z-10 shadow-lg',
       )}
       data-testid="wizard-row"
@@ -94,7 +94,7 @@ function Row({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="grid size-16 place-items-center overflow-hidden rounded-lg border bg-muted text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="grid size-16 place-items-center overflow-hidden rounded-lg border bg-white/60 text-muted-foreground dark:bg-white/5 focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={
             row.image ? `Replace image for page ${index + 1}` : `Add image to page ${index + 1}`
           }
@@ -146,7 +146,7 @@ function Row({
         placeholder="Text for this page"
         aria-label={`Text for page ${index + 1}`}
         maxLength={1000}
-        className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-10 min-w-0 flex-1 rounded-lg border bg-white/70 px-3 text-sm dark:bg-white/5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       {row.text.length > LONG_LINE && (
         <span
@@ -231,7 +231,9 @@ export function PagesStep({
           }}
           className={cn(
             'flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors',
-            dragOver ? 'border-primary bg-primary/5' : 'bg-muted/30',
+            dragOver
+              ? 'border-primary bg-primary/5'
+              : 'bg-white/40 backdrop-blur-sm dark:bg-white/[0.03]',
           )}
         >
           <span className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
@@ -269,7 +271,7 @@ export function PagesStep({
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-2 rounded-2xl border p-4">
+        <div className="flex flex-col gap-2 rounded-2xl border bg-white/55 shadow-[inset_0_1px_0_var(--glass-highlight)] dark:bg-white/5 p-4">
           <label htmlFor="bulk-lines" className="font-medium">
             Paste your text
           </label>

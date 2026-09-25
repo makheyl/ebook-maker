@@ -72,7 +72,7 @@ export function ImportDialog({
               <FileWarning className="size-5 shrink-0 text-destructive" /> {state.message}
             </p>
             {state.details.length > 0 && (
-              <details className="rounded-lg border bg-muted/40 p-3 text-xs">
+              <details className="rounded-lg border bg-white/50 p-3 text-xs dark:bg-white/5">
                 <summary className="cursor-pointer font-medium">Technical details</summary>
                 <ul className="mt-2 list-disc pl-4 font-mono">
                   {state.details.map((d) => (

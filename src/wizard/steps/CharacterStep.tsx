@@ -43,7 +43,7 @@ export function CharacterStep({
   if (!mascot) {
     return (
       <div
-        className="mx-auto flex max-w-xl flex-col items-center gap-4 rounded-2xl border-2 border-dashed p-8 text-center"
+        className="mx-auto flex max-w-xl flex-col items-center gap-4 rounded-2xl border-2 border-dashed bg-white/40 p-8 text-center backdrop-blur-sm dark:bg-white/[0.03]"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -83,7 +83,7 @@ export function CharacterStep({
   const thumb = assetUrls.resolve(mascot.asset.id, 'thumb');
   return (
     <div className="mx-auto grid max-w-xl gap-5">
-      <div className="flex items-center gap-4 rounded-2xl border p-4">
+      <div className="flex items-center gap-4 rounded-2xl border bg-white/55 shadow-[inset_0_1px_0_var(--glass-highlight)] dark:bg-white/5 p-4">
         <div className="grid size-28 shrink-0 place-items-center rounded-xl bg-[repeating-conic-gradient(#0000000d_0_25%,transparent_0_50%)] bg-[length:16px_16px]">
           {thumb && <img src={thumb} alt="" className="max-h-full max-w-full object-contain" />}
         </div>

@@ -68,7 +68,7 @@ export function LayoutStep({
               aria-label={template.label}
               onClick={() => onChange({ ...choice, templateId: template.id })}
               className={cn(
-                'group flex flex-col gap-2 rounded-xl border bg-card p-2 text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
+                'group flex flex-col gap-2 rounded-xl border bg-white/55 shadow-[inset_0_1px_0_var(--glass-highlight)] dark:bg-white/5 p-2 text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
                 selected ? 'border-primary ring-2 ring-primary/40' : 'hover:shadow-md',
               )}
             >

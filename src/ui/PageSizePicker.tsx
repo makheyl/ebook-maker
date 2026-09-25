@@ -22,7 +22,7 @@ export function PageSizePicker({
             aria-checked={selected}
             onClick={() => onChange(preset.id)}
             className={cn(
-              'flex flex-col items-center gap-2 rounded-xl glass-subtle p-3 text-center transition-colors hover:border-primary/60',
+              'flex flex-col items-center gap-2 rounded-xl border bg-white/55 shadow-[inset_0_1px_0_var(--glass-highlight)] dark:bg-white/5 p-3 text-center transition-colors hover:border-primary/60',
               selected && 'border-primary ring-2 ring-primary/35',
             )}
           >
