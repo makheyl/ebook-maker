@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
     if (!this.state.error) return this.props.children;
     return (
       <main role="alert" className="grid h-full place-items-center p-6">
-        <div className="flex max-w-md flex-col items-center gap-4 text-center">
+        <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl glass-strong p-8 text-center">
           <span className="grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle />
           </span>
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
           <p className="text-sm text-muted-foreground">
             Your work is saved automatically. Reloading usually fixes this.
           </p>
-          <details className="w-full rounded-lg border bg-muted/40 p-3 text-left text-xs">
+          <details className="w-full rounded-lg border bg-white/50 p-3 text-left text-xs dark:bg-white/5">
             <summary className="cursor-pointer font-medium">Technical details</summary>
             <pre className="mt-2 overflow-auto whitespace-pre-wrap">{this.state.error.message}</pre>
           </details>

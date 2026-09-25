@@ -3,53 +3,106 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Inkbug's palette comes from the logo: leaf and forest greens (the bookworm), sky and ocean
+ * blues (its book), ink (its glasses). Brand tokens are hex so `src/ui/contrast.test.ts` can
+ * check them.
+ *
+ * Glass: the app floats over a soft mesh (`#root::before`). Docked panels use `glass`,
+ * floating UI `glass-strong`, repeated items `glass-subtle` (no blur). The classic tokens
+ * (--background, --popover, --sidebar…) stay opaque on purpose, so nothing turns see-through
+ * by accident; sticky headers use the opaque --surface.
+ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.002 286);
-  --foreground: oklch(0.21 0.02 286);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 286);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 286);
-  --primary: oklch(0.52 0.21 285);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.955 0.008 286);
-  --secondary-foreground: oklch(0.25 0.02 286);
-  --muted: oklch(0.955 0.006 286);
-  --muted-foreground: oklch(0.5 0.02 286);
-  --accent: oklch(0.945 0.02 285);
-  --accent-foreground: oklch(0.3 0.08 285);
+  --radius: 0.75rem;
+
+  --leaf: #60be70;
+  --forest: #367f48;
+  --forest-deep: #2a6a3b;
+  --sky: #5fb2e3;
+  --ocean: #428fbc;
+  --ocean-deep: #2c6f9a;
+  --ink: #243338;
+  --night: #0e1a1e;
+  --mist: #d0d9d7;
+  --signal: #e8455a;
+
+  --background: #f4faf6;
+  --foreground: #243338;
+  --card: #ffffff;
+  --card-foreground: #243338;
+  --popover: #ffffff;
+  --popover-foreground: #243338;
+  --primary: #367f48;
+  --primary-foreground: #ffffff;
+  --secondary: #e4f1f9;
+  --secondary-foreground: #243338;
+  --muted: #e9f2ee;
+  --muted-foreground: #54666b;
+  --accent: #dff1e4;
+  --accent-foreground: #2a6a3b;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.006 286);
-  --input: oklch(0.9 0.006 286);
-  --ring: oklch(0.6 0.18 285);
-  --sidebar: oklch(1 0 0);
-  --canvas: oklch(0.94 0.006 286);
-  --selection: oklch(0.6 0.2 285);
+  --border: #d3e0dc;
+  --input: #c6d6d1;
+  --ring: #428fbc;
+  --sidebar: #f7fbf8;
+  --surface: #fbfdfc;
+  --canvas: #e3eeea80;
+  --selection: #3a8bc2;
+
+  --glass: #ffffff8c;
+  --glass-strong: #ffffffd9;
+  --glass-subtle: #ffffff80;
+  --glass-border: #ffffffb3;
+  --glass-edge: #24333817;
+  --glass-highlight: #ffffffcc;
+  --glass-shadow: 0 10px 34px -8px rgb(30 70 50 / 0.16), 0 2px 6px -2px rgb(30 70 50 / 0.08);
+  --glass-filter: blur(18px) saturate(1.5);
+  --glass-filter-strong: blur(24px) saturate(1.6);
+
+  --mesh-a: #60be7040;
+  --mesh-b: #5fb2e33d;
+  --mesh-c: #60be7026;
+  --mesh-d: #428fbc2e;
 }
 
 .dark {
-  --background: oklch(0.17 0.012 286);
-  --foreground: oklch(0.97 0.004 286);
-  --card: oklch(0.21 0.014 286);
-  --card-foreground: oklch(0.97 0.004 286);
-  --popover: oklch(0.22 0.014 286);
-  --popover-foreground: oklch(0.97 0.004 286);
-  --primary: oklch(0.68 0.17 285);
-  --primary-foreground: oklch(0.16 0.02 286);
-  --secondary: oklch(0.27 0.014 286);
-  --secondary-foreground: oklch(0.97 0.004 286);
-  --muted: oklch(0.26 0.012 286);
-  --muted-foreground: oklch(0.7 0.015 286);
-  --accent: oklch(0.3 0.04 285);
-  --accent-foreground: oklch(0.95 0.02 285);
+  --background: #0e1a1e;
+  --foreground: #eef6f3;
+  --card: #15252a;
+  --card-foreground: #eef6f3;
+  --popover: #15252a;
+  --popover-foreground: #eef6f3;
+  --primary: #60be70;
+  --primary-foreground: #0e1a1e;
+  --secondary: #1b3440;
+  --secondary-foreground: #eef6f3;
+  --muted: #172a30;
+  --muted-foreground: #a3b6b5;
+  --accent: #1e3a2b;
+  --accent-foreground: #d5f0dc;
   --destructive: oklch(0.65 0.2 25);
-  --border: oklch(1 0 0 / 11%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.68 0.15 285);
-  --sidebar: oklch(0.2 0.013 286);
-  --canvas: oklch(0.13 0.01 286);
-  --selection: oklch(0.7 0.17 285);
+  --border: #ffffff1f;
+  --input: #ffffff29;
+  --ring: #5fb2e3;
+  --sidebar: #122126;
+  --surface: #15262b;
+  --canvas: #08121580;
+  /* Drawn on the (white) page, so it stays ocean in the dark too. */
+  --selection: #428fbc;
+
+  --glass: #14262b8c;
+  --glass-strong: #14242ae0;
+  --glass-subtle: #ffffff0d;
+  --glass-border: #ffffff1f;
+  --glass-edge: #ffffff1a;
+  --glass-highlight: #ffffff14;
+  --glass-shadow: 0 12px 36px -8px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.35);
+
+  --mesh-a: #367f4859;
+  --mesh-b: #2c6f9a4d;
+  --mesh-c: #367f4833;
+  --mesh-d: #428fbc33;
 }
 
 @theme inline {
@@ -77,8 +130,77 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
   --color-canvas: var(--canvas);
   --color-selection: var(--selection);
+  --color-leaf: var(--leaf);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-sky: var(--sky);
+  --color-ocean: var(--ocean);
+  --color-ocean-deep: var(--ocean-deep);
+  --color-ink: var(--ink);
+  --color-night: var(--night);
+  --color-signal: var(--signal);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-glass-border: var(--glass-border);
+  --color-glass-edge: var(--glass-edge);
+}
+
+/* ─── Glass ─────────────────────────────────────────────────────────────────── */
+
+/* Docked panels (top bar, side panels, timeline): frosted, flush, no outer shadow. */
+@utility glass {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-filter);
+  backdrop-filter: var(--glass-filter);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+}
+
+/* Floating UI (menus, dialogs, toolbars on the stage): more opaque, framed and lifted. */
+@utility glass-strong {
+  background-color: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-filter-strong);
+  backdrop-filter: var(--glass-filter-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    var(--glass-shadow);
+}
+
+/* Repeated items (cards, rows): the glass look without the cost of a blur each. */
+@utility glass-subtle {
+  background-color: var(--glass-subtle);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 1px 2px rgb(30 70 50 / 0.06);
+}
+
+/* One hairline edge where a docked panel meets the stage. */
+@utility glass-edge-t {
+  border-top: 1px solid var(--glass-edge);
+}
+@utility glass-edge-r {
+  border-right: 1px solid var(--glass-edge);
+}
+@utility glass-edge-b {
+  border-bottom: 1px solid var(--glass-edge);
+}
+@utility glass-edge-l {
+  border-left: 1px solid var(--glass-edge);
+}
+
+/* The "Inkbug" wordmark: forest to ocean (leaf to sky in the dark). */
+@utility brand-wordmark {
+  background-image: linear-gradient(95deg, var(--forest), var(--ocean-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  :where(.dark) & {
+    background-image: linear-gradient(95deg, var(--leaf), var(--sky));
+  }
 }
 
 @layer base {
@@ -94,7 +216,79 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv11', 'ss01';
   }
+  /* The soft mesh everything floats over. Fixed and static: painted once. `isolation` keeps it
+     behind the app without making #root a containing block for fixed children. */
+  #root {
+    isolation: isolate;
+  }
+  #root::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 42rem at 6% -6%, var(--mesh-a), transparent 70%),
+      radial-gradient(52rem 38rem at 96% 8%, var(--mesh-b), transparent 70%),
+      radial-gradient(58rem 40rem at 38% 108%, var(--mesh-c), transparent 70%),
+      radial-gradient(44rem 32rem at 102% 96%, var(--mesh-d), transparent 70%);
+  }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
+  }
+}
+
+/* ─── When glass isn't welcome ─────────────────────────────────────────────── */
+
+/* Readers who ask for less transparency, and browsers without backdrop blur: solid panels. */
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  .dark {
+    --glass: var(--sidebar);
+    --glass-strong: var(--popover);
+    --glass-subtle: var(--card);
+    --glass-filter: none;
+    --glass-filter-strong: none;
+    --canvas: var(--muted);
+  }
+  #root::before {
+    display: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  .dark {
+    --glass: var(--sidebar);
+    --glass-strong: var(--popover);
+    --glass-subtle: var(--card);
+  }
+}
+
+/* More contrast: solid panels and firmer edges. */
+@media (prefers-contrast: more) {
+  :root,
+  .dark {
+    --glass: var(--sidebar);
+    --glass-strong: var(--popover);
+    --glass-subtle: var(--card);
+    --glass-filter: none;
+    --glass-filter-strong: none;
+    --glass-border: var(--foreground);
+    --glass-edge: var(--foreground);
+    --border: color-mix(in oklab, var(--foreground) 45%, transparent);
+  }
+  #root::before {
+    display: none;
+  }
+}
+
+/* Windows high contrast and other forced palettes: the system draws the colours. */
+@media (forced-colors: active) {
+  #root::before {
+    display: none;
+  }
+  .brand-wordmark {
+    background: none;
+    color: CanvasText;
   }
 }
