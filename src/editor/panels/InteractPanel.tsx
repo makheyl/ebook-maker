@@ -1,5 +1,6 @@
 import { findElement, flattenElements } from '@/core/schema/tree';
 import { validateVoice } from '@/core/voice';
+import { validateAudio } from '@/core/audio/validate';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -574,7 +575,12 @@ function GoalSection({ page }: { page: Page }) {
 function ChecksSection() {
   const project = useProject();
   const issues = useMemo(
-    () => [...textIssues(project), ...validateInteractivity(project), ...validateVoice(project)],
+    () => [
+      ...textIssues(project),
+      ...validateInteractivity(project),
+      ...validateVoice(project),
+      ...validateAudio(project),
+    ],
     [project],
   );
   const go = (issue: CheckIssue) => {

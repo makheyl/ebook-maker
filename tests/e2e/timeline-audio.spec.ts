@@ -127,6 +127,66 @@ test('audio in the timeline: drag, trim and fade clips; Play starts them when th
   const b0 = await book.evaluate(() => performance.now());
   await expect.poll(async () => (await plays(book)).length).toBe(2);
   const exported = (await plays(book)).map((t) => t - b0);
-  for (let i = 0; i < 2; i++) expect(Math.abs(exported[i]! - editor[i]!)).toBeLessThan(150);
+  for (let i = 0; i < 2; i++) expect(Math.abs(exported[i]! - editor[i]!)).toBeLessThan(100);
   await context.close();
+});
+
+test('40 clips on a page: a 3-minute waveform is quick and dragging stays smooth', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createBlankBook(page, 'Busy audio');
+  await insertShape(page, 'Rectangle');
+  await page.getByRole('button', { name: 'Open timeline' }).click();
+  await stageElements(page, 'shape').click({ force: true });
+
+  // A 3-minute sound: its waveform appears soon after its bar.
+  await pickUpload(page, /Sound at the playhead/, makeWav(180_000, 3), 'long.wav');
+  const bars = page.getByTestId('audio-bar');
+  await expect(bars).toHaveCount(1);
+  const shown = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        const t0 = performance.now();
+        const check = () =>
+          document.querySelector('[data-testid=audio-bar] svg path[d^="M"]')
+            ? resolve(performance.now() - t0)
+            : requestAnimationFrame(check);
+        check();
+      }),
+  );
+  expect(shown).toBeLessThan(400);
+
+  // 39 more, spread over the first seconds.
+  await pickUpload(page, /Sound at the playhead/, POP, 'pop.wav');
+  const playhead = page.getByLabel('Playhead time');
+  for (let i = 2; i < 40; i++) {
+    await playhead.fill(String(i * 0.1));
+    await playhead.press('Enter');
+    await page.getByRole('button', { name: /Sound at the playhead/ }).click();
+    await page.getByRole('menuitem', { name: 'pop', exact: true }).click();
+  }
+  await expect(bars).toHaveCount(40);
+
+  await page.evaluate(() => {
+    const w = window as unknown as { __longTasks: number[] };
+    w.__longTasks = [];
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) w.__longTasks.push(e.duration);
+    }).observe({ type: 'longtask', buffered: false });
+  });
+  const bar = bars.last();
+  await bar.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' }));
+  const before = await startOf(bar);
+  const box = (await bar.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height - 3);
+  await page.mouse.down();
+  for (let i = 1; i <= 30; i++)
+    await page.mouse.move(box.x + box.width / 2 + i * 4, box.y + box.height - 3);
+  await page.mouse.up();
+  const longTasks = await page.evaluate(
+    () => (window as unknown as { __longTasks: number[] }).__longTasks,
+  );
+  expect(longTasks.filter((d) => d > 50)).toEqual([]);
+  await expect.poll(() => startOf(bar)).toBeGreaterThan(before);
 });

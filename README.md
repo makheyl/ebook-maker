@@ -109,13 +109,42 @@ install or account, and looks and behaves exactly like the editor's preview.
 - **Sound effects** (a separate section): MP3/OGG/WAV/M4A up to 2 MB each, on taps, page turns
   and when a page opens. Readers turn them on and off separately from the voice. Nothing plays
   before the reader's first tap or key press.
+- **Justified text and the book's language**
+  - Text boxes and speech bubbles can be **justified** (⌘/Ctrl+Shift+J; L and E for left and
+    center). The last line stays left-aligned.
+  - Justified text is **hyphenated** by default (a switch turns it off), using the book's
+    language (**Page → Book language**). Typewriter texts never hyphenate.
+  - Exports set `<html lang>` to the book's language, so screen readers pronounce it right.
+- **Audio on every element**
+  - Any picture, character, text, shape, button, bubble or group can play sounds or voice
+    lines **when it appears** (with its entrance), **when tapped**, or **at a set time** (the
+    timeline's playhead).
+  - Each sound has its own **volume, fade in/out and trim**, and can loop. Nothing is
+    re-encoded.
+  - The Audio tab lists every sound on the page.
+- **Background music**
+  - Upload music tracks (MP3/OGG/WAV/M4A, up to 15 MB each) and choose, from any page, which
+    track plays from there on, or stop it. **Tracks crossfade** when they change.
+  - Music gets quieter while the voiceover speaks (**ducking**).
+  - Readers have their own **Music** switch and volume (the B key toggles it), remembered per
+    book. The music pauses when the tab is hidden.
+- **Audio in the timeline**
+  - Under the animations: lanes for the voiceover, each element's sounds, the page's sounds
+    and the music, each clip with its **waveform**.
+  - **Drag** a clip to move it (it snaps to animation edges, other clips and the playhead),
+    drag its edges to **trim**, its top corners to **fade**, and its line to set the
+    **volume**. One undo step per drag.
+  - The keyboard works too: arrows move, [ and ] trim, − and = change the volume, Delete
+    removes.
+  - **Play** in the timeline plays the audio in sync, exactly when the exported book does. A
+    language picker chooses which recordings to hear.
 - **Backups (import):** every export is also a backup. **Import** on the dashboard (or drop the
   file onto it) turns an exported `.html` or `.zip` back into a fully editable book — pictures,
   characters, poses, sounds, animations and interactions included. See
   [Backups: export and import](#backups-export-and-import).
 - **Dashboard:** live covers, create, rename, duplicate and delete, plus a generated sample book
-  ("Pip's Big Day": a mascot with a speech bubble, curling pages, a choice, a flap, a star hunt
-  and two endings). Light and dark
+  ("Pip's Big Day": a mascot with a speech bubble, curling pages, soft background music, a
+  justified paragraph, a choice, a flap, a star hunt and two endings). Light and dark
   themes.
 
 ## Getting started
@@ -147,7 +176,7 @@ Open http://localhost:5173. Everything is stored locally in your browser (Indexe
 | `pnpm lint` / `pnpm format`              | ESLint / Prettier                                                                                 |
 | `pnpm test`                              | Unit tests (Vitest + happy-dom + fake-indexeddb)                                                  |
 | `pnpm test:e2e`                          | Playwright E2E, including the export round trip over `file://`                                    |
-| `pnpm build:player` / `pnpm size:player` | Builds the standalone reader and checks it against the 150 KB gzip budget (currently about 25 KB) |
+| `pnpm build:player` / `pnpm size:player` | Builds the standalone reader and checks it against the 150 KB gzip budget (currently about 39 KB) |
 | `pnpm check`                             | typecheck + lint + format check + unit tests                                                      |
 | `node scripts/screenshots.mjs`           | Regenerates the v2 README screenshots from the sample book (with `pnpm dev` running)              |
 
@@ -167,6 +196,18 @@ The first E2E run needs a browser: `pnpm exec playwright install chromium`.
   for every page.
 - **On phones**, audio can only start after a tap: that's why the book asks "Listen in…" when
   it opens, or shows "Tap to listen".
+
+## Music and audio: file-size advice
+
+- **Music:** mono MP3 at 96–128 kbps is about 1 MB per minute. A short loop (20–60 s) that
+  repeats is usually enough; it loops without a gap.
+- **Limits:** up to 15 MB per music track, 10 MB per voice recording, 2 MB per sound effect,
+  and 40 clips per page. The export dialog warns when voice and music pass 80 MB.
+- **Single HTML files grow by about a third** (audio is embedded as base64). For books with a
+  lot of audio, export as **ZIP**.
+- **Trim in the timeline** instead of re-editing files: trimming plays only part of a file, so
+  one file can serve several clips.
+- **Readers control the mix:** voiceover, sound effects and music each have their own switch.
 
 ## Backups: export and import
 
@@ -428,6 +469,12 @@ target is deleted, and again when a book loads.
 - "Continue where you left off" uses `localStorage`, which some browsers keep separately per
   `file://` path or not at all; the book then simply starts at page 1.
 - Story suggestions understand English words only (the suggester is pluggable).
+- Waveforms are computed when the timeline opens and kept in memory only, so the first view
+  of a long track after a reload takes a moment.
+- Books with timed sounds or music show "Tap to start" on the first page: browsers don't let
+  audio play before the reader's first tap.
+- In a ZIP export opened from disk (`file://`), fades and ducking use the audio element's
+  volume, which iPhones and iPads ignore. Single HTML files are not affected.
 
 ## Roadmap (designed for, not built)
 

@@ -63,6 +63,10 @@ test('the sample book shows off a mascot, a choice, a flap, a star hunt and two 
   await nextUntil(page, reader, '3 / 6');
   await reader.getByRole('button', { name: 'Into the forest' }).click();
   await expect(indicator).toHaveText('4 / 6');
+  // The forest's paragraph is justified.
+  await expect(
+    reader.locator('.fp-page:not([aria-hidden]) [style*="text-align: justify"]'),
+  ).not.toHaveCount(0);
   const owl = reader.locator('.fp-page:not([aria-hidden]) .fl-el[data-type=image]').filter({
     has: page.locator('img[alt="An owl"]'),
   });
@@ -77,6 +81,7 @@ test('the sample book shows off a mascot, a choice, a flap, a star hunt and two 
   // Exported, it works offline.
   await page.getByRole('button', { name: 'Export' }).click();
   await expect(page.getByTestId('export-estimate')).toContainText('sounds');
+  await expect(page.getByTestId('export-estimate')).toContainText('music');
   const [dl] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Download HTML' }).click(),
@@ -95,6 +100,23 @@ test('the sample book shows off a mascot, a choice, a flap, a star hunt and two 
   await expect(book.locator('.fp-page:not([aria-hidden]) .fl-el[data-character-id]')).toHaveCount(
     1,
   );
+
+  // Soft music starts with the reader's first tap; it can be turned off.
+  const musicTrack = () =>
+    book.evaluate(
+      () =>
+        (
+          window as unknown as {
+            folioPlayer: { debugAudio(): { music: { trackId: string | null; level: number } } };
+          }
+        ).folioPlayer.debugAudio().music,
+    );
+  await book.getByRole('button', { name: 'Tap to start' }).click();
+  await expect.poll(async () => (await musicTrack()).trackId).toMatch(/^mu_/);
+  await book.getByRole('button', { name: /^Audio: music on/ }).click();
+  await book.getByRole('switch', { name: 'Music' }).click();
+  await expect.poll(async () => (await musicTrack()).level).toBe(0);
+
   expect(requests.filter((u) => !/^(file|data|blob):/.test(u))).toEqual([]);
   expect(errors).toEqual([]);
   await context.close();

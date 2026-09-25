@@ -22,9 +22,18 @@ import {
 import { applyStoryPlan, type StoryPlanRow } from '@/core/story/apply';
 import { importSoundFiles } from '@/editor/assets/upload-sound';
 import { importImageFiles } from '@/editor/assets/upload';
+import { importMusicFiles } from '@/editor/assets/upload-music';
 import { fitGeneratedText } from '@/editor/text/fit-pages';
 import { projectRepo } from '@/storage';
-import { makeChime, paintOwl, paintPip, paintScene, paintStar, SCENES } from './sample-art';
+import {
+  makeChime,
+  makeMusicLoop,
+  paintOwl,
+  paintPip,
+  paintScene,
+  paintStar,
+  SCENES,
+} from './sample-art';
 
 const tap = (actions: StoryAction[], once = false): Interaction => ({
   id: newId('ia'),
@@ -36,7 +45,13 @@ const tap = (actions: StoryAction[], once = false): Interaction => ({
 type Size = { width: number; height: number };
 
 /** A painted scene filling the page with a caption across the top (the mascot stands below). */
-function scenePage(background: AssetRef, text: string, size: Size, title = false): Page {
+function scenePage(
+  background: AssetRef,
+  text: string,
+  size: Size,
+  title = false,
+  align: 'center' | 'justify' = 'center',
+): Page {
   const { width: W, height: H } = size;
   const m = Math.round(Math.min(W, H) * 0.05);
   const image = createImageElement(background, { x: 0, y: 0, width: W, height: H }, {}, 'exact');
@@ -60,7 +75,7 @@ function scenePage(background: AssetRef, text: string, size: Size, title = false
             fontSize: Math.round(H * 0.048),
             autofit: 'shrink',
             color: '#ffffff',
-            align: 'center',
+            align,
             verticalAlign: 'middle',
             lineHeight: 1.3,
             background: 'rgba(15, 12, 30, 0.55)',
@@ -118,7 +133,8 @@ function freeSide(page: Page, width: number): 'left' | 'right' {
 /**
  * Creates "Pip's Big Day", a small demo that shows what books can do: a mascot that walks,
  * hops, waves, blinks and reacts to taps; a choice between two paths; a lift-the-flap; a
- * treasure hunt that unlocks the page; a sound; and two endings.
+ * treasure hunt that unlocks the page; a sound; soft background music; a justified paragraph;
+ * and two endings.
  */
 export async function createSampleBook(): Promise<string> {
   const size = getPageSizePreset('landscape');
@@ -154,12 +170,20 @@ export async function createSampleBook(): Promise<string> {
   ];
   const { sounds } = await importSoundFiles([makeChime()]);
   const chime = sounds[0];
+  const { tracks } = await importMusicFiles([makeMusicLoop()]);
+  const music = tracks[0];
 
   const pages = [
     scenePage(title, "Pip's Big Day", size, true),
     scenePage(morning, 'Every morning, Pip hopped over the red hills.', size),
     scenePage(crossroads, 'Where should Pip go today? You choose!', size),
-    scenePage(forest, 'The forest was dark and quiet. Something was hiding in there…', size),
+    scenePage(
+      forest,
+      'The forest was dark and quiet. Tall trees whispered over the winding path, and something small was hiding in there, watching Pip with big round eyes…',
+      size,
+      false,
+      'justify',
+    ),
     scenePage(sea, 'At the sea, Pip found shiny stars. Can you find all three?', size),
     scenePage(night, 'At night, sleepy Pip curled up. The moon kept watch. The end!', size),
   ];
@@ -175,6 +199,11 @@ export async function createSampleBook(): Promise<string> {
   base.assets = Object.fromEntries(assets.map((a) => [a.id, a]));
   base.characters = { [character.id]: character };
   if (chime) base.sounds = { [chime.id]: { ...chime, name: 'Chime' } };
+  // Soft music from the first page to the end, under the chime.
+  if (music) {
+    base.music.tracks = { [music.id]: music };
+    base.music.sections = [{ fromPageId: pages[0]!.id, trackId: music.id, volume: 0.45 }];
+  }
 
   const row = (i: number, s: Partial<StoryPlanRow>): StoryPlanRow => ({
     pageId: pages[i]!.id,

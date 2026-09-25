@@ -9,13 +9,14 @@ import { assetUrls } from '../assets/asset-urls';
 const PEAKS = 400;
 const cache = new Map<string, Float32Array>();
 const pending = new Map<string, Promise<Float32Array | null>>();
-let ctx: AudioContext | null = null;
+/** Decoding needs no sound output: an offline context never asks for a gesture. */
+let ctx: OfflineAudioContext | null = null;
 
 async function decode(assetId: string): Promise<Float32Array | null> {
   const url = assetUrls.resolve(assetId);
   if (!url) return null;
   try {
-    ctx ??= new AudioContext();
+    ctx ??= new OfflineAudioContext(1, 1, 44100);
     const buffer = await (await fetch(url)).arrayBuffer();
     const audio = await ctx.decodeAudioData(buffer);
     const data = audio.getChannelData(0);
@@ -23,6 +24,8 @@ async function decode(assetId: string): Promise<Float32Array | null> {
     const peaks = new Float32Array(PEAKS);
     let max = 0;
     for (let i = 0; i < PEAKS; i++) {
+      // Long tracks are measured in slices, so a drag never waits for them.
+      if (i % 50 === 49) await new Promise((r) => setTimeout(r));
       let peak = 0;
       const end = Math.min(data.length, (i + 1) * size);
       for (let j = i * size; j < end; j += 4) peak = Math.max(peak, Math.abs(data[j]!));

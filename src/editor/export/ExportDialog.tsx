@@ -2,6 +2,7 @@ import { AlertTriangle, FileCode2, FolderArchive, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { MADE_WITH_LABEL } from '@/core/brand';
+import { AUDIO_WARNING_BYTES, voiceAndMusicBytes } from '@/core/audio/validate';
 import { SIZE_WARNING_BYTES, type ExportFormat, type SizeEstimate } from '@/core/export/build';
 import { Button } from '@/ui/button';
 import {
@@ -77,6 +78,7 @@ function ExportForm({ onDone }: { onDone: () => void }) {
 
   const size = estimate.key === key ? estimate.value : null;
   const tooBig = !!size && size.bytes > SIZE_WARNING_BYTES;
+  const audioHeavy = voiceAndMusicBytes(project) > AUDIO_WARNING_BYTES;
 
   const run = async () => {
     setBusy(true);
@@ -163,6 +165,12 @@ function ExportForm({ onDone }: { onDone: () => void }) {
           <span className="text-muted-foreground">Estimating size…</span>
         )}
       </div>
+      {audioHeavy && format === 'html' && (
+        <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+          Voiceover and music add up to over 80 MB. The ZIP format keeps them as separate files, so
+          the book opens faster.
+        </p>
+      )}
       {tooBig && (
         <p
           role="alert"

@@ -203,6 +203,7 @@ export function AudioLanes({
         data-fade-in={bar.mix.fadeInMs}
         data-fade-out={bar.mix.fadeOutMs}
         data-trim-start={bar.mix.trimStartMs}
+        aria-describedby={editable ? 'audio-bar-keys' : undefined}
         aria-label={`${bar.label}, ${KIND_NAME[bar.kind]}, starts ${seconds(bar.start)}, ${seconds(bar.length)} long, volume ${Math.round(bar.mix.volume * 100)} %`}
         className={cn(
           'absolute top-1 bottom-1 overflow-hidden rounded-md border text-[10px] font-medium text-black/80 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -276,6 +277,10 @@ export function AudioLanes({
 
   return (
     <>
+      <p id="audio-bar-keys" className="sr-only">
+        Left and right arrows move it (Shift: half a second). [ and ] trim a sound. Minus and equals
+        change the volume. Delete removes it.
+      </p>
       <div
         className="sticky left-0 border-y bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground"
         style={{ width: LABEL_W }}

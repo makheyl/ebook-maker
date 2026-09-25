@@ -263,3 +263,63 @@ export function makeChime(): File {
   }
   return new File([buf], 'Chime.wav', { type: 'audio/wav' });
 }
+
+/**
+ * A soft 8-second music loop (16-bit mono WAV, ~250 KB): a gentle arpeggio over four chords
+ * (C, Am, F, G) with a low hum under each. Notes that ring past the end wrap to the start, so
+ * the loop has no seam.
+ */
+export function makeMusicLoop(): File {
+  const rate = 16000;
+  const seconds = 8;
+  const n = rate * seconds;
+  const mix = new Float32Array(n);
+  const note = (
+    at: number,
+    freq: number,
+    length: number,
+    gain: number,
+    attack: number,
+    decay: number,
+  ) => {
+    const from = Math.round(at * rate);
+    const count = Math.round(length * rate);
+    for (let i = 0; i < count; i++) {
+      const t = i / rate;
+      const env = Math.min(1, t / attack) * Math.exp(-t * decay);
+      const wave = Math.sin(2 * Math.PI * freq * t) + 0.25 * Math.sin(4 * Math.PI * freq * t);
+      mix[(from + i) % n]! += wave * env * gain;
+    }
+  };
+  const bars = [
+    { bass: 130.81, arp: [261.63, 329.63, 392.0, 329.63] }, // C
+    { bass: 110.0, arp: [220.0, 261.63, 329.63, 261.63] }, // Am
+    { bass: 87.31, arp: [174.61, 220.0, 261.63, 220.0] }, // F
+    { bass: 98.0, arp: [196.0, 246.94, 293.66, 246.94] }, // G
+  ];
+  bars.forEach((bar, b) => {
+    note(b * 2, bar.bass, 2.6, 0.35, 0.25, 0.9);
+    bar.arp.forEach((freq, i) => note(b * 2 + i * 0.5, freq, 1.6, 0.3, 0.015, 2.6));
+  });
+  const peak = mix.reduce((m, x) => Math.max(m, Math.abs(x)), 0) || 1;
+
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const text = (o: number, s: string) =>
+    [...s].forEach((ch, i) => v.setUint8(o + i, ch.charCodeAt(0)));
+  text(0, 'RIFF');
+  v.setUint32(4, 36 + n * 2, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  text(36, 'data');
+  v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round((mix[i]! / peak) * 14000), true);
+  return new File([buf], 'Soft morning.wav', { type: 'audio/wav' });
+}
