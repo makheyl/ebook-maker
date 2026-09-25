@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { insertShape, stageElements, waitForSaved } from './helpers';
+import { createBlankBook, insertShape, stageElements, waitForSaved } from './helpers';
 
 test('a 100-page book stays responsive (virtualized sidebar, fast page switches)', async ({
   page,
@@ -58,4 +58,41 @@ test('a 100-page book stays responsive (virtualized sidebar, fast page switches)
   await expect(page.getByTestId('preview').locator('.fp-indicator')).toHaveText('100 / 100');
   await page.keyboard.press('Home');
   await expect(page.getByTestId('preview').locator('.fp-indicator')).toHaveText('1 / 100');
+});
+
+test('a 3,000-letter page and 10 groups of 5 stay quick to edit and to read', async ({ page }) => {
+  test.setTimeout(120_000);
+  await createBlankBook(page, 'Busy page');
+  // 10 groups of 5 shapes: one group, duplicated nine times.
+  for (let i = 0; i < 5; i++) await insertShape(page, 'Rectangle');
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+g');
+  const groups = page.locator('.fl-page.fl-mode-editor > .fl-el[data-type=group]');
+  await expect(groups).toHaveCount(1);
+  for (let i = 0; i < 9; i++) await page.keyboard.press('ControlOrMeta+d');
+  await expect(groups).toHaveCount(10);
+  await expect(page.locator('.fl-page.fl-mode-editor .fl-el[data-type=shape]')).toHaveCount(50);
+
+  // Long text: typed in one go.
+  await page.getByRole('toolbar', { name: 'Insert' }).getByRole('button', { name: 'Text' }).click();
+  const words = 'The little fox ran over the hills and far away. ';
+  await page.keyboard.insertText(words.repeat(Math.ceil(3000 / words.length)).slice(0, 3000));
+  await page.keyboard.press('Escape');
+  await expect(stageElements(page, 'text')).toHaveCount(1);
+  await waitForSaved(page);
+
+  // Nudging all 10 groups and the text is immediate.
+  await page.getByTestId('stage-page').click({ position: { x: 4, y: 4 } });
+  await page.keyboard.press('ControlOrMeta+a');
+  const t0 = Date.now();
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+  expect(Date.now() - t0).toBeLessThan(3000);
+
+  // The reader opens it quickly.
+  const t1 = Date.now();
+  await page.getByRole('banner').getByRole('button', { name: 'Preview' }).click();
+  await expect(page.getByTestId('preview').locator('.fp-page .fl-el[data-type=group]')).toHaveCount(
+    10,
+  );
+  expect(Date.now() - t1).toBeLessThan(3000);
 });

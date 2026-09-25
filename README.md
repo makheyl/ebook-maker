@@ -30,7 +30,19 @@ install or account, and looks and behaves exactly like the editor's preview.
   - Drag, resize and rotate with snapping and guides.
   - Context-sensitive properties panel and a layers panel (reorder, rename, lock, hide).
   - Undo/redo, keyboard shortcuts, copy/paste and debounced autosave with a status indicator.
-- **Text:** inline editing on double-click, 10 bundled fonts, size, weight, italic, color,
+  - **Resizable panels:** drag or keyboard-resize the page list, the properties panel and the
+    timeline; collapse them, or hide both side panels with ⌘/Ctrl+\. Sizes are remembered.
+  - **Right-click menu** on the stage and in the layers panel, with every edit and arrange
+    command and its shortcut.
+  - **Grouping:** ⌘/Ctrl+G groups, ⌘/Ctrl+Shift+G ungroups. Groups move, resize, rotate and
+    animate as one; double-click to edit inside; up to 3 levels deep; the layers panel is a
+    tree.
+  - **Replace, keeping the animation:** drop a picture onto a picture, or right-click →
+    Replace with…; position, animations and tap actions stay. Replacing a character's picture
+    can update it on every page.
+- **Text:** long text always shows in the reader and the export. Each box can **grow** to fit,
+  **shrink** its text to fit, or stay **fixed**; text that doesn't fit is flagged on the
+  stage with one-click fixes. Inline editing on double-click, 10 bundled fonts, size, weight, italic, color,
   alignment, line height, letter spacing, highlight and shadow. Bold, italic and underline also
   work per selection with ⌘/Ctrl+B/I/U.
 - **Images**
@@ -43,7 +55,9 @@ install or account, and looks and behaves exactly like the editor's preview.
   - Triggers: on page open, with previous, after previous, on click.
   - Duration, delay, easing and parameters for each step.
   - Preview a single step or the whole page.
-  - Page transitions: fade, slide, flip, zoom.
+  - Page transitions: fade, slide, flip, zoom and a **page curl** (with a rounded bend and
+    shadows). Readers can drag the page's bottom corner to turn it; locked pages resist; reduced
+    motion fades instead. "Use on every page" applies a transition to the whole book.
 - **Preview and reader**
   - Full-screen reader built on the same runtime as the export.
   - Navigation: buttons, arrow keys, click to advance, swipe.
@@ -64,6 +78,10 @@ install or account, and looks and behaves exactly like the editor's preview.
   - **Poses:** extra pictures (mouth open, eyes closed…) that Talk, Blink and Show pose swap in.
   - **Animate my story** reads each page's words ("jumped" → hop, "night" → sleepy) and proposes
     moves you can review; one click applies them, one undo removes them. The wizard can do it too.
+- **Speech bubbles:** speech, thought, shout, whisper and caption bubbles whose tail points at
+  a character and follows it (the bubble can walk with its speaker). Pop from tail, Pop into
+  tail and Wobble animations, Typewriter inside bubbles, "Show when Pip is tapped", and screen
+  readers hear "Pip says: …".
 - **Page timeline:** every animation on the page as bars on a time ruler. Scrub, play at 0.25–2×,
   drag bars to retime (snapping, one undo per drag), edit custom moves as keyframes, and drag the
   motion path on the stage. The editor and the exported book show the same frame at the same time.
@@ -84,7 +102,8 @@ install or account, and looks and behaves exactly like the editor's preview.
   characters, poses, sounds, animations and interactions included. See
   [Backups: export and import](#backups-export-and-import).
 - **Dashboard:** live covers, create, rename, duplicate and delete, plus a generated sample book
-  ("Pip's Big Day": a mascot, a choice, a flap, a star hunt and two endings). Light and dark
+  ("Pip's Big Day": a mascot with a speech bubble, curling pages, a choice, a flap, a star hunt
+  and two endings). Light and dark
   themes.
 
 ## Getting started

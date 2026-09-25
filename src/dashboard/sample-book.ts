@@ -1,8 +1,10 @@
 import { produce } from 'immer';
 import { createAnimationStep } from '@/core/animation';
 import { createCharacter } from '@/core/character';
+import { attachTail } from '@/core/ops';
 import { newId } from '@/core/ids';
 import {
+  createBubbleElement,
   createButtonElement,
   createImageElement,
   createPage,
@@ -73,7 +75,7 @@ function scenePage(background: AssetRef, text: string, size: Size, title = false
     background: { type: 'color', color: '#ffffff' },
     elements: [image, caption],
     animations,
-    transition: title ? { preset: 'none', duration: 0 } : { preset: 'slide', duration: 700 },
+    transition: title ? { preset: 'none', duration: 0 } : { preset: 'curl', duration: 900 },
   });
 }
 
@@ -191,7 +193,7 @@ export async function createSampleBook(): Promise<string> {
 
   const project = produce(base, (d) => {
     applyStoryPlan(d, character.id, plan);
-    const [p0, , p2, p3, p4, p5] = d.pages as Page[];
+    const [p0, p1, p2, p3, p4, p5] = d.pages as Page[];
     const sound: StoryAction[] = chime ? [{ type: 'playSound', soundId: chime.id }] : [];
     const bh = Math.round(H * 0.1);
 
@@ -304,6 +306,25 @@ export async function createSampleBook(): Promise<string> {
     });
     p4!.goal = { count: 3, label: 'Find the 3 stars' };
     p4!.flow = { lockNext: true };
+
+    // Page 2: Pip says hello in a speech bubble that walks in with Pip.
+    const pip1 = p1!.elements.find((e) => e.type === 'image' && e.characterId)!;
+    const bw = Math.round(W * 0.26);
+    const bhb = Math.round(bw * 0.5);
+    const bx = Math.min(W - bw - 16, Math.max(16, Math.round(pip1.x + pip1.width * 0.55)));
+    const by = Math.max(16, Math.round(pip1.y - bhb * 0.9));
+    const hello = createBubbleElement(
+      "Hi! I'm Pip!",
+      { x: bx, y: by, width: bw, height: bhb },
+      'speech',
+      { style: { fontFamily: 'fredoka', fontSize: Math.round(bhb * 0.28) }, name: 'Pip says hi' },
+    );
+    p1!.elements.push(hello);
+    attachTail(d, p1!.id, hello.id, pip1.id);
+    p1!.animations.push({
+      ...createAnimationStep(hello.id, 'popFromTail', 'afterPrevious'),
+      delay: 150,
+    });
   });
 
   // Measure every caption with the real fonts so none of them overflows its box.
