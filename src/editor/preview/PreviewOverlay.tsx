@@ -30,6 +30,12 @@ export function PreviewOverlay({ onClose }: { onClose: () => void }) {
       resolveAsset: assetUrls.resolveFull,
       startPage,
       showBadge: false,
+      audio: {
+        prompt: false,
+        remember: false,
+        language: ui.previewVoice,
+        onLanguage: (choice) => useUiStore.getState().setPreviewVoice(choice),
+      },
       onExit: () => {
         const page = project.pages[player.pageIndex];
         if (page) useUiStore.getState().setActivePage(page.id);

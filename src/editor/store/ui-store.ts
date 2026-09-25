@@ -13,6 +13,8 @@ type UiState = {
   /** The effective scale the stage is rendered at (resolved from `zoom`). */
   scale: number;
   rightTab: RightTab;
+  /** The voiceover language picked in the preview (kept while the preview re-opens). */
+  previewVoice: string | undefined;
   saveStatus: SaveStatus;
   saveError: string | null;
   /** An Animation Pane preview is playing on the stage (disables editing overlays). */
@@ -41,6 +43,7 @@ type UiActions = {
   setZoom: (zoom: Zoom) => void;
   setScale: (scale: number) => void;
   setRightTab: (tab: RightTab) => void;
+  setPreviewVoice: (choice: string) => void;
   setSaveStatus: (status: SaveStatus, error?: string | null) => void;
   setPreviewing: (previewing: boolean) => void;
   setPlayerOpen: (open: boolean) => void;
@@ -58,6 +61,7 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   zoom: 'fit',
   scale: 1,
   rightTab: 'design',
+  previewVoice: undefined,
   saveStatus: 'saved',
   saveError: null,
   previewing: false,
@@ -120,6 +124,7 @@ export const useUiStore = create<UiState & UiActions>()((set) => ({
   setZoom: (zoom) => set({ zoom }),
   setScale: (scale) => set({ scale }),
   setRightTab: (rightTab) => set({ rightTab }),
+  setPreviewVoice: (previewVoice) => set({ previewVoice }),
   setSaveStatus: (saveStatus, saveError = null) => set({ saveStatus, saveError }),
   setPreviewing: (previewing) => set({ previewing }),
 }));

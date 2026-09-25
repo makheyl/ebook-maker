@@ -16,9 +16,15 @@ import {
   type ReaderState,
 } from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
-import type { BurstEffect, Page, Project } from '../core/schema';
+import type { BurstEffect, Page, Project, VoiceLine } from '../core/schema';
+import { bookHasVoice } from '../core/voice/lines';
+import { bubbleVoiceCues, type VoiceCue } from '../core/voice/cues';
+import { defaultLanguageOf, resolveClip, type VoiceChoice } from '../core/voice/resolve';
 import { bookHasEffects, SoundBoard } from './audio';
 import { Curl } from './curl';
+import { AudioMenu, buildListenCard } from './listen-card';
+import { loadVoicePrefs, saveVoicePrefs } from './audio-prefs';
+import { CueClock, VoicePlayer } from './voice';
 import { burst } from './burst';
 import { el, icon, type IconName } from './dom';
 import { buildEnd } from './end';
@@ -41,12 +47,30 @@ export type PlayerOptions = {
   reducedMotion?: boolean;
   /** Exported books: continue where the reader left off (if the book allows it). */
   resume?: boolean;
+  /**
+   * Voiceover. Exported books ask "Listen in…" on the first page and remember the choice;
+   * the in-app preview doesn't ask (the author's click to open it counts as the gesture),
+   * doesn't remember, and keeps its language in the editor.
+   */
+  audio?: {
+    prompt?: boolean;
+    remember?: boolean;
+    language?: string;
+    onLanguage?: (choice: string) => void;
+  };
 };
 
 /** How long a locked page waits for the reader before hinting what to tap. */
 const IDLE_HINT_MS = 4000;
 
-type Mounted = { page: Page; view: PageView; layer: HTMLElement; timeline: PageTimeline | null };
+type Mounted = {
+  page: Page;
+  view: PageView;
+  layer: HTMLElement;
+  timeline: PageTimeline | null;
+  /** When the page's voiced speech bubbles are heard. */
+  cues: VoiceCue[];
+};
 
 /** A page turn drawn as a curl; `complete` jumps it to its end and runs what follows. */
 type Turning = { curl: Curl; complete: () => void };
@@ -109,6 +133,30 @@ export class Player {
   private readonly reducedMotion: boolean;
   private destroyed = false;
 
+  // ─── Voiceover ───
+  private readonly voice: VoicePlayer | null = null;
+  private readonly cueClock: CueClock;
+  private readonly voiceBtn: HTMLButtonElement | null = null;
+  private readonly audioMenu: AudioMenu | null = null;
+  private voiceChoice: VoiceChoice = 'off';
+  /** The last language chosen (what V switches back to). */
+  private lastLanguage: string | undefined;
+  private readToMe = false;
+  /** Page 1 waits for the reader's first gesture before it plays and speaks. */
+  private holding = false;
+  private listenCard: HTMLElement | null = null;
+  private listenPill: HTMLButtonElement | null = null;
+  /** The next tap only started the book; it doesn't also turn the page. */
+  private swallowTap = false;
+  /** Bubble lines already heard on this page (for Listen again). */
+  private saidCues: VoiceCue[] = [];
+  private dispatchCount = 0;
+  private dispatching = 0;
+  /** The dispatch in which a tap started a voice line (it carries over a page turn). */
+  private tapVoiceDispatch = -1;
+  /** The page shown while the book is being built speaks too (the preview; after the card). */
+  private firstShow = true;
+
   constructor(private readonly opts: PlayerOptions) {
     const { project, mount } = opts;
     this.pages = project.pages;
@@ -161,6 +209,36 @@ export class Player {
       this.menuBtn = null;
     }
     this.sounds = new SoundBoard(opts.resolveAsset);
+    this.cueClock = new CueClock((cue) => {
+      this.saidCues.push(cue);
+      this.sayLine(cue.line, 'queue');
+    });
+    const languages = project.voiceover?.languages ?? [];
+    if (languages.length && bookHasVoice(project)) {
+      this.voice = new VoicePlayer(opts.resolveAsset, this.root);
+      this.voice.onBlocked = () => this.showPill('Tap to listen');
+      this.voiceChoice = this.initialVoiceChoice();
+      this.lastLanguage =
+        this.voiceChoice !== 'off' ? this.voiceChoice : defaultLanguageOf(project);
+      this.voiceBtn = this.button('Voiceover', 'voice', () => this.openAudioMenu());
+      this.voiceBtn.setAttribute('aria-haspopup', 'dialog');
+      this.voiceBtn.classList.add('fp-voice-btn');
+      controls.append(this.voiceBtn);
+      this.audioMenu = new AudioMenu({
+        languages,
+        onLanguage: (choice) => {
+          this.setVoiceChoice(choice);
+          this.closeAudioMenu();
+        },
+        onReadToMe: (on) => this.setReadToMe(on),
+        onListenAgain: () => {
+          this.closeAudioMenu();
+          this.listenAgain();
+        },
+        onClose: () => this.closeAudioMenu(),
+      });
+      this.holding = opts.audio?.prompt !== false;
+    }
     if (bookHasEffects(project)) {
       this.muteBtn = this.button('Mute sound effects', 'soundOn', () => this.toggleMute());
       controls.append(this.muteBtn);
@@ -191,6 +269,7 @@ export class Player {
     this.root.append(stage, this.goalEl, controls, bar, this.endEl, this.live);
     this.behindMenu = [stage, this.goalEl, controls, this.endEl];
     if (this.menu) this.root.appendChild(this.menu.el);
+    if (this.audioMenu) this.root.appendChild(this.audioMenu.el);
     if (opts.showBadge) {
       const badge = el('div', 'fp-badge', MADE_WITH_LABEL);
       this.root.appendChild(badge);
@@ -207,7 +286,10 @@ export class Player {
     const start = Math.max(0, Math.min(saved?.page ?? opts.startPage ?? 0, this.pages.length - 1));
     this.state = { ...initialReaderState(start), history: saved?.history ?? [] };
     this.showPage(start, 0);
+    this.firstShow = false;
+    this.updateVoiceButton();
     this.root.focus({ preventScroll: true });
+    if (this.holding) this.askToListen();
     if (saved) this.welcomeBack(start);
   }
 
@@ -264,6 +346,7 @@ export class Player {
 
   private dispatch(event: ReaderEvent): void {
     if (this.destroyed) return;
+    this.dispatching = ++this.dispatchCount;
     const { state, effects } = reduce(this.opts.project, this.state, event);
     this.state = state;
     for (const effect of effects) this.apply(effect);
@@ -285,12 +368,24 @@ export class Player {
         break;
       case 'playGroup':
         void tl?.play(effect.group);
+        if (this.current) this.cueClock.schedule(this.current.cues, effect.group);
         break;
       case 'finishGroup':
         tl?.finish(effect.group);
+        this.cueClock.flush(effect.group);
         break;
-      case 'playStep':
+      case 'playStep': {
         void tl?.playStep(effect.stepId);
+        // A tap that shows a voiced bubble says its line, like any tap line.
+        const cue = this.current?.cues.find((c) => c.stepId === effect.stepId);
+        if (cue) {
+          this.saidCues.push(cue);
+          this.sayTapLine(cue.line);
+        }
+        break;
+      }
+      case 'playVoice':
+        this.sayTapLine(effect.line);
         break;
       case 'hint':
         this.hint();
@@ -457,6 +552,10 @@ export class Player {
   }
 
   private showEnd(show: boolean): void {
+    if (show) {
+      this.voice?.stop();
+      this.cueClock.clear();
+    }
     this.endEl.hidden = !show;
     this.root.classList.toggle('fp-ended', show);
     if (this.current) this.current.layer.inert = show;
@@ -488,6 +587,13 @@ export class Player {
     const adopted = this.adopt?.index === i ? this.adopt.mounted : null;
     this.adopt = null;
     this.finishTransition();
+    // Leaving a page stops its voice — except a line a tap just started while turning the
+    // page (it finishes; the new page's voice waits behind it).
+    if (this.tapVoiceDispatch === this.dispatching) this.voice?.clearQueue();
+    else this.voice?.stop();
+    this.cueClock.clear();
+    this.saidCues = [];
+    const speak = direction === 1 || this.firstShow;
     // A story button that turned the page is about to disappear: keep keyboard focus in the book.
     const active = document.activeElement;
     const hadFocus = !!active && !!this.current?.layer.contains(active);
@@ -518,7 +624,9 @@ export class Player {
       this.transitionAnims = [];
       if (this.outgoing) this.unmountPage(this.outgoing);
       this.outgoing = null;
-      if (direction !== -1 && this.current === incoming) void incoming.timeline?.play(0);
+      if (direction !== -1 && this.current === incoming && !this.holding) {
+        this.startPage(incoming, speak);
+      }
     };
 
     if (animated && transition.curl && !this.reducedMotion) {
@@ -581,6 +689,8 @@ export class Player {
     clearTimeout(this.toastTimer);
     this.menu?.close();
     this.sounds.destroy();
+    this.voice?.destroy();
+    this.cueClock.clear();
     for (const a of this.transitionAnims) a.cancel();
     this.turning?.curl.destroy();
     this.cancelCornerDrag();
@@ -602,6 +712,7 @@ export class Player {
     mounted.timeline.startIdle();
     // Going back shows the page as it ends; going forward plays it.
     if (direction === -1) mounted.timeline.finishAll();
+    mounted.cues = bubbleVoiceCues(page, mounted.timeline.entrances);
     return mounted;
   }
 
@@ -623,7 +734,7 @@ export class Player {
     scaler.appendChild(view.root);
     layer.appendChild(scaler);
     this.bookEl.appendChild(layer);
-    return { page, view, layer, timeline: null };
+    return { page, view, layer, timeline: null, cues: [] };
   }
 
   private unmountPage(m: Mounted): void {
@@ -726,6 +837,174 @@ export class Player {
     else void this.root.requestFullscreen?.().catch(() => undefined);
   }
 
+  // ─── Voiceover ───────────────────────────────────────────────────────────────
+
+  /** Remembered choice → the editor's (preview) → the reader's browser language → default. */
+  private initialVoiceChoice(): VoiceChoice {
+    const { project } = this.opts;
+    const codes = project.voiceover.languages.map((l) => l.code);
+    const valid = (c: string | undefined): c is string => !!c && (c === 'off' || codes.includes(c));
+    const saved = this.opts.audio?.remember !== false ? loadVoicePrefs(project.id) : null;
+    if (saved) this.readToMe = saved.readToMe;
+    if (valid(saved?.lang)) return saved.lang;
+    if (valid(this.opts.audio?.language)) return this.opts.audio.language;
+    const browser = (typeof navigator !== 'undefined' ? navigator.languages : []) ?? [];
+    for (const tag of browser) {
+      const lower = tag.toLowerCase();
+      const hit = codes.find((c) => lower === c.toLowerCase() || lower.split('-')[0] === c);
+      if (hit) return hit;
+    }
+    return defaultLanguageOf(project) ?? 'off';
+  }
+
+  private savePrefs(): void {
+    if (this.opts.audio?.remember === false) return;
+    saveVoicePrefs(this.opts.project.id, { lang: this.voiceChoice, readToMe: this.readToMe });
+  }
+
+  /** A page arrives and starts: its animations, its voice (going forward), its bubble lines. */
+  private startPage(m: Mounted, speak: boolean): void {
+    void m.timeline?.play(0);
+    if (!speak) return;
+    this.sayLine(m.page.voiceover, 'queue');
+    this.cueClock.schedule(m.cues, 0);
+  }
+
+  private sayLine(line: VoiceLine | undefined, mode: 'interrupt' | 'queue'): void {
+    if (!this.voice || this.holding) return;
+    const clip = resolveClip(line, this.voiceChoice, defaultLanguageOf(this.opts.project));
+    if (clip) this.voice.say(clip, mode);
+  }
+
+  /** A tap's line interrupts whatever is being said. */
+  private sayTapLine(line: VoiceLine): void {
+    this.tapVoiceDispatch = this.dispatching;
+    this.sayLine(line, 'interrupt');
+  }
+
+  private setVoiceChoice(choice: VoiceChoice): void {
+    const { languages } = this.opts.project.voiceover;
+    if (choice !== 'off' && !languages.some((l) => l.code === choice)) return;
+    this.voiceChoice = choice;
+    if (choice !== 'off') this.lastLanguage = choice;
+    // The new language is used from the next line on ("Listen again" replays this page).
+    this.voice?.stop();
+    this.savePrefs();
+    this.updateVoiceButton();
+    this.opts.audio?.onLanguage?.(choice);
+    const name = languages.find((l) => l.code === choice)?.name;
+    this.say(name ? `Voiceover: ${name}.` : 'Voiceover off.');
+  }
+
+  private toggleVoice(): void {
+    if (!this.voice) return;
+    this.setVoiceChoice(this.voiceChoice === 'off' ? (this.lastLanguage ?? 'off') : 'off');
+  }
+
+  private setReadToMe(on: boolean): void {
+    this.readToMe = on;
+    this.savePrefs();
+    this.updateVoiceButton();
+    this.say(on ? 'The pages will turn by themselves.' : 'You turn the pages.');
+  }
+
+  /** Replays this page's voice and the bubble lines heard so far, in the current language. */
+  private listenAgain(): void {
+    const page = this.current?.page;
+    if (!this.voice || !page) return;
+    this.release();
+    this.voice.stop();
+    this.sayLine(page.voiceover, 'interrupt');
+    for (const cue of this.saidCues) this.sayLine(cue.line, 'queue');
+  }
+
+  private updateVoiceButton(): void {
+    const btn = this.voiceBtn;
+    if (!btn) return;
+    const { languages } = this.opts.project.voiceover;
+    const off = this.voiceChoice === 'off';
+    const name = languages.find((l) => l.code === this.voiceChoice)?.name;
+    btn.replaceChildren(icon(off ? 'voiceOff' : 'voice'));
+    if (!off) btn.appendChild(el('span', 'fp-voice-code', this.voiceChoice.toUpperCase()));
+    const label = off ? 'Voiceover off. Change language' : `Voiceover: ${name}. Change language`;
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    this.audioMenu?.update(this.voiceChoice, this.readToMe);
+  }
+
+  private openAudioMenu(): void {
+    if (!this.audioMenu) return;
+    this.release();
+    this.audioMenu.update(this.voiceChoice, this.readToMe);
+    this.root.classList.add('fp-audio-open');
+    this.audioMenu.open(this.voiceBtn);
+  }
+
+  private closeAudioMenu(): void {
+    this.root.classList.remove('fp-audio-open');
+    this.audioMenu?.close();
+  }
+
+  /** "Listen in: English · Tagalog · Read it myself" — or, with a remembered choice, a pill. */
+  private askToListen(): void {
+    const { project } = this.opts;
+    const remembered = this.opts.audio?.remember !== false && !!loadVoicePrefs(project.id)?.lang;
+    if (remembered) {
+      this.showPill(this.voiceChoice === 'off' ? 'Tap to start' : 'Tap to listen');
+      return;
+    }
+    const card = buildListenCard({
+      title: project.title || 'Book',
+      languages: project.voiceover.languages,
+      preselected: this.voiceChoice,
+      onPick: (choice) => {
+        this.setVoiceChoice(choice);
+        this.release();
+      },
+    });
+    this.listenCard = card.el;
+    this.root.classList.add('fp-listening');
+    this.root.appendChild(card.el);
+    card.focus();
+  }
+
+  private showPill(text: string): void {
+    if (!this.listenPill) {
+      const pill = el('button', 'fp-listen-pill');
+      pill.type = 'button';
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.release();
+      });
+      this.root.appendChild(pill);
+      this.listenPill = pill;
+    }
+    this.listenPill.textContent = text;
+    this.voiceBtn?.classList.add('fp-pulse');
+  }
+
+  /**
+   * The reader's first gesture: audio may play from now on (it also primes the voice element
+   * for iOS). A held first page starts now; a line the browser refused plays now.
+   */
+  private release(): void {
+    this.sounds.unlock();
+    this.voice?.prime();
+    this.listenPill?.remove();
+    this.listenPill = null;
+    this.voiceBtn?.classList.remove('fp-pulse');
+    if (this.listenCard) {
+      this.listenCard.remove();
+      this.listenCard = null;
+      this.root.classList.remove('fp-listening');
+      this.root.focus({ preventScroll: true });
+    }
+    if (this.voice?.isBlocked) this.voice.resumeBlocked();
+    if (!this.holding) return;
+    this.holding = false;
+    if (this.current && !this.state.ended) this.startPage(this.current, true);
+  }
+
   // ─── Dragging the corner (page curl) ─────────────────────────────────────────
 
   /**
@@ -734,7 +1013,7 @@ export class Player {
    * reducer, so the reader's state doesn't change until the turn completes.
    */
   private grabCorner(e: PointerEvent): CornerDrag | null {
-    if (this.reducedMotion || this.state.ended || this.menu?.isOpen) return null;
+    if (this.reducedMotion || this.state.ended || this.menu?.isOpen || this.holding) return null;
     if (e.button !== 0 || this.turning || this.transitionAnims.length) return null;
     const box = this.bookEl.getBoundingClientRect();
     const zone = Math.max(44, Math.min(box.width, box.height) * 0.18);
@@ -876,13 +1155,44 @@ export class Player {
     const unlock = () => this.sounds.unlock();
     on(this.root, 'pointerdown', unlock, { capture: true });
     on(this.root, 'keydown', unlock, { capture: true });
+    // Voiceover: the first tap or key starts a held first page (and only that), and a line
+    // the browser refused plays on the next tap.
+    const inCard = (t: EventTarget | null) => t instanceof Node && !!this.listenCard?.contains(t);
+    on(
+      this.root,
+      'pointerdown',
+      (e) => {
+        this.swallowTap = false;
+        if (inCard(e.target)) return;
+        if (this.holding) {
+          const onStage = e.target instanceof Node && stage.contains(e.target);
+          this.release();
+          if (onStage) this.swallowTap = true;
+        } else if (this.voice?.isBlocked) {
+          this.release();
+        }
+      },
+      { capture: true },
+    );
+    on(
+      this.root,
+      'keydown',
+      (e) => {
+        if (inCard(e.target) || !this.holding) return;
+        if (['Tab', 'Shift', 'Alt', 'Control', 'Meta'].includes(e.key)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.release();
+      },
+      { capture: true },
+    );
 
     const interactiveOf = (target: EventTarget | null) =>
       target instanceof Element ? target.closest<HTMLElement>('.fp-page [data-interactive]') : null;
     const elementIdOf = (node: HTMLElement) => node.dataset.elementId;
 
     on(this.root, 'keydown', (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey || this.menu?.isOpen) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || this.menu?.isOpen || this.audioMenu?.isOpen) return;
       const key = e.key;
       const target = e.target as HTMLElement;
       if (key === ' ' || key === 'Enter') {
@@ -918,6 +1228,11 @@ export class Player {
         this.goTo(this.pages.length - 1, 1);
       } else if (key === 'f' || key === 'F') {
         this.toggleFullscreen();
+      } else if ((key === 'v' || key === 'V') && this.voice) {
+        this.toggleVoice();
+      } else if ((key === 'l' || key === 'L') && this.voice) {
+        e.preventDefault();
+        this.openAudioMenu();
       } else if ((key === 'm' || key === 'M') && this.muteBtn) {
         this.toggleMute();
       } else if (key === 'Escape' && this.opts.onExit && !document.fullscreenElement) {
@@ -927,6 +1242,12 @@ export class Player {
 
     // Taps on story buttons, hotspots and characters run their actions (never turn the page).
     on(stage, 'click', (e) => {
+      if (this.swallowTap) {
+        // That tap only started the book.
+        this.swallowTap = false;
+        e.stopPropagation();
+        return;
+      }
       const interactive = interactiveOf(e.target);
       const id = interactive && elementIdOf(interactive);
       if (id) {
@@ -983,7 +1304,7 @@ export class Player {
     });
     on(stage, 'pointerup', (e) => {
       if (!start) return;
-      if (cornerHandled) {
+      if (cornerHandled || this.swallowTap) {
         start = null;
         return;
       }
