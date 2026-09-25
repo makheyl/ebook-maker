@@ -59,7 +59,7 @@ export function PagePanel({ extra }: { extra?: React.ReactNode }) {
                 setBackground(page.id, {
                   type: 'gradient',
                   from: baseColor,
-                  to: '#c9bfff',
+                  to: '#bfe3f7',
                   angle: 180,
                 });
               if (v === 'image') fileRef.current?.click();

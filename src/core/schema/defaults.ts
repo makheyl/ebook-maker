@@ -14,7 +14,8 @@ export const DEFAULT_THEME: Theme = {
   fontFamily: DEFAULT_FONT_ID,
   background: '#ffffff',
   textColor: '#1f1d2b',
-  accent: '#6d4aff',
+  // Inkbug green (white button text is 4.9:1); shapes default to its sky blue.
+  accent: '#367f48',
 };
 
 export const DEFAULT_TEXT_STYLE: TextStyle = {

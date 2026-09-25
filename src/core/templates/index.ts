@@ -17,9 +17,9 @@ export const LAYOUT_TEMPLATES: readonly LayoutTemplate[] = [
 ];
 
 export const PALETTES: readonly PagePalette[] = [
-  { id: 'paper', label: 'Paper', background: '#ffffff', text: '#1f1d2b', accent: '#6d4aff' },
+  { id: 'paper', label: 'Paper', background: '#ffffff', text: '#1f1d2b', accent: '#367f48' },
   { id: 'cream', label: 'Cream', background: '#f7f1e3', text: '#3b2f25', accent: '#c2703d' },
-  { id: 'night', label: 'Night', background: '#16142a', text: '#f4f1ff', accent: '#9b87ff' },
+  { id: 'night', label: 'Night', background: '#10222a', text: '#eef7f4', accent: '#5fb2e3' },
 ];
 
 export function getTemplate(id: string): LayoutTemplate {

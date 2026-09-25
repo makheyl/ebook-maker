@@ -145,7 +145,7 @@ export function createShapeElement(
     opacity: 1,
     locked: false,
     hidden: false,
-    fill: shape === 'line' ? 'transparent' : '#c9bfff',
+    fill: shape === 'line' ? 'transparent' : '#bfe3f7',
     stroke: shape === 'line' ? '#1f1d2b' : undefined,
     strokeWidth: shape === 'line' ? 6 : 0,
     cornerRadius: 0,

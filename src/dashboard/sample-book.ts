@@ -113,7 +113,7 @@ function storyButton(
       style: {
         fontFamily: 'fredoka',
         fontSize,
-        fill: '#6d4aff',
+        fill: '#367f48',
         textColor: '#ffffff',
         radius: box.height / 2,
         shadow: true,
@@ -194,7 +194,7 @@ export async function createSampleBook(): Promise<string> {
     title: "Pip's Big Day (sample)",
     pageSize: { width: W, height: H },
     pages,
-    theme: { fontFamily: 'lora', accent: '#6d4aff' },
+    theme: { fontFamily: 'lora', accent: '#367f48' },
   });
   base.assets = Object.fromEntries(assets.map((a) => [a.id, a]));
   base.characters = { [character.id]: character };
