@@ -62,7 +62,10 @@ test('filters, crop, flip and reset are non-destructive', async ({ page }) => {
   // The original bitmap is untouched: same source, only CSS changes.
   await expect(img).toHaveAttribute('src', src!);
 
-  await page.getByRole('button', { name: 'Reset' }).click();
+  // Wait for the crop dialog to finish closing: while it's open, only its "Reset crop" is
+  // reachable.
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(img).not.toHaveCSS('filter', /grayscale/);
 });
 

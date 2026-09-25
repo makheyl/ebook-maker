@@ -72,7 +72,7 @@ test('removing a language removes its recordings, with Undo', async ({ page }) =
   await createBlankBook(page, 'Remove a language');
   await addLanguages(page, ['English', 'Tagalog']);
   await uploadVoiceClip(page, /Upload Tagalog voiceover for page 1/, makeWav(300), 'tl.wav');
-  await page.getByRole('button', { name: 'Remove Tagalog' }).click();
+  await page.getByRole('button', { name: 'Remove Tagalog', exact: true }).click();
   await expect(page.getByText('Removed Tagalog and 1 recording.')).toBeVisible();
   await expect(page.getByTestId('voice-slot-tl')).toHaveCount(0);
   await page.getByRole('button', { name: 'Undo' }).last().click();

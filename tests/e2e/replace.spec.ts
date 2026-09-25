@@ -107,7 +107,8 @@ test('replace with another kind of element keeps what still works, with an Undo'
   await expect(page.getByTestId('animation-step')).toHaveCount(1);
   await expect(page.getByTestId('animation-step')).toContainText('Pulse');
 
-  await page.getByRole('button', { name: 'Undo' }).click();
+  // The toast's Undo (the toolbar has one too).
+  await page.getByRole('button', { name: 'Undo' }).last().click();
   await expect(stageElements(page, 'text')).toHaveCount(1);
   await expect(page.getByTestId('animation-step')).toHaveCount(2);
 });
