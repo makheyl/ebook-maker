@@ -1,4 +1,5 @@
 import { AlertTriangle, FileWarning, Loader2 } from 'lucide-react';
+import { PRODUCT_NAME } from '@/core/brand';
 import { voiceClips } from '@/core/voice';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { pageAssetIds, SCHEMA_VERSION } from '@/core/schema';
@@ -21,7 +22,7 @@ import type { ImportState } from './useImport';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Import a book exported by Folio: progress, preview, then Keep both / Replace. */
+/** Import a book exported by Inkbug (or Folio): progress, preview, then Keep both / Replace. */
 export function ImportDialog({
   state,
   onCancel,
@@ -138,7 +139,7 @@ function ReadyView({
       <CoverPreview prep={prep} />
       {sourceSchema < SCHEMA_VERSION && (
         <p className="text-xs text-muted-foreground">
-          Made with an older version of Folio — it will be upgraded as it’s imported.
+          Made with an older version of {PRODUCT_NAME} — it will be upgraded as it’s imported.
         </p>
       )}
       {prep.missing.length > 0 && (

@@ -131,7 +131,11 @@ describe('single-file export', () => {
     expect(data.options.showBadge).toBe(true);
 
     expect(doc.title).toBe(project.title);
-    expect(doc.querySelector('meta[name=generator]')!.getAttribute('content')).toBe('Folio');
+    expect(doc.querySelector('meta[name=generator]')!.getAttribute('content')).toBe('Inkbug');
+    // The Inkbug icon comes with the badge, embedded.
+    expect(doc.querySelector('link[rel=icon]')!.getAttribute('href')).toMatch(
+      /^data:image\/png;base64,/,
+    );
     expect(
       doc.querySelector('meta[http-equiv=Content-Security-Policy]')!.getAttribute('content'),
     ).toContain("default-src 'none'");
@@ -288,5 +292,7 @@ describe('renderBookHtml', () => {
       csp: "default-src 'none'",
     });
     expect(parse(html).querySelectorAll('script')).toHaveLength(2);
+    // No badge, no Inkbug icon.
+    expect(parse(html).querySelector('link[rel=icon]')).toBeNull();
   });
 });

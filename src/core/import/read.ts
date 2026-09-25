@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { PRODUCT_NAME } from '../brand';
 import { BOOK_DATA_ID, isBookData, type BookData } from '../export/format';
 import { loadProject } from '../migrations';
 import { projectAssetIds } from '../schema/asset-ids';
@@ -7,7 +8,7 @@ import { voiceClips } from '../voice/lines';
 import type { Project } from '../schema/types';
 
 /**
- * Reading a book back from a Folio export (single .html, .zip folder) or a raw project JSON.
+ * Reading a book back from an Inkbug (or Folio, its earlier name) export (single .html, .zip folder) or a raw project JSON.
  * The file is untrusted: nothing in it is executed, the project goes through the same
  * migrate → validate → repair pipeline as stored books, and only embedded files (data: URIs,
  * or entries inside the zip's assets/ folder) are accepted — never URLs.
@@ -71,7 +72,7 @@ export function extractBookData(html: string): unknown {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const script = doc.getElementById(BOOK_DATA_ID);
   if (!script || script.getAttribute('type') !== 'application/json') {
-    throw new ImportError('This page is not a book exported by Folio.', 'not-folio');
+    throw new ImportError(`This page is not a book exported by ${PRODUCT_NAME}.`, 'not-folio');
   }
   try {
     return JSON.parse(script.textContent ?? '');
@@ -180,7 +181,7 @@ function toProject(raw: unknown): { project: Project; sourceSchema: number } {
     const tooNew = result.error.reason === 'too-new';
     throw new ImportError(
       tooNew
-        ? 'This book was made with a newer version of Folio. Update the app to import it.'
+        ? `This book was made with a newer version of ${PRODUCT_NAME}. Update the app to import it.`
         : 'The book inside this file is not valid.',
       tooNew ? 'too-new' : 'invalid',
       result.error.issues,
@@ -192,7 +193,7 @@ function toProject(raw: unknown): { project: Project; sourceSchema: number } {
 
 function asBookData(value: unknown): BookData {
   if (!isBookData(value)) {
-    throw new ImportError('This file is not a book exported by Folio.', 'not-folio');
+    throw new ImportError(`This file is not a book exported by ${PRODUCT_NAME}.`, 'not-folio');
   }
   return value;
 }
@@ -299,14 +300,14 @@ export async function parseImport(name: string, bytes: Uint8Array): Promise<Pars
       typeof value !== 'object' ||
       !Array.isArray((value as { pages?: unknown }).pages)
     ) {
-      throw new ImportError('This JSON file is not a Folio book.', 'not-folio');
+      throw new ImportError(`This JSON file is not a ${PRODUCT_NAME} book.`, 'not-folio');
     }
     const { project, sourceSchema } = toProject(value);
     const { files, missing } = await collectFiles(project, async () => 'not included in this file');
     return { source: 'json', project, sourceSchema, files, missing };
   }
   throw new ImportError(
-    'Choose a book exported by Folio: an .html file, a .zip file, or a saved .json backup.',
+    `Choose a book exported by ${PRODUCT_NAME}: an .html file, a .zip file, or a saved .json backup.`,
     'unknown-file',
   );
 }

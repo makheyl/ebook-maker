@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { PRODUCT_NAME } from '@/core/brand';
 import { Button } from '@/ui/button';
 
 type State = { error: Error | null };
@@ -16,7 +17,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[Folio] Unexpected error', error, info.componentStack);
+    console.error(`[${PRODUCT_NAME}] Unexpected error`, error, info.componentStack);
   }
 
   override componentDidUpdate(prev: { resetKey?: string }) {

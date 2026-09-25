@@ -123,13 +123,13 @@ test('an exported book imports back as an editable book (HTML, ZIP, keep both, r
   expect(outside).toEqual([]);
 });
 
-test('files that are not Folio books get a clear message and import nothing', async ({ page }) => {
+test('files that are not Inkbug books get a clear message and import nothing', async ({ page }) => {
   const path = test.info().outputPath('not-a-book.html');
   await writeFile(path, '<!doctype html><title>Hi</title><p>Just a page</p>');
   await page.goto('/');
   const dialog = await importFile(page, path);
   await expect(dialog.getByRole('heading', { name: 'Couldn’t import this file' })).toBeVisible();
-  await expect(dialog.getByRole('alert')).toContainText('not a book exported by Folio');
+  await expect(dialog.getByRole('alert')).toContainText('not a book exported by Inkbug');
   await dialog.getByRole('button', { name: 'OK' }).click();
   await expect(page.getByText('Make your first book')).toBeVisible();
 });
@@ -148,7 +148,7 @@ test('dropping an exported book on the dashboard imports it', async ({ page }) =
   }, bytes);
   const target = page.getByRole('main');
   await target.dispatchEvent('dragover', { dataTransfer: drop });
-  await expect(page.getByText('Drop a book exported by Folio to import it')).toBeVisible();
+  await expect(page.getByText('Drop a book exported by Inkbug to import it')).toBeVisible();
   await target.dispatchEvent('drop', { dataTransfer: drop });
   const dialog = page.getByTestId('import-dialog');
   await expect(dialog.getByText('This book is already here')).toBeVisible();

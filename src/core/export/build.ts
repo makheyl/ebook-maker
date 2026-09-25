@@ -1,3 +1,4 @@
+import BRAND_ICON from '@/assets/brand/inkbug-favicon-32.png?inline';
 import { flattenElements } from '../schema/tree';
 import JSZip from 'jszip';
 import { PRODUCT_NAME } from '../brand';
@@ -118,6 +119,8 @@ export function renderBookHtml(parts: HtmlParts): string {
   const author = project.author
     ? `\n<meta name="author" content="${escapeHtml(project.author)}">`
     : '';
+  // The Inkbug icon goes with the “Made with Inkbug” badge; without it the book is unbranded.
+  const icon = parts.showBadge ? `\n<link rel="icon" type="image/png" href="${BRAND_ICON}">` : '';
   const baseCss = `html,body{margin:0;height:100%;background:#111114}#${BOOK_ROOT_ID}{height:100%}`;
   const styles = parts.playerCss
     ? `<style>${escapeInlineCode(baseCss + parts.fontCss + parts.playerCss, 'style')}</style>`
@@ -134,7 +137,7 @@ export function renderBookHtml(parts: HtmlParts): string {
 <meta http-equiv="Content-Security-Policy" content="${escapeHtml(parts.csp)}">
 <title>${title}</title>
 <meta name="description" content="${description}">
-<meta name="generator" content="${escapeHtml(PRODUCT_NAME)}">${author}
+<meta name="generator" content="${escapeHtml(PRODUCT_NAME)}">${author}${icon}
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${description}">
 ${styles}

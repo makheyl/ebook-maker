@@ -2,6 +2,7 @@ import { BookHeart, BookOpen, FileUp, Plus, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Link, useLocation } from 'wouter';
+import { PRODUCT_NAME } from '@/core/brand';
 import { Button } from '@/ui/button';
 import { Logo } from '@/ui/Logo';
 import { ThemeToggle } from '@/ui/ThemeToggle';
@@ -79,7 +80,7 @@ export function Dashboard() {
           aria-hidden="true"
         >
           <p className="flex items-center gap-2 text-lg font-medium">
-            <FileUp className="size-6" /> Drop a book exported by Folio to import it
+            <FileUp className="size-6" /> Drop a book exported by {PRODUCT_NAME} to import it
           </p>
         </div>
       )}

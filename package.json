@@ -2,7 +2,7 @@
   "name": "folio",
   "private": true,
   "version": "0.1.0",
-  "description": "Folio — build interactive, animated ebooks and export them as standalone HTML.",
+  "description": "Inkbug — build interactive, animated ebooks and export them as standalone HTML.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "build:player": "vite build -c vite.player.config.ts",
     "size:player": "node scripts/size-player.mjs",
+    "brand:icons": "node scripts/make-brand-icons.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

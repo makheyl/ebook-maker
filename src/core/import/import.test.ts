@@ -410,6 +410,20 @@ describe('import: older and partial files', () => {
     ).toBe(true);
   });
 
+  it('imports books exported under the old name, Folio', async () => {
+    const original = richBook();
+    const exported = await buildSingleFile(inputs(original));
+    const html = (await exported.blob.text())
+      .replace(
+        '<meta name="generator" content="Inkbug">',
+        '<meta name="generator" content="Folio">',
+      )
+      .replace('"app":"Inkbug"', '"app":"Folio"');
+    expect(html).toContain('content="Folio"');
+    const parsed = await parseImport('old-folio.html', new TextEncoder().encode(html));
+    expect(parsed.project).toEqual(original);
+  });
+
   it('imports a raw project backup; its files are reported as not in the file', async () => {
     const project = richBook();
     const parsed = await parseImport(
@@ -460,7 +474,7 @@ describe('import: untrusted files', () => {
     }
   };
 
-  it('rejects files that are not Folio books, with a reason', async () => {
+  it('rejects files that are not Inkbug books, with a reason', async () => {
     expect(await reason('x.png', new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe('unknown-file');
     expect(await reason('x.html', new TextEncoder().encode('<!doctype html><p>hi</p>'))).toBe(
       'not-folio',
