@@ -250,7 +250,7 @@ export function ImagePanel({ elements }: { elements: ImageElement[] }) {
               if (alt !== (el.alt ?? ''))
                 setImage((i) => void (i.alt = alt || undefined), 'Alt text');
             }}
-            className="w-full resize-none rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full resize-none rounded-md border bg-white/70 dark:bg-white/5 px-2 py-1.5 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </Field>
       </Section>

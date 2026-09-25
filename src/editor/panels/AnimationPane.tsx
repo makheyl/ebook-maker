@@ -329,7 +329,7 @@ function StepEditor({
     change(label, (d) => updateAnimation(d, page.id, step.id, recipe));
 
   return (
-    <div className="grid gap-3 border-t bg-muted/30 px-3 py-3">
+    <div className="grid gap-3 border-t border-foreground/[0.07] bg-white/35 px-3 py-3 dark:bg-white/[0.03]">
       <Field label="Effect">
         <Select
           value={step.preset}
@@ -482,7 +482,7 @@ function StepRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'overflow-hidden rounded-lg border bg-card',
+        'glass-subtle overflow-hidden rounded-lg',
         isDragging && 'z-10 shadow-lg',
         open && 'ring-2 ring-primary/40',
       )}

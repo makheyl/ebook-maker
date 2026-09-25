@@ -318,7 +318,7 @@ export default function TimelineDock() {
         className={cn(
           'absolute top-1 bottom-1 flex cursor-grab items-center overflow-hidden rounded-md border px-2 text-[11px] font-medium text-black/80 shadow-xs outline-none select-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing',
           KIND_BAR[bar.step.kind],
-          selected && 'ring-2 ring-primary ring-offset-1',
+          selected && 'ring-2 ring-primary ring-offset-1 ring-offset-surface',
           bar.loop &&
             'bg-[repeating-linear-gradient(45deg,transparent_0_6px,rgba(255,255,255,.35)_6px_12px)]',
         )}
@@ -415,7 +415,7 @@ export default function TimelineDock() {
     <section
       id="panel-timeline"
       aria-label="Timeline"
-      className="relative flex shrink-0 flex-col border-t bg-sidebar"
+      className="glass glass-edge-t relative flex shrink-0 flex-col"
       style={{ height }}
       data-testid="timeline"
     >
@@ -460,7 +460,7 @@ export default function TimelineDock() {
           key={`${playhead.group}:${Math.round(playhead.ms)}`}
           defaultValue={(playhead.ms / 1000).toFixed(2)}
           inputMode="decimal"
-          className="h-7 w-16 rounded border bg-background px-1.5 text-right tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-7 w-16 rounded border bg-white/70 dark:bg-white/5 px-1.5 text-right tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               const v = Number(e.currentTarget.value);
@@ -471,7 +471,7 @@ export default function TimelineDock() {
         <span className="text-muted-foreground">s</span>
         {selectedTracks && key && selectedKey && selectedBar && (
           <div
-            className="ml-3 flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5"
+            className="ml-3 flex items-center gap-1 rounded-md border bg-white/70 dark:bg-white/5 px-1.5 py-0.5"
             aria-label="Keyframe"
           >
             <span className="text-muted-foreground">{PROPERTY_LABELS[selectedKey.property]}</span>
@@ -578,9 +578,9 @@ export default function TimelineDock() {
       >
         <div className="relative" style={{ width: LABEL_W + totalWidth, minHeight: '100%' }}>
           {/* Ruler */}
-          <div className="sticky top-0 z-20 flex h-7 border-b bg-sidebar">
+          <div className="sticky top-0 z-20 flex h-7 border-b bg-surface">
             <div
-              className="sticky left-0 z-10 shrink-0 border-r bg-sidebar"
+              className="sticky left-0 z-10 shrink-0 border-r bg-surface"
               style={{ width: LABEL_W }}
             />
             <div
@@ -732,7 +732,7 @@ export default function TimelineDock() {
           {model.interaction.length > 0 && (
             <>
               <div
-                className="sticky left-0 border-y bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground"
+                className="sticky left-0 border-y bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground"
                 style={{ width: LABEL_W }}
               >
                 Plays when tapped
@@ -765,10 +765,10 @@ export default function TimelineDock() {
           {/* Playhead */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-[#ff3d8b]"
+            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-signal"
             style={{ left: LABEL_W + (offsets[playhead.group] ?? 0) + playhead.ms * pxPerMs }}
           >
-            <span className="absolute -top-0 -left-1.5 size-3 rotate-45 bg-[#ff3d8b]" />
+            <span className="absolute -top-0 -left-1.5 size-3 rotate-45 bg-signal" />
           </div>
           {snapLine !== null && (
             <div

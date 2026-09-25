@@ -16,7 +16,12 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section className={cn('grid gap-3 border-b px-4 py-4 last:border-b-0', className)}>
+    <section
+      className={cn(
+        'grid gap-3 border-b border-foreground/[0.07] px-4 py-4 last:border-b-0',
+        className,
+      )}
+    >
       {title && (
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {title}
@@ -104,7 +109,7 @@ export function NumberField({
               onCommit(clamp(Number((value + delta).toFixed(6))));
             }
           }}
-          className="h-8 w-full rounded-md border bg-background px-2 pr-7 text-sm tabular-nums shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="h-8 w-full rounded-md border bg-white/70 dark:bg-white/5 px-2 pr-7 text-sm tabular-nums shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         {suffix && (
           <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -238,7 +243,7 @@ export function ColorField({
           onChange={(e) => setDraft(e.target.value)}
           onBlur={(e) => commitText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && commitText(e.currentTarget.value)}
-          className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-8 min-w-0 flex-1 rounded-md border bg-white/70 dark:bg-white/5 px-2 font-mono text-xs shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
       <div className="flex flex-wrap gap-1">

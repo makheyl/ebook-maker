@@ -92,7 +92,7 @@ function LayerRow({
         className={cn(
           'group flex h-9 items-center gap-1 rounded-md px-1 text-sm',
           selected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
-          isDragging && 'z-10 bg-popover shadow-md',
+          isDragging && 'z-10 bg-surface shadow-md',
           el.hidden && 'opacity-60',
         )}
       >
@@ -128,7 +128,7 @@ function LayerRow({
             autoFocus
             defaultValue={el.name}
             aria-label="Layer name"
-            className="h-7 min-w-0 flex-1 rounded border bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-7 min-w-0 flex-1 rounded border bg-white/70 dark:bg-white/5 px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onBlur={(e) => {
               const name = e.target.value.trim().slice(0, 120);
               setRenaming(false);

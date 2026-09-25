@@ -19,7 +19,7 @@ export function Row({
   return (
     <div className="flex border-b border-border/60" style={{ height: ROW_H }} data-testid={testId}>
       <div
-        className="sticky left-0 z-10 flex shrink-0 items-center border-r bg-sidebar"
+        className="sticky left-0 z-10 flex shrink-0 items-center border-r bg-surface"
         style={{ width: LABEL_W }}
       >
         {label}

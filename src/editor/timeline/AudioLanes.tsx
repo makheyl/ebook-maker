@@ -18,9 +18,9 @@ import { LABEL_W, ROW_H, Row } from './row';
 const BAR_H = ROW_H - 8;
 const KIND_STYLE: Record<AudioBar['kind'], string> = {
   sound: 'bg-sky-400/80 border-sky-700',
-  voice: 'bg-violet-400/80 border-violet-700',
-  pageVoice: 'bg-violet-400/80 border-violet-700',
-  bubble: 'bg-violet-300/60 border-violet-600 border-dashed',
+  voice: 'bg-teal-400/80 border-teal-700',
+  pageVoice: 'bg-teal-400/80 border-teal-700',
+  bubble: 'bg-teal-300/60 border-teal-600 border-dashed',
   music: 'bg-slate-400/40 border-slate-500',
 };
 const KIND_NAME: Record<AudioBar['kind'], string> = {
@@ -282,7 +282,7 @@ export function AudioLanes({
         change the volume. Delete removes it.
       </p>
       <div
-        className="sticky left-0 border-y bg-muted/60 px-2 py-1 text-[11px] font-medium text-muted-foreground"
+        className="sticky left-0 border-y bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground"
         style={{ width: LABEL_W }}
       >
         Audio

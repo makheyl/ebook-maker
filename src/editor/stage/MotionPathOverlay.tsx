@@ -64,7 +64,7 @@ export function MotionPathOverlay({ scale }: { scale: number }) {
       <polyline
         points={curve.map((p) => `${p.x},${p.y}`).join(' ')}
         fill="none"
-        stroke="#ff3d8b"
+        stroke="var(--signal)"
         strokeWidth={2}
         strokeDasharray="5 4"
       />
@@ -76,8 +76,8 @@ export function MotionPathOverlay({ scale }: { scale: number }) {
             cx={p.x}
             cy={p.y}
             r={i === times.length - 1 ? 8 : 6}
-            fill={i === times.length - 1 ? '#ff3d8b' : '#fff'}
-            stroke="#ff3d8b"
+            fill={i === times.length - 1 ? 'var(--signal)' : '#fff'}
+            stroke="var(--signal)"
             strokeWidth={2}
             data-stage-control
             data-testid="path-point"

@@ -48,7 +48,7 @@
 }
 .folio-moveable .moveable-guideline,
 .folio-moveable .moveable-line.moveable-guideline {
-  background: #ff3d8b !important;
+  background: var(--signal) !important;
 }
 .selecto-selection {
   border: 1px solid var(--selection) !important;

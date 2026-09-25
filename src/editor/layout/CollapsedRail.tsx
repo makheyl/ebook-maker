@@ -10,8 +10,8 @@ export function CollapsedRail({ side }: { side: 'left' | 'right' }) {
     <div
       className={
         side === 'left'
-          ? 'flex w-10 shrink-0 flex-col items-center border-r bg-sidebar pt-2'
-          : 'flex w-10 shrink-0 flex-col items-center border-l bg-sidebar pt-2'
+          ? 'glass glass-edge-r flex w-10 shrink-0 flex-col items-center pt-2'
+          : 'glass glass-edge-l flex w-10 shrink-0 flex-col items-center pt-2'
       }
     >
       <Button

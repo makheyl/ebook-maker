@@ -205,7 +205,7 @@ function InteractionCard({
   const onceId = useId();
   return (
     <div
-      className="grid gap-2 rounded-lg border bg-background p-2.5"
+      className="glass-subtle grid gap-2 rounded-lg p-2.5"
       data-testid="interaction-card"
       aria-label={`Tap action ${index + 1}`}
       role="group"

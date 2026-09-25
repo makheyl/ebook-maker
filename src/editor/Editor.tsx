@@ -116,7 +116,7 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
           {timelineOpen && (
             <>
               <ResizeHandle panel="bottom" label="Timeline divider" controls="panel-timeline" />
-              <Suspense fallback={<div className="h-60 shrink-0 border-t bg-sidebar" />}>
+              <Suspense fallback={<div className="glass glass-edge-t h-60 shrink-0" />}>
                 <TimelineDock />
               </Suspense>
             </>

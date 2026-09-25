@@ -48,7 +48,7 @@ export function LoadErrorScreen({ projectId, state }: { projectId: string; state
           </p>
         )}
         {state.status === 'corrupt' && state.error.issues.length > 0 && (
-          <details className="w-full rounded-lg border bg-muted/40 p-3 text-left text-xs">
+          <details className="w-full rounded-lg border bg-white/50 p-3 dark:bg-white/5 text-left text-xs">
             <summary className="cursor-pointer font-medium">Technical details</summary>
             <ul className="mt-2 list-disc pl-4 font-mono">
               {state.error.issues.map((issue) => (

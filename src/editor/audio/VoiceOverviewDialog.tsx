@@ -145,7 +145,7 @@ export function VoiceOverviewDialog() {
         ) : (
           <div className="max-h-[60vh] overflow-auto">
             <table className="w-full text-xs" aria-label="Recordings">
-              <thead className="sticky top-0 bg-background">
+              <thead className="sticky top-0 bg-surface">
                 <tr className="text-left text-muted-foreground">
                   <th className="p-1 font-medium">Where</th>
                   {languages.map((l) => (

@@ -169,10 +169,10 @@
 .fl-mode-editor .fl-hotspot {
   display: grid;
   place-items: center;
-  background: rgba(109, 74, 255, 0.08);
-  outline: 3px dashed rgba(109, 74, 255, 0.7);
+  background: rgba(66, 143, 188, 0.1);
+  outline: 3px dashed rgba(66, 143, 188, 0.75);
   outline-offset: -3px;
-  color: rgba(109, 74, 255, 0.95);
+  color: rgba(44, 111, 154, 0.95);
   font:
     600 28px system-ui,
     sans-serif;

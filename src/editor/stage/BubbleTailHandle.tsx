@@ -103,7 +103,7 @@ export function BubbleTailHandle({ view, scale }: { view: PageView | null; scale
       {drag?.overRect && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute z-10 rounded-sm border-2 border-dashed border-[#ff3d8b] bg-[#ff3d8b]/10"
+          className="pointer-events-none absolute z-10 rounded-sm border-2 border-dashed border-signal bg-signal/10"
           style={drag.overRect}
         />
       )}
@@ -115,7 +115,7 @@ export function BubbleTailHandle({ view, scale }: { view: PageView | null; scale
         aria-label={`Tail tip of ${bubble.name}`}
         aria-valuetext={`Tail ${status}`}
         title="Drag onto a character to attach the tail"
-        className="absolute z-20 size-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-[#ff3d8b] shadow-md outline-none focus-visible:ring-4 focus-visible:ring-[#ff3d8b]/40 active:cursor-grabbing"
+        className="absolute z-20 size-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-signal shadow-md outline-none focus-visible:ring-4 focus-visible:ring-signal/40 active:cursor-grabbing"
         style={{ left: tip.x * scale, top: tip.y * scale }}
         onPointerDown={(e) => {
           e.stopPropagation();

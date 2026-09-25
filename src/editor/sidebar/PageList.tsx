@@ -218,7 +218,7 @@ export function PageList() {
     <nav
       id="panel-pages"
       aria-label="Pages"
-      className="flex shrink-0 flex-col border-r bg-sidebar"
+      className="glass glass-edge-r flex shrink-0 flex-col"
       style={{ width }}
     >
       <div className="flex h-10 items-center justify-between gap-1 px-3">

@@ -75,7 +75,7 @@ export function PivotHandle({ scale }: { scale: number }) {
           y1={left.y * scale}
           x2={right.x * scale}
           y2={right.y * scale}
-          stroke="#ff3d8b"
+          stroke="var(--signal)"
           strokeWidth={1.5}
           strokeDasharray="6 4"
         />
@@ -86,7 +86,7 @@ export function PivotHandle({ scale }: { scale: number }) {
         data-stage-control
         aria-label={`${character.name}'s feet`}
         aria-valuetext={`${Math.round(local.x * 100)}% across, ${Math.round(local.y * 100)}% down`}
-        className="absolute z-20 size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-[#ff3d8b] shadow-md outline-none focus-visible:ring-4 focus-visible:ring-[#ff3d8b]/40 active:cursor-grabbing"
+        className="absolute z-20 size-5 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-white bg-signal shadow-md outline-none focus-visible:ring-4 focus-visible:ring-signal/40 active:cursor-grabbing"
         style={{ left: point.x * scale, top: point.y * scale }}
         onPointerDown={(e) => {
           e.stopPropagation();

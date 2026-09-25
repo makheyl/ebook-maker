@@ -78,7 +78,7 @@ export function TopBar({ onPreview, onExport }: { onPreview: () => void; onExpor
   const canUndo = useDocStore((s) => s.canUndo);
   const canRedo = useDocStore((s) => s.canRedo);
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b bg-sidebar px-2">
+    <header className="glass glass-edge-b relative z-10 flex h-12 shrink-0 items-center gap-1 px-2">
       <Tooltip>
         <TooltipTrigger asChild>
           <Link

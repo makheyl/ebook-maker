@@ -25,7 +25,7 @@ function ZoomControl() {
   const setZoom = useUiStore((s) => s.setZoom);
   const timelineOpen = useUiStore((s) => s.timelineOpen);
   return (
-    <div className="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border bg-popover p-0.5 shadow-sm">
+    <div className="glass-strong absolute right-3 bottom-3 flex items-center gap-0.5 rounded-xl p-0.5">
       <Button
         variant={timelineOpen ? 'secondary' : 'ghost'}
         size="xs"
@@ -247,7 +247,7 @@ export function Stage({
         <div ref={setContentEl} className="relative" style={{ width: contentW, height: contentH }}>
           <div
             ref={setPageEl}
-            className="absolute bg-white shadow-[0_1px_3px_rgba(0,0,0,.12),0_8px_24px_-6px_rgba(0,0,0,.18)]"
+            className="absolute bg-white shadow-[0_1px_3px_rgba(20,50,40,.12),0_12px_40px_-8px_rgba(20,50,40,.22)]"
             style={{ left, top, width: pw * scale, height: ph * scale }}
             data-testid="stage-page"
           >

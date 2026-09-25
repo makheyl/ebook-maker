@@ -38,7 +38,7 @@ export function InsertToolbar() {
     <div
       role="toolbar"
       aria-label="Insert"
-      className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border bg-popover p-1 shadow-md"
+      className="glass-strong absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-2xl p-1"
     >
       <Button variant="ghost" size="sm" onClick={() => insertText()}>
         <Type /> Text

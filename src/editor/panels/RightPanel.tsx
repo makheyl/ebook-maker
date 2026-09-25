@@ -80,7 +80,7 @@ export function RightPanel({ animate }: { animate?: React.ReactNode }) {
     <aside
       id="panel-properties"
       aria-label="Properties"
-      className="flex shrink-0 flex-col border-l bg-sidebar"
+      className="glass glass-edge-l flex shrink-0 flex-col"
       style={{ width }}
     >
       <Tabs
