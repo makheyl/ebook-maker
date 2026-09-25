@@ -1,4 +1,5 @@
 import { AlertTriangle, FileWarning, Loader2 } from 'lucide-react';
+import { voiceClips } from '@/core/voice';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { pageAssetIds, SCHEMA_VERSION } from '@/core/schema';
 import { useEnsureAssets } from '@/editor/assets/asset-urls';
@@ -116,12 +117,14 @@ function ReadyView({
   const replaceId = useId();
   const pictures = Object.keys(project.assets).length;
   const sounds = Object.keys(project.sounds).length;
+  const voices = voiceClips(project).length;
   const characters = Object.keys(project.characters).length;
   const summary = [
     plural(project.pages.length, 'page'),
     plural(pictures, 'picture'),
     ...(characters ? [plural(characters, 'character')] : []),
     ...(sounds ? [plural(sounds, 'sound')] : []),
+    ...(voices ? [plural(voices, 'voice recording')] : []),
   ].join(' · ');
 
   return (
@@ -149,7 +152,13 @@ function ReadyView({
           <ul className="list-disc pl-6" aria-label="Missing files">
             {prep.missing.slice(0, 5).map((m) => (
               <li key={m.id}>
-                {m.name ?? (m.kind === 'audio' ? 'A sound' : 'A picture')}: {m.reason}
+                {m.name ??
+                  (m.kind === 'voice'
+                    ? 'A voice recording'
+                    : m.kind === 'audio'
+                      ? 'A sound'
+                      : 'A picture')}
+                : {m.reason}
               </li>
             ))}
             {prep.missing.length > 5 && <li>…and {prep.missing.length - 5} more</li>}

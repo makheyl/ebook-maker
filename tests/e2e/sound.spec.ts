@@ -61,11 +61,15 @@ test('sounds: nothing before the first gesture, taps and page turns play, mute i
   await chooser.setFiles({ name: 'ding.wav', mimeType: 'audio/wav', buffer: wav() });
   await expect(page.getByRole('combobox', { name: 'Sound to play' })).toHaveText('ding');
 
-  // The same sound when a page turns.
+  // The same sound when a page turns (sound effects live in the Audio tab).
   await clickEmpty(page);
-  await expect(page.getByRole('list', { name: 'Sounds' }).getByRole('listitem')).toHaveCount(1);
+  await page.getByRole('tab', { name: 'Audio' }).click();
+  await expect(page.getByRole('list', { name: 'Sound effects' }).getByRole('listitem')).toHaveCount(
+    1,
+  );
   await page.getByRole('combobox', { name: 'Page-turn sound' }).click();
   await page.getByRole('option', { name: 'ding' }).click();
+  await page.getByRole('tab', { name: 'Interact' }).click();
   await expect(page.getByText('No problems found.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Export' }).click();
@@ -103,9 +107,9 @@ test('sounds: nothing before the first gesture, taps and page turns play, mute i
   await expect(indicator).toHaveText('2 / 2');
   await expect.poll(async () => (await plays()).length).toBe(2); // page-turn sound
 
-  const mute = book.getByRole('button', { name: 'Mute sounds' });
+  const mute = book.getByRole('button', { name: 'Mute sound effects' });
   await mute.click();
-  await expect(book.getByRole('button', { name: 'Unmute sounds' })).toHaveAttribute(
+  await expect(book.getByRole('button', { name: 'Unmute sound effects' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
@@ -118,11 +122,11 @@ test('sounds: nothing before the first gesture, taps and page turns play, mute i
   // Mute survives reopening the book.
   await book.reload();
   await expect(indicator).toHaveText('1 / 2');
-  await expect(book.getByRole('button', { name: 'Unmute sounds' })).toBeVisible();
+  await expect(book.getByRole('button', { name: 'Unmute sound effects' })).toBeVisible();
   await book.getByRole('button', { name: 'Tap me!' }).click();
   await book.waitForTimeout(300);
   expect(await plays()).toEqual([]);
-  await book.getByRole('button', { name: 'Unmute sounds' }).click();
+  await book.getByRole('button', { name: 'Unmute sound effects' }).click();
   await book.getByRole('button', { name: 'Tap me!' }).click();
   await expect.poll(async () => (await plays()).length).toBe(1);
 

@@ -153,6 +153,7 @@ function ExportForm({ onDone }: { onDone: () => void }) {
             <span className="text-muted-foreground">
               {' '}
               · images {formatBytes(size.images)}
+              {size.voice > 0 && <> · voiceover {formatBytes(size.voice)}</>}
               {size.audio > 0 && <> · sounds {formatBytes(size.audio)}</>} · fonts{' '}
               {formatBytes(size.fonts)}
             </span>

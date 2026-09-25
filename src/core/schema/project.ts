@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Bump SCHEMA_VERSION whenever the shape changes, and add a migration in core/migrations.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 const id = z.string().min(1).max(64);
 const unit = z.number().min(0).max(1);
@@ -72,6 +72,45 @@ export const soundRefSchema = z.object({
   name: z.string().max(200).optional(),
 });
 
+// ─── Voiceover ─────────────────────────────────────────────────────────────────
+
+export const MAX_VOICE_BYTES = 10 * 1024 * 1024;
+export const MAX_VOICE_LANGUAGES = 8;
+
+/** A language tag: 'en', 'tl', 'fil', 'es-MX'. Fixed once added; also the reader's `lang`. */
+export const languageCodeSchema = z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/);
+
+export const voiceLanguageSchema = z.object({
+  code: languageCodeSchema,
+  /** What readers see: "Tagalog". */
+  name: z.string().trim().min(1).max(40),
+});
+
+/** An uploaded recording. Its details live in the line that uses it (no separate library). */
+export const voiceClipSchema = z.object({
+  id, // 'vo_' + content hash; also the key of the blob in storage (shared with images)
+  kind: z.literal('voice'),
+  mime: z.enum(SOUND_MIMES),
+  bytes: z.number().int().positive().max(MAX_VOICE_BYTES),
+  duration: z.number().nonnegative().optional(),
+  /** The original file name, for the author. */
+  name: z.string().max(200).optional(),
+});
+
+/** One thing said, in each language it was recorded in. */
+export const voiceLineSchema = z
+  .record(languageCodeSchema, voiceClipSchema)
+  .refine((line) => Object.keys(line).length <= MAX_VOICE_LANGUAGES, {
+    message: `At most ${MAX_VOICE_LANGUAGES} languages`,
+  });
+
+export const voiceoverSchema = z.object({
+  /** In the order readers see them. */
+  languages: z.array(voiceLanguageSchema).max(MAX_VOICE_LANGUAGES),
+  /** Plays when the reader's language has no clip; repaired to the first language. */
+  defaultLanguage: languageCodeSchema.optional(),
+});
+
 // ─── Interactions ──────────────────────────────────────────────────────────────
 
 export const BURST_EFFECTS = ['confetti', 'sparkles', 'hearts'] as const;
@@ -87,6 +126,8 @@ export const storyActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('burst'), effect: z.enum(BURST_EFFECTS) }),
   z.object({ type: z.literal('collect') }),
   z.object({ type: z.literal('playSound'), soundId: id }),
+  /** Says a voice line in the reader's language (may be empty while being set up). */
+  z.object({ type: z.literal('playVoice'), line: voiceLineSchema }),
 ]);
 
 export const interactionSchema = z.object({
@@ -278,6 +319,8 @@ export const bubbleElementSchema = z.object({
   /** The character speaking (for "Pip says: …"). */
   speakerId: id.optional(),
   moveWithSpeaker: z.boolean(),
+  /** Voiceover heard when the bubble appears. */
+  voice: voiceLineSchema.optional(),
 });
 
 /** Every element that isn't a group. */
@@ -394,6 +437,10 @@ export const pageSchema = z.object({
     .optional(),
   /** "Find 3 stars": collect actions count toward it; reaching it unlocks next. */
   goal: z.object({ count: z.number().int().min(1).max(20), label: z.string().max(60) }).optional(),
+  /** Voiceover played when the page opens. */
+  voiceover: voiceLineSchema.optional(),
+  /** A sound effect played when the page opens. */
+  openSound: id.optional(),
 });
 
 // ─── Project ───────────────────────────────────────────────────────────────────
@@ -446,6 +493,7 @@ export const projectSchema = z.object({
   characters: z.record(z.string(), characterSchema),
   reader: readerSettingsSchema,
   sounds: z.record(id, soundRefSchema),
+  voiceover: voiceoverSchema,
   exportSettings: exportSettingsSchema,
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -61,6 +61,7 @@ export function createProject(
     characters: {},
     reader: { ...DEFAULT_READER },
     sounds: {},
+    voiceover: { languages: [] },
     exportSettings: { ...DEFAULT_EXPORT_SETTINGS },
     createdAt: now,
     updatedAt: now,

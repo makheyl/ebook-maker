@@ -47,6 +47,17 @@ export const MIGRATIONS: readonly Migration[] = [
     to: 4,
     migrate: (doc) => ({ ...doc, schemaVersion: 4 }),
   },
+  {
+    // v5 adds uploaded voiceover (languages; lines on pages, bubbles and taps) and a page's
+    // "when it opens" sound effect. Only the book-level language list needs a default.
+    from: 4,
+    to: 5,
+    migrate: (doc) => ({
+      ...doc,
+      schemaVersion: 5,
+      voiceover: isObject(doc.voiceover) ? doc.voiceover : { languages: [] },
+    }),
+  },
 ];
 
 export class ProjectLoadError extends Error {

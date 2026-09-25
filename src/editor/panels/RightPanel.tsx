@@ -5,12 +5,20 @@ import {
   type ImageElement,
   type ShapeElement,
 } from '@/core/schema';
-import { Layers, MousePointerClick, Palette, PanelRightClose, Sparkles } from 'lucide-react';
+import {
+  Headphones,
+  Layers,
+  MousePointerClick,
+  Palette,
+  PanelRightClose,
+  Sparkles,
+} from 'lucide-react';
 import { Button } from '@/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/ui/tabs';
 import { useLayoutStore } from '../layout/layout-store';
 import { useSelectedElements } from '../store/selectors';
 import { useUiStore, type RightTab } from '../store/ui-store';
+import { AudioPanel } from '../audio/AudioPanel';
 import { ArrangeSection } from './ArrangeSection';
 import { BubblePanel } from './BubblePanel';
 import { ButtonPanel } from './ButtonPanel';
@@ -56,6 +64,7 @@ const TABS = [
   { value: 'design', label: 'Design', icon: Palette },
   { value: 'animate', label: 'Animate', icon: Sparkles },
   { value: 'interact', label: 'Interact', icon: MousePointerClick },
+  { value: 'audio', label: 'Audio', icon: Headphones },
   { value: 'layers', label: 'Layers', icon: Layers },
 ] as const;
 
@@ -63,7 +72,8 @@ const TABS = [
 export function RightPanel({ animate }: { animate?: React.ReactNode }) {
   const tab = useUiStore((s) => s.rightTab);
   const width = useLayoutStore((s) => s.sizes.right);
-  const compact = width < 300;
+  // Five tabs need room for their words; narrower panels show icons (with tooltips).
+  const compact = width < 340;
   return (
     <aside
       id="panel-properties"
@@ -86,7 +96,7 @@ export function RightPanel({ animate }: { animate?: React.ReactNode }) {
           >
             <PanelRightClose />
           </Button>
-          <TabsList className="grid w-auto flex-1 grid-cols-4">
+          <TabsList className="grid w-auto flex-1 grid-cols-5">
             {TABS.map(({ value, label, icon: Icon }) => (
               <TabsTrigger key={value} value={value} className="px-1" title={label}>
                 {compact ? (
@@ -111,6 +121,9 @@ export function RightPanel({ animate }: { animate?: React.ReactNode }) {
         </TabsContent>
         <TabsContent value="interact" className="min-h-0 flex-1 overflow-y-auto">
           <InteractPanel />
+        </TabsContent>
+        <TabsContent value="audio" className="min-h-0 flex-1 overflow-y-auto">
+          <AudioPanel />
         </TabsContent>
         <TabsContent value="layers" className="min-h-0 flex-1 overflow-y-auto">
           <LayersPanel />

@@ -17,7 +17,7 @@ import {
 } from '../core/interaction/runtime';
 import { createPageView, type PageView } from '../core/render';
 import type { BurstEffect, Page, Project } from '../core/schema';
-import { bookHasSound, SoundBoard } from './audio';
+import { bookHasEffects, SoundBoard } from './audio';
 import { Curl } from './curl';
 import { burst } from './burst';
 import { el, icon, type IconName } from './dom';
@@ -161,8 +161,8 @@ export class Player {
       this.menuBtn = null;
     }
     this.sounds = new SoundBoard(opts.resolveAsset);
-    if (bookHasSound(project)) {
-      this.muteBtn = this.button('Mute sounds', 'soundOn', () => this.toggleMute());
+    if (bookHasEffects(project)) {
+      this.muteBtn = this.button('Mute sound effects', 'soundOn', () => this.toggleMute());
       controls.append(this.muteBtn);
       this.updateMute();
     } else {
@@ -340,7 +340,7 @@ export class Player {
   private toggleMute(): void {
     this.sounds.setMuted(!this.sounds.muted);
     this.updateMute();
-    this.say(this.sounds.muted ? 'Sounds off.' : 'Sounds on.');
+    this.say(this.sounds.muted ? 'Sound effects off.' : 'Sound effects on.');
   }
 
   private updateMute(): void {
@@ -348,7 +348,7 @@ export class Player {
     const muted = this.sounds.muted;
     this.muteBtn.replaceChildren(icon(muted ? 'soundOff' : 'soundOn'));
     this.muteBtn.setAttribute('aria-pressed', String(muted));
-    const label = muted ? 'Unmute sounds' : 'Mute sounds';
+    const label = muted ? 'Unmute sound effects' : 'Mute sound effects';
     this.muteBtn.setAttribute('aria-label', label);
     this.muteBtn.title = label;
   }
@@ -564,6 +564,7 @@ export class Player {
     for (const id of this.state.collected[page.id] ?? []) this.markCollected(id, false);
     const turn = this.opts.project.reader.pageTurnSound;
     if (turn && direction !== 0) this.sounds.play(turn);
+    if (page.openSound) this.sounds.play(page.openSound);
     this.preloadAround(i);
     this.updateChrome();
     this.updateGoal();

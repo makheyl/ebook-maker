@@ -68,7 +68,10 @@ test('an exported book imports back as an editable book (HTML, ZIP, keep both, r
   await page.getByRole('tab', { name: 'Interact' }).click();
   await expect(page.getByText('No problems found.')).toBeVisible();
   // Sounds and poses came back as real, editable files.
-  await expect(page.getByRole('list', { name: 'Sounds' }).getByRole('listitem')).toHaveCount(1);
+  await page.getByRole('tab', { name: 'Audio' }).click();
+  await expect(page.getByRole('list', { name: 'Sound effects' }).getByRole('listitem')).toHaveCount(
+    1,
+  );
   await page.locator('.fl-mode-editor .fl-el[data-character-id]').click();
   await page.getByRole('tab', { name: 'Design' }).click();
   await expect(page.getByRole('list', { name: 'Poses' }).getByRole('listitem')).toHaveCount(1);

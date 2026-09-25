@@ -2,7 +2,8 @@ import JSZip from 'jszip';
 import { BOOK_DATA_ID, isBookData, type BookData } from '../export/format';
 import { loadProject } from '../migrations';
 import { projectAssetIds } from '../schema/asset-ids';
-import { MAX_SOUND_BYTES, SOUND_MIMES } from '../schema/project';
+import { MAX_SOUND_BYTES, MAX_VOICE_BYTES, SOUND_MIMES } from '../schema/project';
+import { voiceClips } from '../voice/lines';
 import type { Project } from '../schema/types';
 
 /**
@@ -33,9 +34,9 @@ export class ImportError extends Error {
   }
 }
 
-export type FileKind = 'image' | 'audio';
+export type FileKind = 'image' | 'audio' | 'voice';
 
-/** A picture or sound found in the file, checked for type and size (not yet decoded). */
+/** A picture, sound or voice recording found in the file, checked for type and size (not yet decoded). */
 export type ImportedFile = { id: string; kind: FileKind; mime: string; bytes: Uint8Array };
 
 /** A file the book refers to that couldn't be restored, and why. */
@@ -100,7 +101,7 @@ export function decodeDataUri(uri: string): { mime: string; bytes: Uint8Array } 
 // ─── Files ─────────────────────────────────────────────────────────────────────
 
 /** Where a zip export keeps each file (relative to its index.html). */
-const ZIP_ASSET_PATH = /^assets\/(images|audio)\/[A-Za-z0-9_-]{1,100}\.[a-z0-9]{1,5}$/;
+const ZIP_ASSET_PATH = /^assets\/(images|audio|voice)\/[A-Za-z0-9_-]{1,100}\.[a-z0-9]{1,5}$/;
 
 const MIME_BY_EXT: Record<string, string> = {
   webp: 'image/webp',
@@ -119,6 +120,9 @@ function checkFile(kind: FileKind, mime: string, size: number): string | null {
   if (kind === 'image') {
     if (!(IMPORT_IMAGE_MIMES as readonly string[]).includes(mime)) return 'not a supported picture';
     if (size > MAX_IMAGE_BYTES) return 'picture is too large';
+  } else if (kind === 'voice') {
+    if (!(SOUND_MIMES as readonly string[]).includes(mime)) return 'not a supported recording';
+    if (size > MAX_VOICE_BYTES) return 'recording is over 10 MB';
   } else {
     if (!(SOUND_MIMES as readonly string[]).includes(mime)) return 'not a supported sound';
     if (size > MAX_SOUND_BYTES) return 'sound is over 2 MB';
@@ -137,9 +141,15 @@ type FileReader = (id: string, kind: FileKind) => Promise<ImportedFile | string>
 async function collectFiles(project: Project, read: FileReader) {
   const files: ImportedFile[] = [];
   const missing: MissingFile[] = [];
+  const voice = new Map(voiceClips(project).map((c) => [c.id, c]));
   for (const id of projectAssetIds(project)) {
-    const kind: FileKind = project.sounds[id] ? 'audio' : 'image';
-    const name = kind === 'audio' ? project.sounds[id]?.name : project.assets[id]?.name;
+    const kind: FileKind = voice.has(id) ? 'voice' : project.sounds[id] ? 'audio' : 'image';
+    const name =
+      kind === 'voice'
+        ? voice.get(id)?.name
+        : kind === 'audio'
+          ? project.sounds[id]?.name
+          : project.assets[id]?.name;
     if (kind === 'image' && !project.assets[id]) {
       missing.push({ id, kind, reason: 'the book has no details for this picture' });
       continue;
@@ -206,6 +216,7 @@ async function fromZip(bytes: Uint8Array): Promise<ParsedImport> {
   const base = indexPath.slice(0, indexPath.length - 'index.html'.length);
   const data = asBookData(extractBookData(await zip.file(indexPath)!.async('string')));
   const { project, sourceSchema } = toProject(data.project);
+  const voice = new Map(voiceClips(project).map((c) => [c.id, c]));
 
   let unpacked = 0;
   const { files, missing } = await collectFiles(project, async (id, kind) => {
@@ -225,7 +236,11 @@ async function fromZip(bytes: Uint8Array): Promise<ParsedImport> {
     if (size > MAX_IMAGE_BYTES || unpacked > MAX_ZIP_UNPACKED_BYTES) return 'file is too large';
     const ext = src.slice(src.lastIndexOf('.') + 1).toLowerCase();
     const mime =
-      (kind === 'audio' ? project.sounds[id]?.mime : project.assets[id]?.mime) ??
+      (kind === 'voice'
+        ? voice.get(id)?.mime
+        : kind === 'audio'
+          ? project.sounds[id]?.mime
+          : project.assets[id]?.mime) ??
       MIME_BY_EXT[ext] ??
       '';
     const fileBytes = await entry.async('uint8array');

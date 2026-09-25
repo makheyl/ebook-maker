@@ -1,6 +1,6 @@
 import { findElement } from '../schema/tree';
 import { groupCount } from '../animation/schedule';
-import type { BurstEffect, Page, Project, StoryAction } from '../schema/types';
+import type { BurstEffect, Page, Project, StoryAction, VoiceLine } from '../schema/types';
 
 /**
  * The reader's story logic as a pure state machine: pages, click groups, branching history,
@@ -40,7 +40,9 @@ export type ReaderEffect =
   | { type: 'unlocked' }
   | { type: 'showEnd' }
   | { type: 'hideEnd' }
-  | { type: 'playSound'; soundId: string };
+  | { type: 'playSound'; soundId: string }
+  /** Say a voice line in the reader's language (never navigates). */
+  | { type: 'playVoice'; line: VoiceLine; elementId: string };
 
 export type ReduceResult = { state: ReaderState; effects: ReaderEffect[] };
 
@@ -180,6 +182,9 @@ function tap(
         return false;
       case 'playSound':
         add({ state: s, effects: [{ type: 'playSound', soundId: action.soundId }] });
+        return false;
+      case 'playVoice':
+        add({ state: s, effects: [{ type: 'playVoice', line: action.line, elementId }] });
         return false;
       case 'collect': {
         const got = s.collected[page.id] ?? [];

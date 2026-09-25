@@ -213,6 +213,7 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   burst: 'Burst of fun',
   collect: 'Collect it',
   playSound: 'Play a sound',
+  playVoice: 'Play voiceover',
 };
 
 /**
@@ -248,6 +249,8 @@ export function defaultAction(
     }
     case 'burst':
       return { action: { type, effect: 'sparkles' } };
+    case 'playVoice':
+      return { action: { type, line: {} } };
     default:
       return { action: { type } as StoryAction };
   }

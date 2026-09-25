@@ -2,6 +2,7 @@ import { flattenElements } from '../schema/tree';
 import { getFont, type FontSubset } from '../fonts/catalog';
 import { projectAssetIds } from '../schema/asset-ids';
 import type { Project } from '../schema/types';
+import { voiceClips } from '../voice/lines';
 
 /** Image files the book owns (hidden elements, characters and poses included). */
 export function bookImageIds(project: Project): string[] {
@@ -13,13 +14,18 @@ export function bookSoundIds(project: Project): string[] {
   return Object.keys(project.sounds);
 }
 
+/** Every voice recording the book uses. */
+export function bookVoiceIds(project: Project): string[] {
+  return voiceClips(project).map((c) => c.id);
+}
+
 /**
  * The files an export carries: everything the book owns, not only what a reader sees on the
  * first read, so every export is a complete backup that imports back as an editable book.
  * (Files no page or character refers to any more are still left out.)
  */
 export function exportedAssetIds(project: Project): string[] {
-  return [...bookImageIds(project), ...bookSoundIds(project)];
+  return [...bookImageIds(project), ...bookSoundIds(project), ...bookVoiceIds(project)];
 }
 
 export type FontUsage = { fontId: string; style: 'normal' | 'italic'; subset: FontSubset };

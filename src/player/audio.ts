@@ -3,9 +3,10 @@ import type { Project } from '../core/schema';
 
 const MUTE_KEY = 'folio:muted';
 
-/** Whether the book can make any sound (decides if the reader shows a mute button). */
-export function bookHasSound(project: Project): boolean {
+/** Whether the book has sound effects (decides if the reader shows the effects button). */
+export function bookHasEffects(project: Project): boolean {
   if (project.reader.pageTurnSound && project.sounds?.[project.reader.pageTurnSound]) return true;
+  if (project.pages.some((p) => p.openSound && project.sounds?.[p.openSound])) return true;
   return project.pages.some((page) =>
     flattenElements(page.elements).some(
       (el) =>

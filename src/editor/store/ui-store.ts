@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type RightTab = 'design' | 'animate' | 'interact' | 'layers';
+export type RightTab = 'design' | 'animate' | 'interact' | 'audio' | 'layers';
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 export type Zoom = 'fit' | number;
 

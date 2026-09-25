@@ -20,6 +20,10 @@ import type {
   assetRefSchema,
   soundRefSchema,
   SOUND_MIMES,
+  voiceClipSchema,
+  voiceLanguageSchema,
+  voiceLineSchema,
+  voiceoverSchema,
   exportSettingsSchema,
   imageElementSchema,
   imageFiltersSchema,
@@ -48,6 +52,11 @@ export type Theme = z.infer<typeof themeSchema>;
 export type AssetRef = z.infer<typeof assetRefSchema>;
 export type SoundRef = z.infer<typeof soundRefSchema>;
 export type SoundMime = (typeof SOUND_MIMES)[number];
+export type VoiceClip = z.infer<typeof voiceClipSchema>;
+export type VoiceLanguage = z.infer<typeof voiceLanguageSchema>;
+/** One thing said: a clip per language code. */
+export type VoiceLine = z.infer<typeof voiceLineSchema>;
+export type Voiceover = z.infer<typeof voiceoverSchema>;
 export type Page = z.infer<typeof pageSchema>;
 export type PageBackground = z.infer<typeof pageBackgroundSchema>;
 export type PageTransition = z.infer<typeof pageTransitionSchema>;

@@ -1,3 +1,4 @@
+import { voiceClips } from '../voice/lines';
 import { flattenElements } from './tree';
 import type { Page, Project } from './types';
 
@@ -11,7 +12,7 @@ export function pageAssetIds(page: Page): string[] {
 
 /**
  * Every stored file the book owns: page images (hidden ones included), each character's
- * artwork and poses, and every sound in its list. Storage keeps these from garbage collection,
+ * artwork and poses, every sound in its list, and every voice recording. Storage keeps these from garbage collection,
  * and exports carry all of them so any export can be imported back as an editable book.
  */
 export function projectAssetIds(project: Project): string[] {
@@ -21,7 +22,8 @@ export function projectAssetIds(project: Project): string[] {
     ids.add(character.assetId);
     for (const pose of character.poses) ids.add(pose.assetId);
   }
-  // Sound blobs live in the same store, so they must count as owned too.
+  // Sound and voice blobs live in the same store, so they must count as owned too.
   for (const id of Object.keys(project.sounds)) ids.add(id);
+  for (const clip of voiceClips(project)) ids.add(clip.id);
   return [...ids];
 }

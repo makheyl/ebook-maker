@@ -89,3 +89,50 @@ export function parseOrigin(origin: string): { x: number; y: number } {
   const [x, y] = origin.split(' ').map((v) => Number.parseFloat(v));
   return { x: x!, y: y! };
 }
+
+/**
+ * A short 8-bit mono WAV built in the test. Different lengths make recordings tell-apart-able
+ * (and give them different content hashes).
+ */
+export function makeWav(ms = 250, pitch = 3): Buffer {
+  const rate = 8000;
+  const n = Math.round((rate * ms) / 1000);
+  const buf = Buffer.alloc(44 + n);
+  buf.write('RIFF', 0);
+  buf.writeUInt32LE(36 + n, 4);
+  buf.write('WAVE', 8);
+  buf.write('fmt ', 12);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20); // PCM
+  buf.writeUInt16LE(1, 22); // mono
+  buf.writeUInt32LE(rate, 24);
+  buf.writeUInt32LE(rate, 28);
+  buf.writeUInt16LE(1, 32);
+  buf.writeUInt16LE(8, 34);
+  buf.write('data', 36);
+  buf.writeUInt32LE(n, 40);
+  for (let i = 0; i < n; i++) buf[44 + i] = 128 + Math.round(60 * Math.sin(i / pitch));
+  return buf;
+}
+
+/** Adds voiceover languages from the Audio tab's presets (nothing selected on the page). */
+export async function addLanguages(page: Page, names: string[]) {
+  await page.getByTestId('stage-page').click({ position: { x: 8, y: 8 } });
+  await page.getByRole('tab', { name: 'Audio' }).click();
+  for (const name of names) {
+    await page.getByRole('button', { name: /Add (your first|a) language/ }).click();
+    await page.getByRole('menuitem', { name: new RegExp(`^${name}`) }).click();
+  }
+  await expect(page.getByRole('list', { name: 'Languages' }).getByRole('listitem')).toHaveCount(
+    names.length,
+  );
+}
+
+/** Uploads a recording into a voice slot (button named "Upload <Language> voiceover for …"). */
+export async function uploadVoiceClip(page: Page, slotName: RegExp, file: Buffer, name: string) {
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('button', { name: slotName }).click(),
+  ]);
+  await chooser.setFiles({ name, mimeType: 'audio/wav', buffer: file });
+}

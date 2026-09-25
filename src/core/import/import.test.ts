@@ -20,6 +20,7 @@ import {
 import { escapeJsonForHtml } from '../export/escape';
 import { asCopy, localIsNewer } from './copy';
 import { decodeDataUri, detectKind, ImportError, parseImport } from './read';
+import { voiceClips } from '../voice/lines';
 
 const EVIL = '</script><script>alert(1)</script><!-- &     🦊';
 
@@ -200,8 +201,29 @@ function richBook(): Project {
     ],
   });
   p3.animations.push(createAnimationStep('el_group', 'slideUp'));
+  // Voiceover in two languages: a page, a bubble and a tap line.
+  project.voiceover = {
+    languages: [
+      { code: 'en', name: 'English' },
+      { code: 'tl', name: 'Tagalog' },
+    ],
+    defaultLanguage: 'en',
+  };
+  const vo = (id: string) => ({
+    id,
+    kind: 'voice' as const,
+    mime: 'audio/mpeg' as const,
+    bytes: 9,
+  });
+  p1.voiceover = { en: vo('vo_page1_en'), tl: vo('vo_page1_tl') };
+  p1.openSound = 'snd_ding';
+  bubble.voice = { tl: vo('vo_bubble_tl') };
+  pip.interactions![0]!.actions.push({ type: 'playVoice', line: { en: vo('vo_pip_en') } });
   return project;
 }
+
+const voiceMimes = (project: Project) =>
+  new Map(voiceClips(project).map((c) => [c.id, c.mime] as const));
 
 /** Deterministic, distinct bytes per stored file. */
 const bytesFor = (id: string) => new TextEncoder().encode(`file:${id}`);
@@ -214,7 +236,8 @@ function inputs(project: Project): ExportInputs {
     showBadge: true,
     fontFiles: [],
     getAsset: async (id) => {
-      const mime = project.sounds[id]?.mime ?? project.assets[id]?.mime;
+      const mime =
+        project.sounds[id]?.mime ?? project.assets[id]?.mime ?? voiceMimes(project).get(id);
       return mime ? new Blob([bytesFor(id)], { type: mime }) : undefined;
     },
     getFont: async () => new ArrayBuffer(0),
@@ -241,10 +264,36 @@ describe('import: round trip', () => {
       expect(parsed.files.map((f) => f.id).sort()).toEqual(ids);
       for (const file of parsed.files) {
         expect([...file.bytes], file.id).toEqual([...bytesFor(file.id)]);
-        expect(file.kind).toBe(original.sounds[file.id] ? 'audio' : 'image');
+        expect(file.kind).toBe(
+          file.id.startsWith('vo_') ? 'voice' : original.sounds[file.id] ? 'audio' : 'image',
+        );
       }
       // Nothing new for the editor's checks to complain about.
       expect(validateInteractivity(parsed.project)).toEqual(validateInteractivity(original));
+    });
+  }
+
+  for (const format of ['html', 'zip'] as const) {
+    it(`restores a 3 MB voice recording byte-for-byte (${format})`, async () => {
+      const project = richBook();
+      const big = new Uint8Array(3 * 1024 * 1024).map((_, i) => i % 251);
+      const base = inputs(project);
+      const withBig: ExportInputs = {
+        ...base,
+        getAsset: async (id) =>
+          id === 'vo_page1_tl' ? new Blob([big], { type: 'audio/mpeg' }) : base.getAsset(id),
+      };
+      const exported = format === 'html' ? await buildSingleFile(withBig) : await buildZip(withBig);
+      if (format === 'zip') {
+        const zip = await JSZip.loadAsync(await exportBytes(exported.blob));
+        expect(Object.keys(zip.files).some((n) => n.startsWith('assets/voice/vo_'))).toBe(true);
+      }
+      const parsed = await parseImport(exported.filename, await exportBytes(exported.blob));
+      expect(parsed.missing).toEqual([]);
+      const file = parsed.files.find((f) => f.id === 'vo_page1_tl')!;
+      expect(file.kind).toBe('voice');
+      expect(file.bytes.length).toBe(big.length);
+      expect(file.bytes.every((b, i) => b === big[i])).toBe(true);
     });
   }
 

@@ -1,4 +1,5 @@
 import { replacePicture } from './replace/actions';
+import { voiceClips } from '@/core/voice';
 import { ReplaceCharacterDialog } from './replace/ReplaceCharacterDialog';
 import { StageContextMenu } from './menus/EditorContextMenu';
 import { CollapsedRail } from './layout/CollapsedRail';
@@ -54,11 +55,19 @@ export function Editor({ mode = 'edit' }: { mode?: 'edit' | 'preview' }) {
   useEditorShortcuts(shortcutOpts);
 
   // Images can arrive from other books (paste) — resolve any we don't have URLs for yet.
+  // Voice recordings live in pages' lines, so their ids are joined into one stable key.
+  const voiceIds = voiceClips(project)
+    .map((c) => c.id)
+    .join(',');
   useEffect(() => {
     void assetUrls
-      .ensure([...Object.keys(project.assets), ...Object.keys(project.sounds)])
+      .ensure([
+        ...Object.keys(project.assets),
+        ...Object.keys(project.sounds),
+        ...(voiceIds ? voiceIds.split(',') : []),
+      ])
       .catch(() => undefined);
-  }, [project.assets, project.sounds]);
+  }, [project.assets, project.sounds, voiceIds]);
 
   return (
     <div className="flex h-full flex-col">

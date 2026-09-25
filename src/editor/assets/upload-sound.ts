@@ -3,14 +3,14 @@ import type { SoundRef } from '@/core/schema';
 import { assetRepo } from '@/storage';
 import { assetUrls } from './asset-urls';
 
-async function hashSound(buffer: ArrayBuffer): Promise<string> {
+export async function hashAudio(buffer: ArrayBuffer, prefix = 'snd'): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', buffer);
   const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-  return `snd_${hex.slice(0, 40)}`;
+  return `${prefix}_${hex.slice(0, 40)}`;
 }
 
 /** Reads the clip length (best effort: some formats or browsers won't say). */
-function readDuration(blob: Blob): Promise<number | undefined> {
+export function readDuration(blob: Blob): Promise<number | undefined> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio();
@@ -47,7 +47,7 @@ export async function importSoundFiles(files: readonly File[]): Promise<{
     }
     try {
       const buffer = await file.arrayBuffer();
-      const id = await hashSound(buffer);
+      const id = await hashAudio(buffer);
       const blob = new Blob([buffer], { type: check.mime });
       const duration = await readDuration(blob);
       await assetRepo.put({
@@ -77,16 +77,16 @@ export async function importSoundFiles(files: readonly File[]): Promise<{
 }
 
 export const SOUND_ACCEPT =
-  'audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.ogg,.wav,.m4a';
+  'audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,audio/aac,.mp3,.ogg,.oga,.wav,.m4a,.aac';
 
 /** Opens the file picker for sounds (must be called from a click or key press). */
-export function pickSoundFiles(multiple = false): Promise<File[]> {
+export function pickSoundFiles(multiple = false, testId = 'sound-input'): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = SOUND_ACCEPT;
     input.multiple = multiple;
-    input.dataset.testid = 'sound-input';
+    input.dataset.testid = testId;
     input.style.display = 'none';
     input.addEventListener('change', () => {
       resolve([...(input.files ?? [])]);

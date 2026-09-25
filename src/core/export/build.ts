@@ -7,7 +7,7 @@ import { plainText } from '../schema/text';
 import type { Project } from '../schema/types';
 import { escapeHtml, escapeInlineCode, escapeJsonForHtml, slugify } from './escape';
 import { BOOK_DATA_ID, BOOK_FORMAT_VERSION, BOOK_ROOT_ID, type BookData } from './format';
-import { exportedAssetIds, usedFontFaces } from './usage';
+import { bookVoiceIds, exportedAssetIds, usedFontFaces } from './usage';
 
 /**
  * Export packaging. Everything here is pure (inputs in, strings/blobs out) so it can be unit
@@ -190,10 +190,11 @@ export async function buildSingleFile(inputs: ExportInputs): Promise<ExportResul
 export async function buildZip(inputs: ExportInputs): Promise<ExportResult> {
   const zip = new JSZip();
   const assets: Record<string, string> = {};
+  const voice = new Set(bookVoiceIds(inputs.project));
   for (const id of exportedAssetIds(inputs.project)) {
     const blob = await inputs.getAsset(id);
     if (!blob) continue;
-    const folder = inputs.project.sounds[id] ? 'audio' : 'images';
+    const folder = voice.has(id) ? 'voice' : inputs.project.sounds[id] ? 'audio' : 'images';
     const path = `assets/${folder}/${id}.${EXT_BY_MIME[blob.type] ?? 'bin'}`;
     zip.file(path, blob);
     assets[id] = path;
@@ -224,6 +225,7 @@ export type SizeEstimate = {
   bytes: number;
   images: number;
   audio: number;
+  voice: number;
   fonts: number;
   runtime: number;
   data: number;
@@ -237,6 +239,7 @@ export function estimateSize(opts: {
   format: ExportFormat;
   imageBytes: readonly number[];
   audioBytes?: readonly number[];
+  voiceBytes?: readonly number[];
   fontBytes: readonly number[];
   playerBytes: number;
   projectJsonBytes: number;
@@ -244,10 +247,19 @@ export function estimateSize(opts: {
   const inflate = (n: number) => (opts.format === 'html' ? Math.ceil(n / 3) * 4 : n);
   const images = opts.imageBytes.reduce((s, n) => s + inflate(n), 0);
   const audio = (opts.audioBytes ?? []).reduce((s, n) => s + inflate(n), 0);
+  const voice = (opts.voiceBytes ?? []).reduce((s, n) => s + inflate(n), 0);
   const fonts = opts.fontBytes.reduce((s, n) => s + Math.ceil(n / 3) * 4, 0);
   const runtime = opts.playerBytes;
   const data = opts.projectJsonBytes + 2048;
-  return { bytes: images + audio + fonts + runtime + data, images, audio, fonts, runtime, data };
+  return {
+    bytes: images + audio + voice + fonts + runtime + data,
+    images,
+    audio,
+    voice,
+    fonts,
+    runtime,
+    data,
+  };
 }
 
 export const SIZE_WARNING_BYTES = 25 * 1024 * 1024;
