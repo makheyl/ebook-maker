@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/ui/toggle-group';
 import { assetUrls } from '../assets/asset-urls';
+import { SpeakWhenTapped } from '../audio/SpeakWhenTapped';
 import {
   addPoses,
   addTapReaction,
@@ -219,6 +220,7 @@ export function CharacterPanel({ element }: { element: ImageElement }) {
         />
       </label>
 
+      <SpeakWhenTapped element={element} name={character.name} />
       <div className="flex flex-wrap gap-1.5">
         {!hasTapReaction && (
           <Button variant="outline" size="sm" onClick={() => addTapReaction(element.id)}>

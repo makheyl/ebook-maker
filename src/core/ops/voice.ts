@@ -1,6 +1,7 @@
 import type { Draft } from 'immer';
 import { findElement } from '../schema/tree';
-import type { Project, VoiceClip, VoiceLanguage } from '../schema/types';
+import { newId } from '../ids';
+import type { PageElement, Project, VoiceClip, VoiceLanguage } from '../schema/types';
 import { MAX_VOICE_LANGUAGES } from '../schema/project';
 import type { VoiceTarget } from '../voice/lines';
 import { getPage } from './pages';
@@ -78,4 +79,56 @@ export function setPageOpenSound(
   const page = getPage(draft, pageId);
   if (soundId && draft.sounds[soundId]) page.openSound = soundId;
   else delete page.openSound;
+}
+
+/** The first voice line said when this element is tapped, if any. */
+export function tapVoiceTarget(
+  page: { id: string; elements: readonly PageElement[] },
+  elementId: string,
+): Extract<VoiceTarget, { kind: 'tap' }> | null {
+  const el = findElement(page.elements, elementId);
+  for (const interaction of el?.interactions ?? []) {
+    const index = interaction.actions.findIndex((a) => a.type === 'playVoice');
+    if (index >= 0) {
+      return { kind: 'tap', pageId: page.id, elementId, interactionId: interaction.id, index };
+    }
+  }
+  return null;
+}
+
+/**
+ * "Speak when tapped": adds a Play voiceover action to the element's existing tap (keeping
+ * its wiggle or other reactions), or a new tap when there's none. Respects the limits of 8
+ * actions per tap and 4 taps per element. Returns where the line is (or null if it's full).
+ */
+export function addVoiceToTap(
+  draft: Draft<Project>,
+  pageId: string,
+  elementId: string,
+): Extract<VoiceTarget, { kind: 'tap' }> | null {
+  const page = getPage(draft, pageId);
+  const existing = tapVoiceTarget(page as { id: string; elements: PageElement[] }, elementId);
+  if (existing) return existing;
+  const el = findElement(page.elements, elementId);
+  if (!el) return null;
+  const tap = el.interactions?.find((i) => i.trigger === 'tap' && i.actions.length < 8);
+  if (tap) {
+    tap.actions.push({ type: 'playVoice', line: {} });
+    return {
+      kind: 'tap',
+      pageId,
+      elementId,
+      interactionId: tap.id,
+      index: tap.actions.length - 1,
+    };
+  }
+  if ((el.interactions?.length ?? 0) >= 4) return null;
+  const interaction = {
+    id: newId('ia'),
+    trigger: 'tap' as const,
+    once: false,
+    actions: [{ type: 'playVoice' as const, line: {} }],
+  };
+  el.interactions = [...(el.interactions ?? []), interaction];
+  return { kind: 'tap', pageId, elementId, interactionId: interaction.id, index: 0 };
 }

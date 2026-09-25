@@ -1,4 +1,5 @@
 import { findElement, flattenElements } from '@/core/schema/tree';
+import { validateVoice } from '@/core/voice';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -42,6 +43,7 @@ import {
   type ActionType,
 } from '../interaction/actions';
 import { PreviewButton } from '../audio/PreviewButton';
+import { VoiceSlots } from '../audio/VoiceSlots';
 import { textIssues } from '../checks/text-checks';
 import { uploadSound } from '../sound/actions';
 import { useActivePage, useProject, useSelectedElements } from '../store/selectors';
@@ -58,6 +60,7 @@ const ACTION_ORDER: ActionType[] = [
   'burst',
   'collect',
   'playSound',
+  'playVoice',
 ];
 
 const BURST_LABELS: Record<(typeof BURST_EFFECTS)[number], string> = {
@@ -249,6 +252,50 @@ function InteractionCard({
   );
 }
 
+/** A tap's voice line: one slot per language (or a nudge to add languages first). */
+function TapVoice({
+  element,
+  page,
+  interaction,
+  index,
+}: {
+  element: PageElement;
+  page: Page;
+  interaction: Interaction;
+  index: number;
+}) {
+  const project = useProject();
+  const action = interaction.actions[index];
+  if (!project.voiceover.languages.length) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Add a language in the{' '}
+        <button
+          type="button"
+          className="font-medium text-foreground underline underline-offset-2"
+          onClick={() => useUiStore.getState().setRightTab('audio')}
+        >
+          Audio tab
+        </button>{' '}
+        first, then upload what {element.name} says.
+      </p>
+    );
+  }
+  return (
+    <VoiceSlots
+      target={{
+        kind: 'tap',
+        pageId: page.id,
+        elementId: element.id,
+        interactionId: interaction.id,
+        index,
+      }}
+      line={action?.type === 'playVoice' ? action.line : undefined}
+      what={element.name}
+    />
+  );
+}
+
 function ActionRow({
   element,
   page,
@@ -334,6 +381,9 @@ function ActionRow({
         <p className="text-[11px] text-muted-foreground">
           Change how it moves in the Animate tab (Start: “When tapped”).
         </p>
+      )}
+      {action.type === 'playVoice' && (
+        <TapVoice element={element} page={page} interaction={interaction} index={index} />
       )}
       {action.type === 'playSound' && (
         <div className="flex items-center gap-1">
@@ -524,7 +574,7 @@ function GoalSection({ page }: { page: Page }) {
 function ChecksSection() {
   const project = useProject();
   const issues = useMemo(
-    () => [...textIssues(project), ...validateInteractivity(project)],
+    () => [...textIssues(project), ...validateInteractivity(project), ...validateVoice(project)],
     [project],
   );
   const go = (issue: CheckIssue) => {

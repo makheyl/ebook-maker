@@ -56,7 +56,7 @@ test('sounds: nothing before the first gesture, taps and page turns play, mute i
   await page.getByRole('combobox', { name: 'Action 1' }).click();
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByRole('option', { name: 'Play a sound' }).click(),
+    page.getByRole('option', { name: 'Play a sound effect' }).click(),
   ]);
   await chooser.setFiles({ name: 'ding.wav', mimeType: 'audio/wav', buffer: wav() });
   await expect(page.getByRole('combobox', { name: 'Sound to play' })).toHaveText('ding');

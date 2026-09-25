@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import {
   addLanguage,
+  addVoiceToTap,
   removeLanguage,
   renameLanguage,
   setDefaultLanguage,
@@ -95,4 +96,38 @@ export function warnIfLarge(): void {
       'This book has over 80 MB of voiceover — it may be slow to open on phones. Export as ZIP, or save recordings as mono MP3.',
     );
   }
+}
+
+/** "Speak when tapped": adds a Play voiceover to the element's tap (one undo step). */
+export function speakWhenTapped(pageId: string, elementId: string): boolean {
+  let ok = false;
+  docStore.change((d) => void (ok = !!addVoiceToTap(d, pageId, elementId)), {
+    label: 'Speak when tapped',
+  });
+  if (!ok) toast.error('This item already has 4 tap actions — remove one first.');
+  return ok;
+}
+
+export type BulkPlan = { file: File; page: number; code: string; replaces: boolean };
+
+/** Stores the matched recordings and puts each on its page, as one undo step. */
+export async function applyBulkVoice(plan: readonly BulkPlan[]): Promise<number> {
+  const project = docStore.project();
+  if (!project || !plan.length) return 0;
+  const { clips, errors } = await importVoiceFiles(plan.map((p) => p.file));
+  errors.forEach((e) => toast.error(`${e.name}: ${e.message}`));
+  const byFile = new Map(clips.map((c) => [c.file, c.clip]));
+  const ready = plan.filter((p) => byFile.has(p.file));
+  if (!ready.length) return 0;
+  docStore.change(
+    (d) => {
+      for (const p of ready) {
+        const page = d.pages[p.page];
+        if (page) setVoiceClip(d, { kind: 'page', pageId: page.id }, p.code, byFile.get(p.file)!);
+      }
+    },
+    { label: `Add ${ready.length} voiceover recording${ready.length === 1 ? '' : 's'}` },
+  );
+  warnIfLarge();
+  return ready.length;
 }

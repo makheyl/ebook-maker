@@ -212,7 +212,7 @@ export const ACTION_LABELS: Record<ActionType, string> = {
   unlockNext: 'Unlock the next page',
   burst: 'Burst of fun',
   collect: 'Collect it',
-  playSound: 'Play a sound',
+  playSound: 'Play a sound effect',
   playVoice: 'Play voiceover',
 };
 

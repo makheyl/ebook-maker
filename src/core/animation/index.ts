@@ -28,6 +28,7 @@ export {
   type PageTimeline,
   type TimelineOptions,
   type AnimateFn,
+  type Entrance,
 } from './timeline';
 export { TRANSITIONS, getTransition, type TransitionDef } from './transitions';
 export { createAnimationStep } from './factory';

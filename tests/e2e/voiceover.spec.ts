@@ -3,6 +3,7 @@ import {
   addLanguages,
   createBlankBook,
   insertText,
+  makeMascotPng,
   makeWav,
   uploadVoiceClip,
   waitForSaved,
@@ -76,4 +77,68 @@ test('removing a language removes its recordings, with Undo', async ({ page }) =
   await expect(page.getByTestId('voice-slot-tl')).toHaveCount(0);
   await page.getByRole('button', { name: 'Undo' }).last().click();
   await expect(page.getByTestId('voice-slot-tl')).toContainText('tl.wav');
+});
+
+test('bulk upload by file name fills the overview; checks list what falls back', async ({
+  page,
+}) => {
+  await createBlankBook(page, 'Bulk voices');
+  await insertText(page, 'One');
+  await page.getByRole('button', { name: 'Add page', exact: true }).first().click();
+  await insertText(page, 'Two');
+  await addLanguages(page, ['English', 'Tagalog']);
+
+  await page.getByRole('button', { name: 'Voiceover overview' }).click();
+  const dialog = page.getByTestId('voice-overview');
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    dialog.getByRole('button', { name: 'Upload many files…' }).click(),
+  ]);
+  await chooser.setFiles([
+    { name: 'page-01-en.wav', mimeType: 'audio/wav', buffer: makeWav(200) },
+    { name: 'page-01-tl.wav', mimeType: 'audio/wav', buffer: makeWav(260) },
+    { name: 'page-02-en.wav', mimeType: 'audio/wav', buffer: makeWav(320) },
+    { name: 'cover.wav', mimeType: 'audio/wav', buffer: makeWav(380) },
+  ]);
+  await expect(dialog.getByTestId('bulk-row')).toHaveCount(4);
+  await expect(dialog.getByTestId('bulk-row').nth(3)).toContainText('Skipped');
+  await dialog.getByRole('button', { name: 'Add 3 recordings' }).click();
+  await expect(dialog.getByTestId('cell-Page 1-en').getByLabel('Recorded')).toBeVisible();
+  await expect(dialog.getByTestId('cell-Page 1-tl').getByLabel('Recorded')).toBeVisible();
+  await expect(dialog.getByTestId('cell-Page 2-en').getByLabel('Recorded')).toBeVisible();
+  await expect(dialog.getByTestId('cell-Page 2-tl')).toContainText('↩ EN');
+  await page.keyboard.press('Escape');
+
+  // One undo removes the whole bulk upload.
+  await expect(page.getByRole('list', { name: 'Voiceover checks' })).toContainText(
+    'No Tagalog recording for Page 2 — English plays there instead.',
+  );
+  await page.getByRole('tab', { name: 'Interact' }).click();
+  await expect(page.getByRole('list', { name: 'Problems' })).toContainText(
+    'No Tagalog recording for Page 2',
+  );
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.getByRole('tab', { name: 'Audio' }).click();
+  await expect(page.getByTestId('voice-slot-en')).toContainText('Drop a file or');
+});
+
+test('a character can speak when tapped, keeping its wiggle', async ({ page }) => {
+  await createBlankBook(page, 'Speaking Pip');
+  await addLanguages(page, ['English']);
+  await page
+    .getByTestId('insert-character-input')
+    .setInputFiles({ name: 'pip.png', mimeType: 'image/png', buffer: await makeMascotPng(page) });
+  await page.getByRole('tab', { name: 'Design' }).click();
+  await page.getByRole('button', { name: 'Speak when tapped' }).click();
+  await expect(page.getByText('What pip says when tapped')).toBeVisible();
+  await uploadVoiceClip(page, /Upload English voiceover for pip/, makeWav(300), 'hello.wav');
+  await expect(page.getByTestId('voice-slot-en')).toContainText('hello.wav');
+
+  // The tap still wiggles, then speaks.
+  await page.getByRole('tab', { name: 'Interact' }).click();
+  await expect(page.getByRole('combobox', { name: 'Action 1' })).toHaveText('Play an animation');
+  await expect(page.getByRole('combobox', { name: 'Action 2' })).toHaveText('Play voiceover');
+  // And the Audio tab lists it among this page's voice lines.
+  await page.getByRole('tab', { name: 'Audio' }).click();
+  await expect(page.getByText('pip (when tapped)')).toBeVisible();
 });

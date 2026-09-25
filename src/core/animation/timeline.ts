@@ -64,7 +64,15 @@ export type PageTimeline = {
   hasInteractionStep(stepId: string): boolean;
   /** Starts the characters' idle loops. */
   startIdle(): void;
+  /**
+   * Entrance steps that were actually built, with the start actually used (0 under reduced
+   * motion): `group` is the click group, or null for steps played by a tap. Lets the reader
+   * know when something appears (e.g. to say a speech bubble's line).
+   */
+  readonly entrances: readonly Entrance[];
 };
+
+export type Entrance = { elementId: string; stepId: string; group: number | null; at: number };
 
 /**
  * `holdsStart`: the animation applies its first frame before it plays (entrances start
@@ -213,6 +221,7 @@ export function createPageTimeline(
     : page.animations;
   const schedule = scheduleSteps(steps);
   const groups: Tracked[][] = schedule.groups.map(() => []);
+  const entrances: Entrance[] = [];
 
   // Bubbles that move with their speaker, by the speaker's id.
   const followers = new Map<string, BubbleElement[]>();
@@ -249,7 +258,7 @@ export function createPageTimeline(
     into.push(tracked);
   }
 
-  function buildStep(step: AnimationStep, start: number, into: Tracked[]) {
+  function buildStep(step: AnimationStep, start: number, into: Tracked[], group: number | null) {
     const preset = getPreset(step.preset);
     const nodes = lookup(step.elementId);
     if (!preset || !nodes) return;
@@ -286,6 +295,9 @@ export function createPageTimeline(
 
     const timing = { duration, delay, easing: resolveEasing(step.easing), fill, loop };
     applySpecs(specs, nodes, timing, into);
+    if (preset.kind === 'entrance') {
+      entrances.push({ elementId: element.id, stepId: step.id, group, at: Math.round(delay) });
+    }
 
     // Attached bubbles copy the speaker's movement on their follow layer (same timing), so
     // bubble and tail travel together, seekable like everything else.
@@ -352,7 +364,7 @@ export function createPageTimeline(
   }
 
   schedule.groups.forEach((group, gi) => {
-    for (const { step, start } of group.steps) buildStep(step, start, groups[gi]!);
+    for (const { step, start } of group.steps) buildStep(step, start, groups[gi]!, gi);
   });
 
   // Interaction steps are built now so their entrances start hidden, and play on demand.
@@ -360,7 +372,7 @@ export function createPageTimeline(
     for (const step of page.animations) {
       if (!isInteractionStep(step)) continue;
       const list: Tracked[] = [];
-      buildStep(step, 0, list);
+      buildStep(step, 0, list, null);
       interactions.set(step.id, list);
     }
   }
@@ -400,6 +412,7 @@ export function createPageTimeline(
   return {
     groupCount: groups.length,
     durations: schedule.groups.map((g) => g.duration),
+    entrances,
     play(group) {
       const list = groups[group] ?? [];
       for (const t of list) {

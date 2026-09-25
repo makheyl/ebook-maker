@@ -13,6 +13,7 @@ import {
 } from '../bubbles/actions';
 import { useActivePage, useProject } from '../store/selectors';
 import { BubbleShapeIcon } from '../bubbles/BubbleShapeIcon';
+import { VoiceSlots } from '../audio/VoiceSlots';
 import { ColorField, Field, NumberField, Section } from './controls';
 
 const FREE = '__free__';
@@ -188,6 +189,22 @@ export function BubblePanel({ elements }: { elements: BubbleElement[] }) {
             aria-label="Show when the speaker is tapped"
           />
         </label>
+      )}
+      {single && (
+        <div className="grid gap-1.5">
+          <h4 className="text-xs font-medium">Voice (heard when the bubble appears)</h4>
+          {project.voiceover.languages.length ? (
+            <VoiceSlots
+              target={{ kind: 'bubble', pageId: page.id, elementId: single.id }}
+              line={single.voice}
+              what={single.name}
+            />
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Add a language in the Audio tab to give this bubble a voice.
+            </p>
+          )}
+        </div>
       )}
       {single && shape !== 'caption' && (
         <p className="text-[11px] text-muted-foreground">

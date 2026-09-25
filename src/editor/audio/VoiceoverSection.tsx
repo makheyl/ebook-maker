@@ -1,7 +1,9 @@
 import { Languages, Plus, Star, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { MAX_VOICE_LANGUAGES, type Page } from '@/core/schema';
-import { defaultLanguageOf } from '@/core/voice';
+import { findElement } from '@/core/schema/tree';
+import { defaultLanguageOf, pageVoiceLines, validateVoice } from '@/core/voice';
+import { useUiStore } from '../store/ui-store';
 import { Button } from '@/ui/button';
 import {
   DropdownMenu,
@@ -21,6 +23,7 @@ import {
   renameVoiceLanguage,
 } from './actions';
 import { VoiceSlots } from './VoiceSlots';
+import { VoiceOverviewDialog } from './VoiceOverviewDialog';
 
 const CODE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/;
 
@@ -108,6 +111,64 @@ function AddLanguage() {
   );
 }
 
+/** The voiceover checks, right where recordings are managed. */
+function VoiceChecks() {
+  const project = useProject();
+  const issues = validateVoice(project);
+  if (!issues.length) return null;
+  return (
+    <ul className="grid gap-1" aria-label="Voiceover checks">
+      {issues.map((issue) => (
+        <li
+          key={issue.id}
+          className={
+            issue.severity === 'error'
+              ? 'text-[11px] text-destructive'
+              : 'text-[11px] text-amber-700 dark:text-amber-400'
+          }
+        >
+          {issue.message}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Taps and bubbles on this page that speak, each with its slots. */
+function PageVoiceLines({ page }: { page: Page }) {
+  const lines = pageVoiceLines(page).filter((l) => l.target.kind !== 'page');
+  if (!lines.length) {
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        Characters can speak when tapped (Design → Speak when tapped), and speech bubbles can have a
+        voice (Design → Voice).
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-2 pt-1">
+      <h4 className="text-xs font-medium">Voice lines on this page</h4>
+      {lines.map(({ target, line }) => {
+        if (target.kind === 'page') return null;
+        const el = findElement(page.elements, target.elementId);
+        const name = el?.name ?? 'Item';
+        return (
+          <div key={JSON.stringify(target)} className="grid gap-1">
+            <button
+              type="button"
+              className="justify-self-start text-left text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => useUiStore.getState().select([target.elementId])}
+            >
+              {target.kind === 'bubble' ? `${name} (bubble appears)` : `${name} (when tapped)`}
+            </button>
+            <VoiceSlots target={target} line={line} what={name} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Voiceover: the book's languages, and this page's recordings (one per language). */
 export function VoiceoverSection({ page, pageNumber }: { page: Page; pageNumber: number }) {
   const project = useProject();
@@ -184,6 +245,9 @@ export function VoiceoverSection({ page, pageNumber }: { page: Page; pageNumber:
           />
         </div>
       )}
+      {languages.length > 0 && <PageVoiceLines page={page} />}
+      {languages.length > 0 && <VoiceOverviewDialog />}
+      <VoiceChecks />
     </Section>
   );
 }
