@@ -1,13 +1,24 @@
-/* Reader chrome (shared by the in-app preview and exported books). */
+/* Reader chrome (shared by the in-app preview and exported books). Inkbug's colours: leaf
+   green and sky blue on night ink, with frosted-glass controls. Text on the leaf accent is
+   dark (--fp-accent-ink): white on leaf would be too faint. */
 .fp-root {
-  --fp-bg: #111114;
-  --fp-fg: #f4f4f6;
-  --fp-accent: #8b73ff;
+  --fp-bg: #0e1a1e;
+  --fp-fg: #f1f7f4;
+  --fp-accent: #60be70;
+  --fp-accent-ink: #0e1a1e;
+  --fp-sky: #5fb2e3;
+  --fp-glass: rgba(22, 40, 44, 0.58);
+  --fp-glass-strong: rgba(16, 30, 34, 0.86);
+  --fp-glass-border: rgba(255, 255, 255, 0.14);
+  --fp-highlight: rgba(255, 255, 255, 0.1);
+  --fp-blur: blur(16px) saturate(1.4);
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--fp-bg);
+  background:
+    radial-gradient(60% 50% at 8% 0%, rgba(54, 127, 72, 0.22), transparent 70%),
+    radial-gradient(55% 45% at 96% 100%, rgba(44, 111, 154, 0.2), transparent 70%), var(--fp-bg);
   color: var(--fp-fg);
   font-family:
     system-ui,
@@ -61,10 +72,14 @@
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  background: rgba(30, 30, 36, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: var(--fp-glass);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
+  /* Hairlines as inset shadows, not borders: the bar's size is part of the page layout. */
+  box-shadow:
+    inset 0 0 0 1px var(--fp-glass-border),
+    inset 0 1px 0 var(--fp-highlight),
+    0 8px 28px rgba(0, 0, 0, 0.4);
   transition: opacity 0.3s ease;
 }
 .fp-btn {
@@ -88,12 +103,12 @@
 }
 .fp-btn:focus-visible,
 .fp-root:focus-visible {
-  outline: 2px solid var(--fp-accent);
+  outline: 2px solid var(--fp-sky);
   outline-offset: 2px;
 }
 .fp-root:focus-visible {
   /* The book region is focused on load so keys work immediately; keep its ring subtle. */
-  outline: 2px solid rgba(139, 115, 255, 0.35);
+  outline: 2px solid rgba(95, 178, 227, 0.4);
   outline-offset: -2px;
 }
 .fp-icon {
@@ -123,14 +138,19 @@
 .fp-progress-bar {
   height: 100%;
   width: 0;
-  background: var(--fp-accent);
+  background: linear-gradient(90deg, var(--fp-accent), var(--fp-sky));
   transition: width 0.35s ease;
 }
 .fp-close {
   position: absolute;
   top: 14px;
   right: 14px;
-  background: rgba(30, 30, 36, 0.85);
+  background: var(--fp-glass);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--fp-glass-border),
+    inset 0 1px 0 var(--fp-highlight);
   transition: opacity 0.3s ease;
 }
 .fp-badge {
@@ -163,7 +183,7 @@
 }
 .fp-page [data-interactive]:focus-visible,
 .fp-page [data-interactive] .fl-button:focus-visible {
-  outline: 3px solid var(--fp-accent);
+  outline: 3px solid var(--fp-sky);
   outline-offset: 3px;
 }
 /* "Tap something to continue": locked pages glow what can be tapped. */
@@ -264,9 +284,9 @@
   z-index: 20;
   display: grid;
   grid-template-rows: auto 1fr;
-  background: rgba(14, 14, 18, 0.94);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 22, 26, 0.84);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
   animation: fp-fade 0.25s ease both;
 }
 .fp-menu[hidden] {
@@ -348,9 +368,14 @@
   gap: 12px;
   padding: 8px 8px 8px 16px;
   border-radius: 999px;
-  background: rgba(30, 30, 36, 0.92);
+  background: var(--fp-glass-strong);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
   font-size: 14px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 0 0 1px var(--fp-glass-border),
+    inset 0 1px 0 var(--fp-highlight),
+    0 6px 18px rgba(0, 0, 0, 0.35);
   animation: fp-fade 0.3s ease both;
   white-space: nowrap;
 }
@@ -366,7 +391,7 @@
   cursor: pointer;
 }
 .fp-toast-btn:focus-visible {
-  outline: 2px solid var(--fp-accent);
+  outline: 2px solid var(--fp-sky);
   outline-offset: 2px;
 }
 
@@ -376,9 +401,9 @@
   inset: 0 0 72px;
   display: grid;
   place-items: center;
-  background: rgba(10, 10, 14, 0.6);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(8, 18, 22, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   animation: fp-fade 0.4s ease both;
 }
 .fp-end[hidden] {
@@ -389,10 +414,14 @@
   gap: 20px;
   justify-items: center;
   padding: 32px 40px;
-  border-radius: 20px;
-  background: #fffdf7;
-  color: #1d1b26;
-  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
+  border-radius: 24px;
+  background: rgba(255, 253, 247, 0.9);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  color: #243338;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 60px -12px rgba(0, 0, 0, 0.6);
   animation: fp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .fp-end-title {
@@ -425,10 +454,10 @@
 .fp-end-primary {
   border-color: transparent;
   background: var(--fp-accent);
-  color: #fff;
+  color: var(--fp-accent-ink);
 }
 .fp-end-btn:focus-visible {
-  outline: 3px solid var(--fp-accent);
+  outline: 3px solid #2c6f9a;
   outline-offset: 2px;
 }
 .fp-end-btn .fp-icon {
@@ -507,7 +536,7 @@
 }
 @keyframes fp-pulse {
   50% {
-    box-shadow: 0 0 0 6px rgba(139, 115, 255, 0.45);
+    box-shadow: 0 0 0 6px rgba(96, 190, 112, 0.45);
   }
 }
 .fp-listen {
@@ -516,9 +545,9 @@
   z-index: 15;
   display: grid;
   place-items: center;
-  background: rgba(10, 10, 16, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(8, 18, 22, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .fp-listen-box {
   display: grid;
@@ -526,9 +555,14 @@
   justify-items: center;
   max-width: min(92vw, 520px);
   padding: 24px 28px;
-  border-radius: 20px;
-  background: rgba(30, 30, 36, 0.95);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border-radius: 24px;
+  background: var(--fp-glass-strong);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--fp-glass-border),
+    inset 0 1px 0 var(--fp-highlight),
+    0 20px 60px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
 .fp-listen-title {
@@ -561,7 +595,7 @@
   padding: 12px 20px;
   border-radius: 999px;
   background: var(--fp-accent);
-  color: #fff;
+  color: var(--fp-accent-ink);
   font-size: 17px;
   font-weight: 600;
 }
@@ -588,7 +622,7 @@
   padding: 10px 18px;
   border-radius: 999px;
   background: var(--fp-accent);
-  color: #fff;
+  color: var(--fp-accent-ink);
   font-weight: 600;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   animation: fp-pulse 1.4s ease-in-out infinite;
@@ -603,9 +637,14 @@
   gap: 6px;
   min-width: 220px;
   padding: 10px;
-  border-radius: 16px;
-  background: rgba(30, 30, 36, 0.96);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  border-radius: 18px;
+  background: var(--fp-glass-strong);
+  backdrop-filter: var(--fp-blur);
+  -webkit-backdrop-filter: var(--fp-blur);
+  box-shadow:
+    inset 0 0 0 1px var(--fp-glass-border),
+    inset 0 1px 0 var(--fp-highlight),
+    0 12px 40px rgba(0, 0, 0, 0.45);
 }
 .fp-audio-menu[hidden] {
   display: none;
@@ -669,4 +708,19 @@
 .fp-audio-volume input {
   width: 100%;
   accent-color: var(--fp-accent);
+}
+
+/* Less transparency, or no backdrop blur: solid panels. */
+@media (prefers-reduced-transparency: reduce) {
+  .fp-root {
+    --fp-glass: rgba(20, 36, 40, 0.97);
+    --fp-glass-strong: rgba(18, 32, 36, 0.98);
+    --fp-blur: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .fp-root {
+    --fp-glass: rgba(20, 36, 40, 0.97);
+    --fp-glass-strong: rgba(18, 32, 36, 0.98);
+  }
 }

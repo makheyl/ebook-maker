@@ -121,7 +121,7 @@ export function renderBookHtml(parts: HtmlParts): string {
     : '';
   // The Inkbug icon goes with the “Made with Inkbug” badge; without it the book is unbranded.
   const icon = parts.showBadge ? `\n<link rel="icon" type="image/png" href="${BRAND_ICON}">` : '';
-  const baseCss = `html,body{margin:0;height:100%;background:#111114}#${BOOK_ROOT_ID}{height:100%}`;
+  const baseCss = `html,body{margin:0;height:100%;background:#0e1a1e}#${BOOK_ROOT_ID}{height:100%}`;
   const styles = parts.playerCss
     ? `<style>${escapeInlineCode(baseCss + parts.fontCss + parts.playerCss, 'style')}</style>`
     : `<style>${escapeInlineCode(baseCss + parts.fontCss, 'style')}</style>\n<link rel="stylesheet" href="${escapeHtml(parts.playerCssHref ?? '')}">`;

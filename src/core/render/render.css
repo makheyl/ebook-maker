@@ -197,7 +197,7 @@
 }
 .fl-mode-player [data-interactive]:focus-visible,
 .fl-mode-player .fl-button:focus-visible {
-  outline: 5px solid #8b73ff;
+  outline: 5px solid #5fb2e3;
   outline-offset: 4px;
 }
 .fl-strips {
