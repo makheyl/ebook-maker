@@ -1,6 +1,8 @@
-# Folio
+<p align="center"><img src="docs/brand/inkbug-mark.png" width="96" height="96" alt="Inkbug: a green bookworm in glasses"></p>
 
-**Folio** (working name) is a browser-based editor for **interactive, animated ebooks**. It works
+# Inkbug
+
+**Inkbug** (formerly Folio) is a browser-based editor for **interactive, animated ebooks**. It works
 like a simplified Canva or PowerPoint, built around book pages. The payoff is the export:
 **one standalone HTML file** that anyone can open by double-clicking. It works offline, needs no
 install or account, and looks and behaves exactly like the editor's preview.
@@ -66,7 +68,8 @@ install or account, and looks and behaves exactly like the editor's preview.
 - **Export**
   - **Single HTML file** (default) or **ZIP** (`index.html` + `assets/`).
   - Size estimate with a warning above 25 MB.
-  - Optional "Made with Folio" badge (on by default).
+  - Optional "Made with Inkbug" badge (on by default), with the Inkbug icon as the tab icon.
+    Turn the badge off and the book carries no Inkbug branding at all.
   - Only the fonts actually used are embedded, as base64 woff2.
   - A strict Content-Security-Policy keeps the book fully offline.
 - **Characters ("make it move")**
@@ -146,6 +149,10 @@ install or account, and looks and behaves exactly like the editor's preview.
   ("Pip's Big Day": a mascot with a speech bubble, curling pages, soft background music, a
   justified paragraph, a choice, a flap, a star hunt and two endings). Light and dark
   themes.
+- **Look and feel:** frosted-glass panels over a soft green-and-blue backdrop, in the colours
+  of the Inkbug logo (leaf and forest green, sky and ocean blue, ink). Panels turn solid for
+  readers who ask for less transparency or more contrast, and in forced-colour modes. New books
+  start green with blue accents; existing books keep their own colours.
 
 ## Getting started
 
@@ -178,7 +185,8 @@ Open http://localhost:5173. Everything is stored locally in your browser (Indexe
 | `pnpm test:e2e`                          | Playwright E2E, including the export round trip over `file://`                                    |
 | `pnpm build:player` / `pnpm size:player` | Builds the standalone reader and checks it against the 150 KB gzip budget (currently about 39 KB) |
 | `pnpm check`                             | typecheck + lint + format check + unit tests                                                      |
-| `node scripts/screenshots.mjs`           | Regenerates the v2 README screenshots from the sample book (with `pnpm dev` running)              |
+| `node scripts/screenshots.mjs`           | Regenerates every README screenshot from the sample book (with `pnpm dev` running)                |
+| `pnpm brand:icons`                       | Rebuilds the favicons and logo marks from `logo-ebook.jpeg`                                       |
 
 The first E2E run needs a browser: `pnpm exec playwright install chromium`.
 
@@ -324,6 +332,14 @@ tests/e2e/     Playwright specs
 - **Fonts:** 10 OFL-licensed variable fonts from `@fontsource-variable`, latin and latin-ext
   subsets. The same woff2 files serve the editor and get embedded in exports.
 - **The export is a vanilla-TS player** (no React), so exported books stay tiny.
+- **Glass, on purpose and in few places.** Tokens live in `src/index.css`. Docked panels use
+  `glass`, floating UI `glass-strong`, and repeated items `glass-subtle` (no blur, so a
+  100-page list stays fast). The classic tokens (`--background`, `--popover`…) stay opaque, and
+  sticky headers use the opaque `--surface`. Blur never sits on an ancestor of a
+  `position: fixed` element, such as the stage's marquee or the preview. `src/ui/contrast.test.ts`
+  checks every theme's text contrast.
+- **The rename kept internal names.** Storage keys, the database, CSS prefixes and the export
+  format still say `folio`, so saved books, settings and old exports keep working.
 
 ## Extending
 
