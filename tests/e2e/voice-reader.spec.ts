@@ -264,3 +264,89 @@ test('the reader asks for a language, speaks it, falls back, and remembers', asy
   expect(errors).toEqual([]);
   await context.close();
 });
+
+test('Read to me turns after each clip, and waits at a choice, a locked page and for the reader', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await createBlankBook(page, 'Read to me');
+  await insertText(page, 'Page one');
+  for (const text of ['Page two', 'Page three', 'Page four']) {
+    await page.getByRole('button', { name: 'Add page', exact: true }).first().click();
+    await insertText(page, text);
+  }
+  await addLanguages(page, ['English']);
+  for (const [n, clip] of [
+    [1, CLIPS.p1en],
+    [2, CLIPS.p2en],
+    [3, CLIPS.p3en],
+    [4, CLIPS.p4en],
+  ] as const) {
+    await thumb(page, n).click();
+    await audioTab(page);
+    await uploadVoiceClip(
+      page,
+      new RegExp(`Upload English voiceover for page ${n}$`),
+      clip,
+      `p${n}.wav`,
+    );
+  }
+  // Page 2 is a choice; page 3 waits for a tap.
+  await thumb(page, 2).click();
+  await page
+    .getByRole('toolbar', { name: 'Insert' })
+    .getByRole('button', { name: 'Button' })
+    .click();
+  await page.getByRole('menuitem', { name: /Choice/ }).click();
+  await thumb(page, 3).click();
+  await clickEmpty(page);
+  await page.getByRole('tab', { name: 'Interact' }).click();
+  await page.getByRole('switch', { name: /Tap something to continue/ }).click();
+  await waitForSaved(page);
+  const file = await exportBook(page, 'read-to-me.html');
+
+  const context = await browser.newContext();
+  await context.addInitScript(PLAY_SPY);
+  const book = await context.newPage();
+  await book.goto(pathToFileURL(file).href);
+  await book
+    .getByRole('dialog', { name: 'Read to me' })
+    .getByRole('button', { name: 'English' })
+    .click();
+  await expect.poll(() => voicePlays(book)).toEqual(['p1en']);
+  await book.getByRole('button', { name: /Voiceover: English/ }).click();
+  await book.getByRole('switch', { name: 'Turn pages for me' }).click();
+  await expect(book.getByRole('switch', { name: 'Turn pages for me' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await book.keyboard.press('Escape');
+  const indicator = book.locator('.fp-indicator');
+
+  // The reader doing something (here, a key) puts off the turn.
+  await endLine(book);
+  await book.keyboard.press('Shift');
+  await book.waitForTimeout(1500);
+  await expect(indicator).toHaveText('1 / 4');
+
+  // Once the clip ends (Listen again, then it finishes), the page turns by itself.
+  await book.getByRole('button', { name: /Voiceover: English/ }).click();
+  await book.getByRole('button', { name: 'Listen again' }).click();
+  await endLine(book);
+  await expect(indicator).toHaveText('2 / 4', { timeout: 4000 });
+  await expect.poll(async () => (await voicePlays(book)).at(-1)).toBe('p2en');
+
+  // A choice: it waits.
+  await endLine(book);
+  await book.waitForTimeout(1600);
+  await expect(indicator).toHaveText('2 / 4');
+  // "Option A" goes to page 3, which waits for a tap: Read to me waits too.
+  await book.locator('.fp-page:not([aria-hidden]) .fl-button').first().click();
+  await expect(indicator).toHaveText('3 / 4');
+  await expect.poll(async () => (await voicePlays(book)).at(-1)).toBe('p3en');
+  await endLine(book);
+  await book.waitForTimeout(1600);
+  await expect(indicator).toHaveText('3 / 4');
+  await context.close();
+});

@@ -7,6 +7,7 @@ import {
 } from '../core/animation';
 import { MADE_WITH_LABEL } from '../core/brand';
 import {
+  autoTurnStep,
   initialReaderState,
   isNextLocked,
   nextTarget,
@@ -156,6 +157,9 @@ export class Player {
   private tapVoiceDispatch = -1;
   /** The page shown while the book is being built speaks too (the preview; after the card). */
   private firstShow = true;
+  /** Read to me: the page said something, so it may turn by itself when it's done. */
+  private pageSpoke = false;
+  private autoTurnTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly opts: PlayerOptions) {
     const { project, mount } = opts;
@@ -217,6 +221,7 @@ export class Player {
     if (languages.length && bookHasVoice(project)) {
       this.voice = new VoicePlayer(opts.resolveAsset, this.root);
       this.voice.onBlocked = () => this.showPill('Tap to listen');
+      this.voice.onIdle = () => this.armAutoTurn();
       this.voiceChoice = this.initialVoiceChoice();
       this.lastLanguage =
         this.voiceChoice !== 'off' ? this.voiceChoice : defaultLanguageOf(project);
@@ -367,7 +372,7 @@ export class Player {
         this.showPage(effect.page, effect.direction);
         break;
       case 'playGroup':
-        void tl?.play(effect.group);
+        void tl?.play(effect.group).then(() => this.armAutoTurn());
         if (this.current) this.cueClock.schedule(this.current.cues, effect.group);
         break;
       case 'finishGroup':
@@ -593,6 +598,8 @@ export class Player {
     else this.voice?.stop();
     this.cueClock.clear();
     this.saidCues = [];
+    this.cancelAutoTurn();
+    this.pageSpoke = false;
     const speak = direction === 1 || this.firstShow;
     // A story button that turned the page is about to disappear: keep keyboard focus in the book.
     const active = document.activeElement;
@@ -691,6 +698,7 @@ export class Player {
     this.sounds.destroy();
     this.voice?.destroy();
     this.cueClock.clear();
+    this.cancelAutoTurn();
     for (const a of this.transitionAnims) a.cancel();
     this.turning?.curl.destroy();
     this.cancelCornerDrag();
@@ -864,16 +872,51 @@ export class Player {
 
   /** A page arrives and starts: its animations, its voice (going forward), its bubble lines. */
   private startPage(m: Mounted, speak: boolean): void {
-    void m.timeline?.play(0);
+    void m.timeline?.play(0).then(() => this.armAutoTurn());
     if (!speak) return;
-    this.sayLine(m.page.voiceover, 'queue');
+    this.pageSpoke = this.sayLine(m.page.voiceover, 'queue');
     this.cueClock.schedule(m.cues, 0);
   }
 
-  private sayLine(line: VoiceLine | undefined, mode: 'interrupt' | 'queue'): void {
-    if (!this.voice || this.holding) return;
+  /**
+   * Read to me: once the page has finished (its voice, its bubble lines, its animations), the
+   * book goes on after a short pause — unless it has to wait for the reader (see autoTurnStep).
+   * A page with nothing to say waits for the reader too.
+   */
+  private armAutoTurn(): void {
+    clearTimeout(this.autoTurnTimer);
+    const ready = () =>
+      this.readToMe &&
+      this.voiceChoice !== 'off' &&
+      this.pageSpoke &&
+      !this.holding &&
+      !this.destroyed &&
+      !this.menu?.isOpen &&
+      !this.audioMenu?.isOpen &&
+      !this.turning &&
+      !this.transitionAnims.length &&
+      !this.voice?.busy &&
+      !this.cueClock.pending &&
+      !this.groupRunning() &&
+      autoTurnStep(this.opts.project, this.state) === 'next';
+    if (!ready()) return;
+    this.autoTurnTimer = setTimeout(() => {
+      if (!ready()) return;
+      // The next page (or click group) keeps reading: it speaks and arms again.
+      this.dispatch({ type: 'next', groupRunning: false });
+    }, 1000);
+  }
+
+  private cancelAutoTurn(): void {
+    clearTimeout(this.autoTurnTimer);
+  }
+
+  /** Says a line in the reader's language (or the default); false if there's nothing to say. */
+  private sayLine(line: VoiceLine | undefined, mode: 'interrupt' | 'queue'): boolean {
+    if (!this.voice || this.holding) return false;
     const clip = resolveClip(line, this.voiceChoice, defaultLanguageOf(this.opts.project));
     if (clip) this.voice.say(clip, mode);
+    return !!clip;
   }
 
   /** A tap's line interrupts whatever is being said. */
@@ -905,6 +948,8 @@ export class Player {
     this.readToMe = on;
     this.savePrefs();
     this.updateVoiceButton();
+    if (on) this.armAutoTurn();
+    else this.cancelAutoTurn();
     this.say(on ? 'The pages will turn by themselves.' : 'You turn the pages.');
   }
 
@@ -1346,6 +1391,10 @@ export class Player {
     on(this.root, 'keydown', wake);
     on(this.root, 'focusin', wake);
     wake();
+
+    // Read to me waits for the reader whenever they do something themselves.
+    on(this.root, 'pointerdown', () => this.cancelAutoTurn(), { capture: true });
+    on(this.root, 'keydown', () => this.cancelAutoTurn(), { capture: true });
 
     // Any reader activity postpones the idle hint on locked pages.
     const active = () => this.armIdleHint();

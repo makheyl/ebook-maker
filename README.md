@@ -95,8 +95,20 @@ install or account, and looks and behaves exactly like the editor's preview.
   - Live checks for dead ends, deleted targets, unnamed controls and unreachable pages.
   - Reader extras: hints that glow on locked pages, The End with Read again, a page menu,
     "continue where you left off", keyboard-only reading.
-- **Sound:** MP3/OGG/WAV/M4A (≤ 2 MB each) on taps and page turns. Nothing plays before the
-  reader's first tap or key press, and mute is remembered.
+- **Voiceover (your own recordings, in several languages)**
+  - Add languages (English, Tagalog, Filipino, Cebuano… or your own) and upload a recording per
+    language, up to 10 MB each. There's no text-to-speech: it's your voice.
+  - Three places to speak: when a **page opens**, when something is **tapped** ("Speak when
+    tapped" on characters), and when a **speech bubble appears**.
+  - The **Voiceover overview** shows every page × language, and **bulk upload** puts files named
+    like `page-03-tl.mp3` on the right page. Checks list what's missing.
+  - In the book, readers pick a language when it opens ("Listen in: English · Tagalog · Read it
+    myself") and can switch any time with the **language button beside the page**. A missing
+    recording falls back to the default language. **Read to me** turns the pages after each
+    page is read, stopping at choices and locked pages. The choice is remembered.
+- **Sound effects** (a separate section): MP3/OGG/WAV/M4A up to 2 MB each, on taps, page turns
+  and when a page opens. Readers turn them on and off separately from the voice. Nothing plays
+  before the reader's first tap or key press.
 - **Backups (import):** every export is also a backup. **Import** on the dashboard (or drop the
   file onto it) turns an exported `.html` or `.zip` back into a fully editable book — pictures,
   characters, poses, sounds, animations and interactions included. See
@@ -140,6 +152,21 @@ Open http://localhost:5173. Everything is stored locally in your browser (Indexe
 | `node scripts/screenshots.mjs`           | Regenerates the v2 README screenshots from the sample book (with `pnpm dev` running)              |
 
 The first E2E run needs a browser: `pnpm exec playwright install chromium`.
+
+## Voiceover: recording tips
+
+- **Two separate sections.** In the editor's **Audio** tab, _Voiceover_ holds your recordings
+  per language and _Sound effects_ holds the book's sounds. They never mix, and readers
+  control them separately.
+- **Name files for bulk upload:** `page-01-en.mp3`, `page-01-tl.mp3`, `p2_tl.m4a` or
+  `03 tagalog.wav`. The page is the number; the language is its code or name (without one,
+  the default language). Then open **Voiceover overview → Upload many files…**.
+- **Keep files small:** mono MP3 or M4A at about 64 kbps is roughly 0.5 MB per minute. Single
+  HTML exports grow by about a third; for books with lots of audio, export as ZIP.
+- **The default language** plays wherever another language has no recording, so record it
+  for every page.
+- **On phones**, audio can only start after a tap: that's why the book asks "Listen in…" when
+  it opens, or shows "Tap to listen".
 
 ## Backups: export and import
 

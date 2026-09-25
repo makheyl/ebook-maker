@@ -1,4 +1,4 @@
-import { findElement } from '../schema/tree';
+import { findElement, flattenElements } from '../schema/tree';
 import { groupCount } from '../animation/schedule';
 import type { BurstEffect, Page, Project, StoryAction, VoiceLine } from '../schema/types';
 
@@ -57,6 +57,28 @@ export function isNextLocked(project: Project, state: ReaderState): boolean {
   const page = project.pages[state.page];
   if (!page?.flow?.lockNext) return false;
   return !state.unlocked.includes(page.id);
+}
+
+/** A page where the reader decides where to go (a visible "jump to a page" tap). */
+export function isChoicePage(page: Page): boolean {
+  return flattenElements(page.elements).some(
+    (el) =>
+      !el.hidden && el.interactions?.some((i) => i.actions.some((a) => a.type === 'goToPage')),
+  );
+}
+
+/**
+ * Read to me: whether the book may go on by itself once the page has finished speaking —
+ * the next click group, or the next page — or must wait for the reader: at the end, on a
+ * locked page (a goal to reach, something to tap), on a choice, or on the last page.
+ */
+export function autoTurnStep(project: Project, state: ReaderState): 'next' | 'stop' {
+  if (state.ended) return 'stop';
+  const page = project.pages[state.page];
+  if (!page) return 'stop';
+  if (state.group + 1 < groupsOf(page)) return 'next';
+  if (isNextLocked(project, state) || isChoicePage(page)) return 'stop';
+  return nextTarget(project, state.page) === 'end' ? 'stop' : 'next';
 }
 
 /** Where "next" leads from a page: another page index, or 'end'. */

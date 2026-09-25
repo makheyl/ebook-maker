@@ -9,7 +9,13 @@ import {
   type Page,
   type Project,
 } from '../schema';
-import { initialReaderState, reduce, type ReaderEvent, type ReaderState } from './runtime';
+import {
+  autoTurnStep,
+  initialReaderState,
+  reduce,
+  type ReaderEvent,
+  type ReaderState,
+} from './runtime';
 
 const tap = (
   actions: Interaction['actions'],
@@ -324,5 +330,45 @@ describe('interactivity checks', () => {
       `unreachable:${pages[1]!.id}`,
       `unreachable:${pages[2]!.id}`,
     ]);
+  });
+});
+
+describe('read to me: when the book may go on by itself', () => {
+  const page = (extra: Partial<Page> = {}): Page => ({ ...createPage(), ...extra });
+  it('goes on normally, plays the next click group first, and stops where the reader decides', () => {
+    const btn = createButtonElement('Left', { x: 0, y: 0, width: 10, height: 10 });
+    const p0 = page();
+    const p1 = page({ flow: { lockNext: true } });
+    const p2 = page({ elements: [btn] });
+    const p3 = page();
+    btn.interactions = [
+      { id: 'c', trigger: 'tap', once: false, actions: [{ type: 'goToPage', pageId: p3.id }] },
+    ];
+    const project = createProject({ pages: [p0, p1, p2, p3] });
+    const at = (i: number, extra: Partial<ReaderState> = {}) => ({
+      ...initialReaderState(i),
+      ...extra,
+    });
+    expect(autoTurnStep(project, at(0))).toBe('next');
+    expect(autoTurnStep(project, at(1))).toBe('stop'); // locked
+    expect(autoTurnStep(project, at(1, { unlocked: [p1.id] }))).toBe('next');
+    expect(autoTurnStep(project, at(2))).toBe('stop'); // a choice
+    expect(autoTurnStep(project, at(3))).toBe('stop'); // the last page
+    expect(autoTurnStep(project, at(0, { ended: true }))).toBe('stop');
+    // Click groups left: go on to the next one, even on a locked page.
+    const withClicks = createProject({
+      pages: [
+        page({
+          flow: { lockNext: true },
+          animations: [
+            { ...createAnimationStep('x', 'fadeIn'), trigger: 'onPageEnter' },
+            { ...createAnimationStep('x', 'fadeIn'), trigger: 'onClick' },
+          ],
+        }),
+        page(),
+      ],
+    });
+    expect(autoTurnStep(withClicks, at(0))).toBe('next');
+    expect(autoTurnStep(withClicks, at(0, { group: 1 }))).toBe('stop');
   });
 });
